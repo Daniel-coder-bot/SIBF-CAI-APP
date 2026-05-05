@@ -125,7 +125,7 @@ export default function CatalogosPage() {
   const [newSede, setNewSede] = useState({ nombre: '', ubicacion: '' });
   const [newCarrera, setNewCarrera] = useState({ nombre: '', sedeId: '' });
   const [newMateria, setNewMateria] = useState({ nombre: '', codigo: '', carreraId: '', cuatrimestre: '' });
-  const [newGrupo, setNewGrupo] = useState({ nombre: '', carreraId: '', cuatrimestre: '' });
+  const [newGrupo, setNewGrupo] = useState({ nombre: '', carreraId: '', cuatrimestre: '', docenteId: '' });
   const [newHorario, setNewHorario] = useState({ grupoId: '', dia: '', horaInicio: '', horaFin: '', aula: '' });
   const [newUser, setNewUser] = useState({ 
     firstName: '', 
@@ -637,12 +637,22 @@ export default function CatalogosPage() {
                       <SelectContent>{[1,2,3,4,5,6,7,8,9,10,11,12].map(n => <SelectItem key={n} value={String(n)}>{n}° Cuatrimestre</SelectItem>)}</SelectContent>
                     </Select>
                   </div>
+                  <div className="space-y-2">
+                    <Label>Docente Asignado</Label>
+                    <Select value={newGrupo.docenteId} onValueChange={v => setNewGrupo({...newGrupo, docenteId: v})}>
+                      <SelectTrigger className="rounded-xl"><SelectValue placeholder="Sin Docente" /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="null">Ninguno</SelectItem>
+                        {docentes.map(d => <SelectItem key={d.id} value={d.id}>{d.firstName} {d.lastName}</SelectItem>)}
+                      </SelectContent>
+                    </Select>
+                  </div>
                   <div className="space-y-2"><Label>Nombre del Grupo</Label><Input value={newGrupo.nombre} onChange={e => setNewGrupo({...newGrupo, nombre: e.target.value})} placeholder="Ej: Sección A, G1, etc." /></div>
                 </div>
                 <DialogFooter>
                   <Button 
                     disabled={!newGrupo.carreraId || !newGrupo.cuatrimestre || !newGrupo.nombre}
-                    onClick={() => handleAdd(gruposRef, {nombre: newGrupo.nombre, carreraId: newGrupo.carreraId, cuatrimestre: newGrupo.cuatrimestre}, setNewGrupo, {nombre: '', carreraId: '', cuatrimestre: ''}, "Grupo")} 
+                    onClick={() => handleAdd(gruposRef, {nombre: newGrupo.nombre, carreraId: newGrupo.carreraId, cuatrimestre: newGrupo.cuatrimestre, docenteId: newGrupo.docenteId}, setNewGrupo, {nombre: '', carreraId: '', cuatrimestre: '', docenteId: ''}, "Grupo")} 
                     className="w-full bg-primary font-bold"
                   >
                     Guardar Grupo
@@ -658,17 +668,22 @@ export default function CatalogosPage() {
                   <TableHead className="px-6 font-bold py-4">Grupo</TableHead>
                   <TableHead className="font-bold">Carrera</TableHead>
                   <TableHead className="font-bold">Cuatrimestre</TableHead>
+                  <TableHead className="font-bold">Docente</TableHead>
                   <TableHead className="font-bold text-right pr-6">Acciones</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {grupos?.map(g => {
                   const carrera = carreras?.find(c => c.id === g.carreraId);
+                  const docente = docentes.find(d => d.id === g.docenteId);
                   return (
                     <TableRow key={g.id}>
                       <TableCell className="px-6"><span className="bg-slate-900 text-white px-3 py-1 rounded-lg font-black text-[10px]">{g.nombre}</span></TableCell>
                       <TableCell className="font-medium">{carrera?.nombre || 'N/A'}</TableCell>
                       <TableCell className="text-sm font-bold">{g.cuatrimestre}°</TableCell>
+                      <TableCell className="text-xs font-semibold text-accent">
+                        {docente ? `${docente.firstName} ${docente.lastName}` : <span className="text-muted-foreground italic font-normal">No asignado</span>}
+                      </TableCell>
                       <TableCell className="text-right pr-6">
                         <DropdownMenu>
                           <DropdownMenuTrigger asChild><Button variant="ghost" size="icon" className="h-8 w-8"><MoreVertical className="w-4 h-4" /></Button></DropdownMenuTrigger>
@@ -714,25 +729,42 @@ export default function CatalogosPage() {
                 <TableRow>
                   <TableHead className="px-6 font-bold py-4">Nombre Completo</TableHead>
                   <TableHead className="font-bold">Email</TableHead>
+                  <TableHead className="font-bold">Grupos Asignados</TableHead>
                   <TableHead className="font-bold text-right pr-6">Acciones</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {docentes?.map(d => (
-                  <TableRow key={d.id}>
-                    <TableCell className="px-6 font-medium">{d.firstName} {d.lastName}</TableCell>
-                    <TableCell className="text-muted-foreground">{d.email}</TableCell>
-                    <TableCell className="text-right pr-6">
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild><Button variant="ghost" size="icon" className="h-8 w-8"><MoreVertical className="w-4 h-4" /></Button></DropdownMenuTrigger>
-                        <DropdownMenuContent align="end" className="rounded-xl">
-                          <DropdownMenuItem onClick={() => { setEditingUser(d); setOpenDialog('editUser'); }} className="gap-2 font-bold"><Edit2 className="w-4 h-4" /> Editar</DropdownMenuItem>
-                          <DropdownMenuItem onClick={() => handleDelete('users', d.id)} className="gap-2 text-primary font-bold"><Trash2 className="w-4 h-4" /> Eliminar</DropdownMenuItem>
-                        </DropdownMenuContent>
-                      </DropdownMenu>
-                    </TableCell>
-                  </TableRow>
-                ))}
+                {docentes?.map(d => {
+                  const gruposDocente = grupos?.filter(g => g.docenteId === d.id) || [];
+                  return (
+                    <TableRow key={d.id}>
+                      <TableCell className="px-6 font-medium">{d.firstName} {d.lastName}</TableCell>
+                      <TableCell className="text-muted-foreground">{d.email}</TableCell>
+                      <TableCell>
+                        <div className="flex flex-wrap gap-1">
+                          {gruposDocente.length > 0 ? (
+                            gruposDocente.map(g => (
+                              <span key={g.id} className="bg-primary/5 border border-primary/20 text-primary text-[10px] px-2 py-0.5 rounded-full font-bold">
+                                {g.nombre} ({carreras?.find(c => c.id === g.carreraId)?.nombre || 'S/C'})
+                              </span>
+                            ))
+                          ) : (
+                            <span className="text-[10px] text-muted-foreground italic">Sin grupos</span>
+                          )}
+                        </div>
+                      </TableCell>
+                      <TableCell className="text-right pr-6">
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild><Button variant="ghost" size="icon" className="h-8 w-8"><MoreVertical className="w-4 h-4" /></Button></DropdownMenuTrigger>
+                          <DropdownMenuContent align="end" className="rounded-xl">
+                            <DropdownMenuItem onClick={() => { setEditingUser(d); setOpenDialog('editUser'); }} className="gap-2 font-bold"><Edit2 className="w-4 h-4" /> Editar</DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => handleDelete('users', d.id)} className="gap-2 text-primary font-bold"><Trash2 className="w-4 h-4" /> Eliminar</DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      </TableCell>
+                    </TableRow>
+                  );
+                })}
               </TableBody>
             </Table>
           </div>
@@ -1031,6 +1063,43 @@ export default function CatalogosPage() {
             </div>
           )}
           <DialogFooter><Button onClick={() => handleUpdate('users', editingUser.id, editingUser, "Usuario")} className="w-full bg-primary font-bold">Actualizar</Button></DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* DIÁLOGO EDICIÓN GRUPO */}
+      <Dialog open={openDialog === 'editGrupo'} onOpenChange={(o) => setOpenDialog(o ? 'editGrupo' : null)}>
+        <DialogContent className="rounded-3xl">
+          <DialogHeader><DialogTitle>Editar Grupo</DialogTitle></DialogHeader>
+          {editingGrupo && (
+            <div className="space-y-4 py-4">
+              <div className="space-y-2">
+                <Label>Carrera</Label>
+                <Select value={editingGrupo.carreraId} onValueChange={v => setEditingGrupo({...editingGrupo, carreraId: v})}>
+                  <SelectTrigger className="rounded-xl"><SelectValue placeholder="Elegir Carrera" /></SelectTrigger>
+                  <SelectContent>{carreras?.map(c => <SelectItem key={c.id} value={c.id}>{c.nombre}</SelectItem>)}</SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
+                <Label>Cuatrimestre</Label>
+                <Select value={editingGrupo.cuatrimestre} onValueChange={v => setEditingGrupo({...editingGrupo, cuatrimestre: v})}>
+                  <SelectTrigger className="rounded-xl"><SelectValue placeholder="Elegir Cuatrimestre" /></SelectTrigger>
+                  <SelectContent>{[1,2,3,4,5,6,7,8,9,10,11,12].map(n => <SelectItem key={n} value={String(n)}>{n}° Cuatrimestre</SelectItem>)}</SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
+                <Label>Docente Asignado</Label>
+                <Select value={editingGrupo.docenteId || "null"} onValueChange={v => setEditingGrupo({...editingGrupo, docenteId: v === "null" ? "" : v})}>
+                  <SelectTrigger className="rounded-xl"><SelectValue placeholder="Sin Docente" /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="null">Ninguno</SelectItem>
+                    {docentes.map(d => <SelectItem key={d.id} value={d.id}>{d.firstName} {d.lastName}</SelectItem>)}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2"><Label>Nombre del Grupo</Label><Input value={editingGrupo.nombre} onChange={e => setEditingGrupo({...editingGrupo, nombre: e.target.value})} /></div>
+            </div>
+          )}
+          <DialogFooter><Button onClick={() => handleUpdate('grupos', editingGrupo.id, editingGrupo, "Grupo")} className="w-full bg-primary font-bold">Actualizar</Button></DialogFooter>
         </DialogContent>
       </Dialog>
     </div>
