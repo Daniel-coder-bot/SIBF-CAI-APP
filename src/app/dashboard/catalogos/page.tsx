@@ -19,7 +19,10 @@ import {
   Upload,
   Download,
   Copy,
-  Check
+  Check,
+  Search,
+  Filter,
+  XCircle
 } from 'lucide-react';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -89,11 +92,28 @@ export default function CatalogosPage() {
   const [newGrupo, setNewGrupo] = useState({ nombre: '', carreraId: '', materiaId: '' });
   const [newHorario, setNewHorario] = useState({ grupoId: '', dia: '', horaInicio: '', horaFin: '', aula: '' });
 
-  // Filtrado de materias para grupos
-  const materiasFiltradas = useMemo(() => {
+  // Estados para filtros de Materias
+  const [materiaSearch, setMateriaSearch] = useState('');
+  const [materiaCarreraFilter, setMateriaCarreraFilter] = useState('all');
+  const [materiaCuatriFilter, setMateriaCuatriFilter] = useState('all');
+
+  // Filtrado de materias para grupos (formulario)
+  const materiasFiltradasParaGrupo = useMemo(() => {
     if (!newGrupo.carreraId || !materias) return [];
     return materias.filter(m => m.carreraId === newGrupo.carreraId);
   }, [newGrupo.carreraId, materias]);
+
+  // Filtrado de materias para la tabla (visualización)
+  const materiasFiltradasTabla = useMemo(() => {
+    if (!materias) return [];
+    return materias.filter(m => {
+      const matchSearch = m.nombre.toLowerCase().includes(materiaSearch.toLowerCase()) || 
+                          m.codigo?.toLowerCase().includes(materiaSearch.toLowerCase());
+      const matchCarrera = materiaCarreraFilter === 'all' || m.carreraId === materiaCarreraFilter;
+      const matchCuatri = materiaCuatriFilter === 'all' || m.cuatrimestre === materiaCuatriFilter;
+      return matchSearch && matchCarrera && matchCuatri;
+    }).sort((a,b) => Number(a.cuatrimestre) - Number(b.cuatrimestre));
+  }, [materias, materiaSearch, materiaCarreraFilter, materiaCuatriFilter]);
 
   const handleAdd = (ref: any, data: any, setter: any, emptyData: any, title: string) => {
     addDocumentNonBlocking(ref, { ...data, createdAt: serverTimestamp() });
@@ -120,15 +140,14 @@ export default function CatalogosPage() {
       { 
         nombre: 'Matemáticas I', 
         cuatrimestre: '1', 
-        carrera: 'Ingeniería de Sistemas (O usa el ID)', 
-        carreraId: '' 
+        carreraId: 'Copia el ID desde la pestaña Carreras' 
       }
     ];
     const worksheet = XLSX.utils.json_to_sheet(data);
     const workbook = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(workbook, worksheet, "Plantilla Materias");
     XLSX.writeFile(workbook, "Plantilla_Materias_UniAttend.xlsx");
-    toast({ title: "Plantilla descargada", description: "Usa el nombre de la carrera o su ID para la vinculación." });
+    toast({ title: "Plantilla descargada", description: "Usa los IDs de las carreras para la vinculación." });
   };
 
   const handleImportMateriasExcel = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -148,7 +167,6 @@ export default function CatalogosPage() {
         data.forEach((row) => {
           let targetCarreraId = row.carreraId || '';
           
-          // Resolución inteligente: Si no hay ID o el ID no es válido, buscar por nombre
           if (!targetCarreraId || targetCarreraId.length < 5) {
             const carreraNombre = row.carrera || row.carreraNombre || row.nombre_carrera;
             if (carreraNombre) {
@@ -180,6 +198,12 @@ export default function CatalogosPage() {
       }
     };
     reader.readAsBinaryString(file);
+  };
+
+  const resetMateriaFilters = () => {
+    setMateriaSearch('');
+    setMateriaCarreraFilter('all');
+    setMateriaCuatriFilter('all');
   };
 
   return (
@@ -345,6 +369,61 @@ export default function CatalogosPage() {
               </Dialog>
             </div>
           </div>
+
+          {/* Filtros de Materias */}
+          <div className="bg-slate-50 p-4 rounded-3xl border border-slate-100 flex flex-wrap gap-4 items-end shadow-inner">
+            <div className="flex-1 min-w-[200px] space-y-1.5">
+              <Label className="text-[10px] font-black uppercase text-muted-foreground ml-2">Buscar</Label>
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                <Input 
+                  value={materiaSearch} 
+                  onChange={e => setMateriaSearch(e.target.value)} 
+                  placeholder="Nombre o código..." 
+                  className="pl-10 rounded-xl bg-white h-10 border-slate-200"
+                />
+              </div>
+            </div>
+            
+            <div className="w-full sm:w-64 space-y-1.5">
+              <Label className="text-[10px] font-black uppercase text-muted-foreground ml-2">Carrera</Label>
+              <Select value={materiaCarreraFilter} onValueChange={setMateriaCarreraFilter}>
+                <SelectTrigger className="rounded-xl bg-white h-10 border-slate-200">
+                  <SelectValue placeholder="Todas las carreras" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Todas las carreras</SelectItem>
+                  {carreras?.map(c => <SelectItem key={c.id} value={c.id}>{c.nombre}</SelectItem>)}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="w-32 space-y-1.5">
+              <Label className="text-[10px] font-black uppercase text-muted-foreground ml-2">Cuatrimestre</Label>
+              <Select value={materiaCuatriFilter} onValueChange={setMateriaCuatriFilter}>
+                <SelectTrigger className="rounded-xl bg-white h-10 border-slate-200">
+                  <SelectValue placeholder="Todos" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Todos</SelectItem>
+                  {Array.from({length: 12}, (_, i) => String(i + 1)).map(n => (
+                    <SelectItem key={n} value={n}>{n}°</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <Button 
+              variant="ghost" 
+              size="icon" 
+              className="rounded-xl h-10 w-10 text-muted-foreground hover:text-primary hover:bg-white border border-transparent hover:border-slate-100"
+              onClick={resetMateriaFilters}
+              title="Limpiar filtros"
+            >
+              <XCircle className="w-5 h-5" />
+            </Button>
+          </div>
+
           <div className="bg-white border rounded-3xl overflow-hidden shadow-sm">
             <Table>
               <TableHeader className="bg-slate-50">
@@ -357,15 +436,32 @@ export default function CatalogosPage() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {materias?.sort((a,b) => Number(a.cuatrimestre) - Number(b.cuatrimestre)).map(m => (
-                  <TableRow key={m.id}>
-                    <TableCell className="px-6 font-black text-primary text-xs">{m.codigo}</TableCell>
-                    <TableCell className="font-medium">{m.nombre}</TableCell>
-                    <TableCell className="text-xs text-muted-foreground">{carreras?.find(c => c.id === m.carreraId)?.nombre}</TableCell>
-                    <TableCell className="font-bold">{m.cuatrimestre}</TableCell>
-                    <TableCell className="text-right pr-6"><Button variant="ghost" size="icon" onClick={() => handleDelete('materias', m.id)} className="text-primary"><Trash2 className="w-4 h-4" /></Button></TableCell>
+                {materiasFiltradasTabla.length === 0 ? (
+                  <TableRow>
+                    <TableCell colSpan={5} className="h-32 text-center text-muted-foreground">
+                      No se encontraron materias con los filtros seleccionados.
+                    </TableCell>
                   </TableRow>
-                ))}
+                ) : (
+                  materiasFiltradasTabla.map(m => (
+                    <TableRow key={m.id} className="hover:bg-slate-50/50 transition-colors">
+                      <TableCell className="px-6 font-black text-primary text-xs">{m.codigo}</TableCell>
+                      <TableCell className="font-medium">{m.nombre}</TableCell>
+                      <TableCell className="text-xs text-muted-foreground">{carreras?.find(c => c.id === m.carreraId)?.nombre}</TableCell>
+                      <TableCell className="font-bold">{m.cuatrimestre}</TableCell>
+                      <TableCell className="text-right pr-6">
+                        <Button 
+                          variant="ghost" 
+                          size="icon" 
+                          onClick={() => handleDelete('materias', m.id)} 
+                          className="text-primary hover:bg-primary/5 rounded-full"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </Button>
+                      </TableCell>
+                    </TableRow>
+                  ))
+                )}
               </TableBody>
             </Table>
           </div>
@@ -393,7 +489,7 @@ export default function CatalogosPage() {
                     <Label>Materia</Label>
                     <Select disabled={!newGrupo.carreraId} value={newGrupo.materiaId} onValueChange={v => setNewGrupo({...newGrupo, materiaId: v})}>
                       <SelectTrigger className="rounded-xl"><SelectValue placeholder="Elegir Materia" /></SelectTrigger>
-                      <SelectContent>{materiasFiltradas.map(m => <SelectItem key={m.id} value={m.id}>{m.nombre} ({m.codigo})</SelectItem>)}</SelectContent>
+                      <SelectContent>{materiasFiltradasParaGrupo.map(m => <SelectItem key={m.id} value={m.id}>{m.nombre} ({m.codigo})</SelectItem>)}</SelectContent>
                     </Select>
                   </div>
                   <div className="space-y-2"><Label>Identificador del Grupo</Label><Input value={newGrupo.nombre} onChange={e => setNewGrupo({...newGrupo, nombre: e.target.value})} placeholder="Ej: G1, Sección A" /></div>
@@ -508,4 +604,3 @@ export default function CatalogosPage() {
     </div>
   );
 }
-
