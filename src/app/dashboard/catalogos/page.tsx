@@ -7,7 +7,7 @@ import {
   TabsContent, 
   TabsList, 
   TabsTrigger 
-} from "@/components/ui/tabs";
+} from "@/tabs";
 import { 
   Building2, 
   BookOpen, 
@@ -22,7 +22,6 @@ import {
   Copy,
   Check,
   Search,
-  Filter,
   XCircle,
   Wrench,
   AlertTriangle,
@@ -79,6 +78,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { Checkbox } from "@/components/ui/checkbox";
+import { ScrollArea } from "@/components/ui/scroll-area";
 import { 
   useFirestore, 
   useCollection, 
@@ -125,7 +125,7 @@ export default function CatalogosPage() {
   const [newSede, setNewSede] = useState({ nombre: '', ubicacion: '' });
   const [newCarrera, setNewCarrera] = useState({ nombre: '', sedeId: '' });
   const [newMateria, setNewMateria] = useState({ nombre: '', codigo: '', carreraId: '', cuatrimestre: '' });
-  const [newGrupo, setNewGrupo] = useState({ nombre: '', carreraId: '', cuatrimestre: '', docenteId: '' });
+  const [newGrupo, setNewGrupo] = useState({ nombre: '', carreraId: '', cuatrimestre: '' });
   const [newHorario, setNewHorario] = useState({ grupoId: '', dia: '', horaInicio: '', horaFin: '', aula: '' });
   const [newUser, setNewUser] = useState({ 
     firstName: '', 
@@ -136,7 +136,8 @@ export default function CatalogosPage() {
     carreraId: '', 
     sedeId: '',
     matricula: '',
-    grupoId: ''
+    grupoId: '',
+    grupoIds: [] as string[]
   });
 
   // Estados para edición
@@ -323,6 +324,22 @@ export default function CatalogosPage() {
       }
     };
     reader.readAsBinaryString(file);
+  };
+
+  const toggleGroupAssignment = (userId: string, groupId: string, isEditing: boolean) => {
+    if (isEditing) {
+      const currentIds = editingUser.grupoIds || [];
+      const nextIds = currentIds.includes(groupId) 
+        ? currentIds.filter((id: string) => id !== groupId)
+        : [...currentIds, groupId];
+      setEditingUser({ ...editingUser, grupoIds: nextIds });
+    } else {
+      const currentIds = newUser.grupoIds || [];
+      const nextIds = currentIds.includes(groupId) 
+        ? currentIds.filter((id: string) => id !== groupId)
+        : [...currentIds, groupId];
+      setNewUser({ ...newUser, grupoIds: nextIds });
+    }
   };
 
   return (
@@ -637,22 +654,12 @@ export default function CatalogosPage() {
                       <SelectContent>{[1,2,3,4,5,6,7,8,9,10,11,12].map(n => <SelectItem key={n} value={String(n)}>{n}° Cuatrimestre</SelectItem>)}</SelectContent>
                     </Select>
                   </div>
-                  <div className="space-y-2">
-                    <Label>Docente Asignado</Label>
-                    <Select value={newGrupo.docenteId} onValueChange={v => setNewGrupo({...newGrupo, docenteId: v})}>
-                      <SelectTrigger className="rounded-xl"><SelectValue placeholder="Sin Docente" /></SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="null">Ninguno</SelectItem>
-                        {docentes.map(d => <SelectItem key={d.id} value={d.id}>{d.firstName} {d.lastName}</SelectItem>)}
-                      </SelectContent>
-                    </Select>
-                  </div>
                   <div className="space-y-2"><Label>Nombre del Grupo</Label><Input value={newGrupo.nombre} onChange={e => setNewGrupo({...newGrupo, nombre: e.target.value})} placeholder="Ej: Sección A, G1, etc." /></div>
                 </div>
                 <DialogFooter>
                   <Button 
                     disabled={!newGrupo.carreraId || !newGrupo.cuatrimestre || !newGrupo.nombre}
-                    onClick={() => handleAdd(gruposRef, {nombre: newGrupo.nombre, carreraId: newGrupo.carreraId, cuatrimestre: newGrupo.cuatrimestre, docenteId: newGrupo.docenteId}, setNewGrupo, {nombre: '', carreraId: '', cuatrimestre: '', docenteId: ''}, "Grupo")} 
+                    onClick={() => handleAdd(gruposRef, {nombre: newGrupo.nombre, carreraId: newGrupo.carreraId, cuatrimestre: newGrupo.cuatrimestre}, setNewGrupo, {nombre: '', carreraId: '', cuatrimestre: ''}, "Grupo")} 
                     className="w-full bg-primary font-bold"
                   >
                     Guardar Grupo
@@ -668,21 +675,31 @@ export default function CatalogosPage() {
                   <TableHead className="px-6 font-bold py-4">Grupo</TableHead>
                   <TableHead className="font-bold">Carrera</TableHead>
                   <TableHead className="font-bold">Cuatrimestre</TableHead>
-                  <TableHead className="font-bold">Docente</TableHead>
+                  <TableHead className="font-bold">Docentes Asignados</TableHead>
                   <TableHead className="font-bold text-right pr-6">Acciones</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {grupos?.map(g => {
                   const carrera = carreras?.find(c => c.id === g.carreraId);
-                  const docente = docentes.find(d => d.id === g.docenteId);
+                  const docentesDelGrupo = docentes.filter(d => d.grupoIds?.includes(g.id)) || [];
                   return (
                     <TableRow key={g.id}>
                       <TableCell className="px-6"><span className="bg-slate-900 text-white px-3 py-1 rounded-lg font-black text-[10px]">{g.nombre}</span></TableCell>
                       <TableCell className="font-medium">{carrera?.nombre || 'N/A'}</TableCell>
                       <TableCell className="text-sm font-bold">{g.cuatrimestre}°</TableCell>
-                      <TableCell className="text-xs font-semibold text-accent">
-                        {docente ? `${docente.firstName} ${docente.lastName}` : <span className="text-muted-foreground italic font-normal">No asignado</span>}
+                      <TableCell>
+                        <div className="flex flex-wrap gap-1">
+                          {docentesDelGrupo.length > 0 ? (
+                            docentesDelGrupo.map(d => (
+                              <span key={d.id} className="bg-accent/10 text-accent text-[9px] px-2 py-0.5 rounded-full font-bold">
+                                {d.firstName}
+                              </span>
+                            ))
+                          ) : (
+                            <span className="text-[10px] text-muted-foreground italic">Sin docentes</span>
+                          )}
+                        </div>
                       </TableCell>
                       <TableCell className="text-right pr-6">
                         <DropdownMenu>
@@ -709,17 +726,40 @@ export default function CatalogosPage() {
               <DialogTrigger asChild>
                 <Button className="bg-primary rounded-xl font-bold"><Plus className="w-4 h-4 mr-2" /> Nuevo Docente</Button>
               </DialogTrigger>
-              <DialogContent className="rounded-3xl">
+              <DialogContent className="rounded-3xl max-w-xl">
                 <DialogHeader><DialogTitle>Alta de Docente</DialogTitle></DialogHeader>
-                <div className="space-y-4 py-4">
+                <div className="space-y-4 py-4 max-h-[70vh] overflow-y-auto px-1">
                   <div className="grid grid-cols-2 gap-4">
                     <div className="space-y-2"><Label>Nombre(s)</Label><Input value={newUser.firstName} onChange={e => setNewUser({...newUser, firstName: e.target.value})} /></div>
                     <div className="space-y-2"><Label>Apellido(s)</Label><Input value={newUser.lastName} onChange={e => setNewUser({...newUser, lastName: e.target.value})} /></div>
                   </div>
                   <div className="space-y-2"><Label>Correo Electrónico</Label><Input type="email" value={newUser.email} onChange={e => setNewUser({...newUser, email: e.target.value})} /></div>
                   <div className="space-y-2"><Label>Contraseña</Label><div className="relative"><Key className="absolute left-3 top-3 w-4 h-4 text-muted-foreground" /><Input type="password" value={newUser.password} onChange={e => setNewUser({...newUser, password: e.target.value})} className="pl-10" /></div></div>
+                  
+                  <div className="space-y-2">
+                    <Label className="text-sm font-bold">Asignar Grupos</Label>
+                    <ScrollArea className="h-40 border rounded-xl p-4 bg-slate-50">
+                      <div className="grid grid-cols-1 gap-2">
+                        {grupos?.map(g => {
+                          const car = carreras?.find(c => c.id === g.carreraId);
+                          return (
+                            <div key={g.id} className="flex items-center space-x-2">
+                              <Checkbox 
+                                id={`group-${g.id}`} 
+                                checked={newUser.grupoIds?.includes(g.id)}
+                                onCheckedChange={() => toggleGroupAssignment('', g.id, false)}
+                              />
+                              <label htmlFor={`group-${g.id}`} className="text-xs font-medium leading-none cursor-pointer">
+                                {g.nombre} - {car?.nombre} ({g.cuatrimestre}°)
+                              </label>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </ScrollArea>
+                  </div>
                 </div>
-                <DialogFooter><Button onClick={() => handleAdd(usersRef, {...newUser, role: 'Docente'}, setNewUser, {firstName: '', lastName: '', email: '', password: '', role: 'Alumno', carreraId: '', sedeId: '', matricula: '', grupoId: ''}, "Docente")} className="w-full bg-primary font-bold">Dar de Alta</Button></DialogFooter>
+                <DialogFooter><Button onClick={() => handleAdd(usersRef, {...newUser, role: 'Docente'}, setNewUser, {firstName: '', lastName: '', email: '', password: '', role: 'Alumno', carreraId: '', sedeId: '', matricula: '', grupoId: '', grupoIds: []}, "Docente")} className="w-full bg-primary font-bold">Dar de Alta</Button></DialogFooter>
               </DialogContent>
             </Dialog>
           </div>
@@ -735,15 +775,15 @@ export default function CatalogosPage() {
               </TableHeader>
               <TableBody>
                 {docentes?.map(d => {
-                  const gruposDocente = grupos?.filter(g => g.docenteId === d.id) || [];
+                  const gruposDelDocente = grupos?.filter(g => d.grupoIds?.includes(g.id)) || [];
                   return (
                     <TableRow key={d.id}>
                       <TableCell className="px-6 font-medium">{d.firstName} {d.lastName}</TableCell>
                       <TableCell className="text-muted-foreground">{d.email}</TableCell>
                       <TableCell>
                         <div className="flex flex-wrap gap-1">
-                          {gruposDocente.length > 0 ? (
-                            gruposDocente.map(g => (
+                          {gruposDelDocente.length > 0 ? (
+                            gruposDelDocente.map(g => (
                               <span key={g.id} className="bg-primary/5 border border-primary/20 text-primary text-[10px] px-2 py-0.5 rounded-full font-bold">
                                 {g.nombre} ({carreras?.find(c => c.id === g.carreraId)?.nombre || 'S/C'})
                               </span>
@@ -824,7 +864,7 @@ export default function CatalogosPage() {
                     </div>
                     <div className="space-y-2"><Label>Contraseña</Label><div className="relative"><Key className="absolute left-3 top-3 w-4 h-4 text-muted-foreground" /><Input type="password" value={newUser.password} onChange={e => setNewUser({...newUser, password: e.target.value})} className="pl-10" /></div></div>
                   </div>
-                  <DialogFooter><Button onClick={() => handleAdd(usersRef, {...newUser, role: 'Alumno'}, setNewUser, {firstName: '', lastName: '', email: '', password: '', role: 'Alumno', carreraId: '', sedeId: '', matricula: '', grupoId: ''}, "Alumno")} className="w-full bg-primary font-bold">Inscribir</Button></DialogFooter>
+                  <DialogFooter><Button onClick={() => handleAdd(usersRef, {...newUser, role: 'Alumno'}, setNewUser, {firstName: '', lastName: '', email: '', password: '', role: 'Alumno', carreraId: '', sedeId: '', matricula: '', grupoId: '', grupoIds: []}, "Alumno")} className="w-full bg-primary font-bold">Inscribir</Button></DialogFooter>
                 </DialogContent>
               </Dialog>
             </div>
@@ -1022,7 +1062,7 @@ export default function CatalogosPage() {
 
       {/* DIÁLOGO EDICIÓN USUARIO (DOCENTE/ALUMNO) */}
       <Dialog open={openDialog === 'editUser'} onOpenChange={(o) => setOpenDialog(o ? 'editUser' : null)}>
-        <DialogContent className="rounded-3xl">
+        <DialogContent className="rounded-3xl max-w-xl">
           <DialogHeader><DialogTitle>Editar Perfil</DialogTitle></DialogHeader>
           {editingUser && (
             <div className="space-y-4 py-4 max-h-[70vh] overflow-y-auto px-1">
@@ -1031,6 +1071,32 @@ export default function CatalogosPage() {
                 <div className="space-y-2"><Label>Apellido(s)</Label><Input value={editingUser.lastName} onChange={e => setEditingUser({...editingUser, lastName: e.target.value})} /></div>
               </div>
               <div className="space-y-2"><Label>Email</Label><Input value={editingUser.email} onChange={e => setEditingUser({...editingUser, email: e.target.value})} /></div>
+              
+              {editingUser.role === 'Docente' && (
+                <div className="space-y-2">
+                  <Label className="text-sm font-bold">Asignar Grupos</Label>
+                  <ScrollArea className="h-40 border rounded-xl p-4 bg-slate-50">
+                    <div className="grid grid-cols-1 gap-2">
+                      {grupos?.map(g => {
+                        const car = carreras?.find(c => c.id === g.carreraId);
+                        return (
+                          <div key={g.id} className="flex items-center space-x-2">
+                            <Checkbox 
+                              id={`edit-group-${g.id}`} 
+                              checked={editingUser.grupoIds?.includes(g.id)}
+                              onCheckedChange={() => toggleGroupAssignment('', g.id, true)}
+                            />
+                            <label htmlFor={`edit-group-${g.id}`} className="text-xs font-medium leading-none cursor-pointer">
+                              {g.nombre} - {car?.nombre} ({g.cuatrimestre}°)
+                            </label>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </ScrollArea>
+                </div>
+              )}
+
               {editingUser.role === 'Alumno' && (
                 <>
                   <div className="space-y-2"><Label>Matrícula</Label><Input value={editingUser.matricula} onChange={e => setEditingUser({...editingUser, matricula: e.target.value})} /></div>
@@ -1084,16 +1150,6 @@ export default function CatalogosPage() {
                 <Select value={editingGrupo.cuatrimestre} onValueChange={v => setEditingGrupo({...editingGrupo, cuatrimestre: v})}>
                   <SelectTrigger className="rounded-xl"><SelectValue placeholder="Elegir Cuatrimestre" /></SelectTrigger>
                   <SelectContent>{[1,2,3,4,5,6,7,8,9,10,11,12].map(n => <SelectItem key={n} value={String(n)}>{n}° Cuatrimestre</SelectItem>)}</SelectContent>
-                </Select>
-              </div>
-              <div className="space-y-2">
-                <Label>Docente Asignado</Label>
-                <Select value={editingGrupo.docenteId || "null"} onValueChange={v => setEditingGrupo({...editingGrupo, docenteId: v === "null" ? "" : v})}>
-                  <SelectTrigger className="rounded-xl"><SelectValue placeholder="Sin Docente" /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="null">Ninguno</SelectItem>
-                    {docentes.map(d => <SelectItem key={d.id} value={d.id}>{d.firstName} {d.lastName}</SelectItem>)}
-                  </SelectContent>
                 </Select>
               </div>
               <div className="space-y-2"><Label>Nombre del Grupo</Label><Input value={editingGrupo.nombre} onChange={e => setEditingGrupo({...editingGrupo, nombre: e.target.value})} /></div>

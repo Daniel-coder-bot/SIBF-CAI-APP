@@ -15,7 +15,12 @@
         "password": { "type": "string" },
         "sedeId": { "type": "string" },
         "carreraId": { "type": "string" },
-        "grupoId": { "type": "string" },
+        "grupoId": { "type": "string", "description": "Used for Alumnos (single group)" },
+        "grupoIds": { 
+          "type": "array", 
+          "items": { "type": "string" },
+          "description": "Used for Docentes (multiple groups)"
+        },
         "matricula": { "type": "string" },
         "faceDescriptor": { 
           "type": "array", 
@@ -66,8 +71,7 @@
         "id": { "type": "string" },
         "nombre": { "type": "string" },
         "carreraId": { "type": "string" },
-        "cuatrimestre": { "type": "string" },
-        "docenteId": { "type": "string" }
+        "cuatrimestre": { "type": "string" }
       },
       "required": ["nombre", "carreraId", "cuatrimestre"]
     },
