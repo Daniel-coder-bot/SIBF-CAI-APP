@@ -1,20 +1,13 @@
 
 "use client";
 
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useMemo } from 'react';
 import { 
   Tabs, 
   TabsContent, 
   TabsList, 
   TabsTrigger 
 } from "@/components/ui/tabs";
-import { 
-  Card, 
-  CardContent, 
-  CardHeader, 
-  CardTitle, 
-  CardDescription 
-} from "@/components/ui/card";
 import { 
   Building2, 
   BookOpen, 
@@ -23,9 +16,9 @@ import {
   Clock, 
   Plus, 
   Trash2, 
-  Loader2,
   Upload,
-  Download
+  Search,
+  MoreVertical
 } from 'lucide-react';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -38,12 +31,28 @@ import {
   SelectValue 
 } from "@/components/ui/select";
 import { 
+  Dialog, 
+  DialogContent, 
+  DialogHeader, 
+  DialogTitle, 
+  DialogTrigger,
+  DialogFooter,
+  DialogDescription
+} from "@/components/ui/dialog";
+import { 
+  Table, 
+  TableBody, 
+  TableCell, 
+  TableHead, 
+  TableHeader, 
+  TableRow 
+} from "@/components/ui/table";
+import { 
   useFirestore, 
   useCollection, 
   useMemoFirebase,
   addDocumentNonBlocking,
-  deleteDocumentNonBlocking,
-  useUser
+  deleteDocumentNonBlocking
 } from '@/firebase';
 import { collection, doc, serverTimestamp } from 'firebase/firestore';
 import { useToast } from "@/hooks/use-toast";
@@ -52,33 +61,42 @@ import * as XLSX from 'xlsx';
 export default function CatalogosPage() {
   const db = useFirestore();
   const { toast } = useToast();
-  const { user } = useUser();
   const materiaFileInputRef = useRef<HTMLInputElement>(null);
 
-  // Queries para datos relacionados
+  // Queries para datos
   const sedesRef = useMemoFirebase(() => collection(db, 'sedes'), [db]);
   const carrerasRef = useMemoFirebase(() => collection(db, 'carreras'), [db]);
   const materiasRef = useMemoFirebase(() => collection(db, 'materias'), [db]);
   const gruposRef = useMemoFirebase(() => collection(db, 'grupos'), [db]);
   const horariosRef = useMemoFirebase(() => collection(db, 'horarios'), [db]);
 
-  const { data: sedes, isLoading: loadingSedes } = useCollection(sedesRef);
+  const { data: sedes } = useCollection(sedesRef);
   const { data: carreras } = useCollection(carrerasRef);
   const { data: materias } = useCollection(materiasRef);
   const { data: grupos } = useCollection(gruposRef);
   const { data: horarios } = useCollection(horariosRef);
 
-  // Estados para formularios rápidos
+  // Estados para diálogos
+  const [openDialog, setOpenDialog] = useState<string | null>(null);
+
+  // Estados para formularios
   const [newSede, setNewSede] = useState({ nombre: '', ubicacion: '' });
   const [newCarrera, setNewCarrera] = useState({ nombre: '', sedeId: '' });
   const [newMateria, setNewMateria] = useState({ nombre: '', codigo: '', carreraId: '', cuatrimestre: '' });
-  const [newGrupo, setNewGrupo] = useState({ nombre: '', materiaId: '' });
+  const [newGrupo, setNewGrupo] = useState({ nombre: '', carreraId: '', materiaId: '' });
   const [newHorario, setNewHorario] = useState({ grupoId: '', dia: '', horaInicio: '', horaFin: '', aula: '' });
+
+  // Filtrado de materias para grupos
+  const materiasFiltradas = useMemo(() => {
+    if (!newGrupo.carreraId || !materias) return [];
+    return materias.filter(m => m.carreraId === newGrupo.carreraId);
+  }, [newGrupo.carreraId, materias]);
 
   const handleAdd = (ref: any, data: any, setter: any, emptyData: any, title: string) => {
     addDocumentNonBlocking(ref, { ...data, createdAt: serverTimestamp() });
     setter(emptyData);
-    toast({ title: `${title} agregado`, description: "Los cambios se están sincronizando." });
+    setOpenDialog(null);
+    toast({ title: `${title} guardado`, description: "Los datos se están sincronizando." });
   };
 
   const handleDelete = (collectionName: string, id: string) => {
@@ -101,7 +119,6 @@ export default function CatalogosPage() {
         const data = XLSX.utils.sheet_to_json(ws) as any[];
 
         data.forEach((row) => {
-          // Intentar buscar la carrera por nombre si no viene el ID directo
           let carreraId = row.carreraId;
           if (!carreraId && row.carreraNombre) {
             const matchedCarrera = carreras.find(c => c.nombre.toLowerCase() === String(row.carreraNombre).toLowerCase());
@@ -109,21 +126,20 @@ export default function CatalogosPage() {
           }
 
           if (row.nombre && row.codigo && carreraId && row.cuatrimestre) {
-            const materiaData = {
+            addDocumentNonBlocking(materiasRef, {
               nombre: String(row.nombre),
               codigo: String(row.codigo),
               carreraId: String(carreraId),
               cuatrimestre: String(row.cuatrimestre),
               createdAt: serverTimestamp()
-            };
-            addDocumentNonBlocking(materiasRef, materiaData);
+            });
           }
         });
 
-        toast({ title: "Importación de Materias", description: `${data.length} registros procesados.` });
+        toast({ title: "Importación completa", description: `${data.length} materias procesadas.` });
         if (materiaFileInputRef.current) materiaFileInputRef.current.value = '';
       } catch (error) {
-        toast({ variant: "destructive", title: "Error", description: "No se pudo procesar el archivo Excel." });
+        toast({ variant: "destructive", title: "Error Excel" });
       }
     };
     reader.readAsBinaryString(file);
@@ -131,15 +147,15 @@ export default function CatalogosPage() {
 
   return (
     <div className="space-y-6 animate-in fade-in duration-500">
-      <div className="flex justify-between items-end">
+      <div className="flex justify-between items-end pb-4 border-b">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight text-foreground">Catálogos Académicos</h1>
-          <p className="text-muted-foreground font-medium text-sm">Gestiona la estructura base de la universidad.</p>
+          <h1 className="text-3xl font-black tracking-tighter text-foreground uppercase">Catálogos Institucionales</h1>
+          <p className="text-muted-foreground font-medium text-sm">Configuración de la estructura académica universitaria.</p>
         </div>
       </div>
 
       <Tabs defaultValue="sedes" className="w-full">
-        <TabsList className="bg-slate-100 p-1 rounded-2xl h-14 w-full justify-start overflow-x-auto gap-2">
+        <TabsList className="bg-slate-100/80 p-1 rounded-2xl h-14 w-full justify-start overflow-x-auto gap-2 border">
           <TabsTrigger value="sedes" className="rounded-xl data-[state=active]:bg-white data-[state=active]:text-primary data-[state=active]:shadow-sm px-6 font-bold flex gap-2">
             <Building2 className="w-4 h-4" /> Sedes
           </TabsTrigger>
@@ -157,225 +173,281 @@ export default function CatalogosPage() {
           </TabsTrigger>
         </TabsList>
 
-        {/* --- CONTENIDO SEDES --- */}
-        <TabsContent value="sedes" className="mt-6 space-y-6">
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            <Card className="rounded-3xl border-border/40">
-              <CardHeader>
-                <CardTitle className="text-lg">Nueva Sede</CardTitle>
-                <CardDescription>Añadir ubicación física.</CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="space-y-2">
-                  <Label>Nombre</Label>
-                  <Input value={newSede.nombre} onChange={e => setNewSede({...newSede, nombre: e.target.value})} placeholder="Sede Central" />
+        {/* --- SEDES --- */}
+        <TabsContent value="sedes" className="mt-6 space-y-4">
+          <div className="flex justify-between items-center">
+            <h2 className="text-xl font-bold">Listado de Sedes</h2>
+            <Dialog open={openDialog === 'sede'} onOpenChange={(o) => setOpenDialog(o ? 'sede' : null)}>
+              <DialogTrigger asChild>
+                <Button className="bg-primary rounded-xl font-bold shadow-lg shadow-primary/20"><Plus className="w-4 h-4 mr-2" /> Nueva Sede</Button>
+              </DialogTrigger>
+              <DialogContent className="rounded-3xl">
+                <DialogHeader><DialogTitle>Agregar Nueva Sede</DialogTitle><DialogDescription>Ubicaciones físicas de la institución.</DialogDescription></DialogHeader>
+                <div className="space-y-4 py-4">
+                  <div className="space-y-2"><Label>Nombre</Label><Input value={newSede.nombre} onChange={e => setNewSede({...newSede, nombre: e.target.value})} placeholder="Ej: Campus Central" /></div>
+                  <div className="space-y-2"><Label>Ubicación</Label><Input value={newSede.ubicacion} onChange={e => setNewSede({...newSede, ubicacion: e.target.value})} placeholder="Dirección..." /></div>
                 </div>
-                <div className="space-y-2">
-                  <Label>Ubicación</Label>
-                  <Input value={newSede.ubicacion} onChange={e => setNewSede({...newSede, ubicacion: e.target.value})} placeholder="Dirección..." />
-                </div>
-                <Button onClick={() => handleAdd(sedesRef, newSede, setNewSede, {nombre: '', ubicacion: ''}, "Sede")} className="w-full bg-primary font-bold rounded-xl">Guardar</Button>
-              </CardContent>
-            </Card>
-            <div className="lg:col-span-2 grid grid-cols-1 md:grid-cols-2 gap-4">
-              {sedes?.map(s => (
-                <Card key={s.id} className="rounded-3xl border-border/40 group relative overflow-hidden">
-                  <CardHeader className="pb-2">
-                    <CardTitle className="text-md flex justify-between items-center">
-                      {s.nombre}
-                      <Button variant="ghost" size="icon" onClick={() => handleDelete('sedes', s.id)} className="text-muted-foreground hover:text-primary"><Trash2 className="w-4 h-4" /></Button>
-                    </CardTitle>
-                    <CardDescription className="text-xs">{s.ubicacion}</CardDescription>
-                  </CardHeader>
-                </Card>
-              ))}
-            </div>
+                <DialogFooter><Button onClick={() => handleAdd(sedesRef, newSede, setNewSede, {nombre: '', ubicacion: ''}, "Sede")} className="w-full bg-primary font-bold">Guardar</Button></DialogFooter>
+              </DialogContent>
+            </Dialog>
+          </div>
+          <div className="bg-white border rounded-3xl overflow-hidden shadow-sm">
+            <Table>
+              <TableHeader className="bg-slate-50">
+                <TableRow>
+                  <TableHead className="font-bold py-4 px-6">Nombre</TableHead>
+                  <TableHead className="font-bold">Ubicación</TableHead>
+                  <TableHead className="font-bold text-right pr-6">Acciones</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {sedes?.map(s => (
+                  <TableRow key={s.id}>
+                    <TableCell className="px-6 font-medium">{s.nombre}</TableCell>
+                    <TableCell className="text-muted-foreground">{s.ubicacion}</TableCell>
+                    <TableCell className="text-right pr-6"><Button variant="ghost" size="icon" onClick={() => handleDelete('sedes', s.id)} className="text-primary hover:bg-primary/5"><Trash2 className="w-4 h-4" /></Button></TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
           </div>
         </TabsContent>
 
-        {/* --- CONTENIDO CARRERAS --- */}
-        <TabsContent value="carreras" className="mt-6 space-y-6">
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            <Card className="rounded-3xl border-border/40">
-              <CardHeader><CardTitle className="text-lg">Nueva Carrera</CardTitle></CardHeader>
-              <CardContent className="space-y-4">
-                <div className="space-y-2">
-                  <Label>Nombre</Label>
-                  <Input value={newCarrera.nombre} onChange={e => setNewCarrera({...newCarrera, nombre: e.target.value})} />
-                </div>
-                <div className="space-y-2">
-                  <Label>Sede</Label>
-                  <Select value={newCarrera.sedeId} onValueChange={v => setNewCarrera({...newCarrera, sedeId: v})}>
-                    <SelectTrigger className="rounded-xl"><SelectValue placeholder="Seleccionar Sede" /></SelectTrigger>
-                    <SelectContent>
-                      {sedes?.map(s => <SelectItem key={s.id} value={s.id}>{s.nombre}</SelectItem>)}
-                    </SelectContent>
-                  </Select>
-                </div>
-                <Button onClick={() => handleAdd(carrerasRef, newCarrera, setNewCarrera, {nombre: '', sedeId: ''}, "Carrera")} className="w-full bg-primary font-bold rounded-xl">Guardar</Button>
-              </CardContent>
-            </Card>
-            <div className="lg:col-span-2 space-y-3">
-              {carreras?.map(c => (
-                <div key={c.id} className="p-4 bg-white border border-border/40 rounded-2xl flex justify-between items-center">
-                  <div>
-                    <p className="font-bold">{c.nombre}</p>
-                    <p className="text-xs text-muted-foreground">{sedes?.find(s => s.id === c.sedeId)?.nombre || 'Sede no encontrada'}</p>
+        {/* --- CARRERAS --- */}
+        <TabsContent value="carreras" className="mt-6 space-y-4">
+          <div className="flex justify-between items-center">
+            <h2 className="text-xl font-bold">Oferta Académica</h2>
+            <Dialog open={openDialog === 'carrera'} onOpenChange={(o) => setOpenDialog(o ? 'carrera' : null)}>
+              <DialogTrigger asChild>
+                <Button className="bg-primary rounded-xl font-bold shadow-lg shadow-primary/20"><Plus className="w-4 h-4 mr-2" /> Nueva Carrera</Button>
+              </DialogTrigger>
+              <DialogContent className="rounded-3xl">
+                <DialogHeader><DialogTitle>Registrar Carrera</DialogTitle></DialogHeader>
+                <div className="space-y-4 py-4">
+                  <div className="space-y-2"><Label>Nombre de la Carrera</Label><Input value={newCarrera.nombre} onChange={e => setNewCarrera({...newCarrera, nombre: e.target.value})} /></div>
+                  <div className="space-y-2">
+                    <Label>Sede</Label>
+                    <Select value={newCarrera.sedeId} onValueChange={v => setNewCarrera({...newCarrera, sedeId: v})}>
+                      <SelectTrigger className="rounded-xl"><SelectValue placeholder="Seleccionar Sede" /></SelectTrigger>
+                      <SelectContent>{sedes?.map(s => <SelectItem key={s.id} value={s.id}>{s.nombre}</SelectItem>)}</SelectContent>
+                    </Select>
                   </div>
-                  <Button variant="ghost" size="icon" onClick={() => handleDelete('carreras', c.id)}><Trash2 className="w-4 h-4" /></Button>
                 </div>
-              ))}
-            </div>
+                <DialogFooter><Button onClick={() => handleAdd(carrerasRef, newCarrera, setNewCarrera, {nombre: '', sedeId: ''}, "Carrera")} className="w-full bg-primary font-bold">Guardar</Button></DialogFooter>
+              </DialogContent>
+            </Dialog>
+          </div>
+          <div className="bg-white border rounded-3xl overflow-hidden shadow-sm">
+            <Table>
+              <TableHeader className="bg-slate-50">
+                <TableRow>
+                  <TableHead className="px-6 font-bold py-4">Carrera</TableHead>
+                  <TableHead className="font-bold">Sede</TableHead>
+                  <TableHead className="font-bold text-right pr-6">Acciones</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {carreras?.map(c => (
+                  <TableRow key={c.id}>
+                    <TableCell className="px-6 font-bold">{c.nombre}</TableCell>
+                    <TableCell>{sedes?.find(s => s.id === c.sedeId)?.nombre || 'Sede N/A'}</TableCell>
+                    <TableCell className="text-right pr-6"><Button variant="ghost" size="icon" onClick={() => handleDelete('carreras', c.id)} className="text-primary"><Trash2 className="w-4 h-4" /></Button></TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
           </div>
         </TabsContent>
 
-        {/* --- CONTENIDO MATERIAS --- */}
-        <TabsContent value="materias" className="mt-6 space-y-6">
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            <Card className="rounded-3xl border-border/40">
-              <CardHeader className="flex flex-row items-center justify-between space-y-0">
-                <CardTitle className="text-lg">Nueva Materia</CardTitle>
-                <div>
-                   <input 
-                    type="file" 
-                    ref={materiaFileInputRef} 
-                    onChange={handleImportMateriasExcel} 
-                    accept=".xlsx, .xls" 
-                    className="hidden" 
-                  />
-                  <Button 
-                    variant="outline" 
-                    size="sm" 
-                    className="h-8 rounded-lg"
-                    onClick={() => materiaFileInputRef.current?.click()}
-                  >
-                    <Upload className="w-3 h-3 mr-2" />
-                    Excel
-                  </Button>
-                </div>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="space-y-2"><Label>Nombre</Label><Input value={newMateria.nombre} onChange={e => setNewMateria({...newMateria, nombre: e.target.value})} /></div>
-                <div className="grid grid-cols-2 gap-4">
-                   <div className="space-y-2"><Label>Código</Label><Input value={newMateria.codigo} onChange={e => setNewMateria({...newMateria, codigo: e.target.value})} /></div>
-                   <div className="space-y-2"><Label>Cuatri.</Label><Input value={newMateria.cuatrimestre} onChange={e => setNewMateria({...newMateria, cuatrimestre: e.target.value})} placeholder="Ej: 1" /></div>
-                </div>
-                <div className="space-y-2">
-                  <Label>Carrera</Label>
-                  <Select value={newMateria.carreraId} onValueChange={v => setNewMateria({...newMateria, carreraId: v})}>
-                    <SelectTrigger className="rounded-xl"><SelectValue placeholder="Seleccionar Carrera" /></SelectTrigger>
-                    <SelectContent>
-                      {carreras?.map(c => <SelectItem key={c.id} value={c.id}>{c.nombre}</SelectItem>)}
-                    </SelectContent>
-                  </Select>
-                </div>
-                <Button onClick={() => handleAdd(materiasRef, newMateria, setNewMateria, {nombre: '', codigo: '', carreraId: '', cuatrimestre: ''}, "Materia")} className="w-full bg-primary font-bold rounded-xl">Guardar</Button>
-              </CardContent>
-            </Card>
-            <div className="lg:col-span-2 grid grid-cols-1 md:grid-cols-2 gap-4">
-              {materias?.sort((a,b) => Number(a.cuatrimestre) - Number(b.cuatrimestre)).map(m => (
-                <div key={m.id} className="p-4 bg-white border border-border/40 rounded-2xl group">
-                  <div className="flex justify-between items-start mb-2">
-                    <div className="flex gap-2">
-                       <span className="text-[10px] font-black uppercase text-primary px-2 py-0.5 bg-primary/5 rounded-full">{m.codigo}</span>
-                       <span className="text-[10px] font-bold text-slate-500 px-2 py-0.5 bg-slate-100 rounded-full">Cuatri {m.cuatrimestre}</span>
+        {/* --- MATERIAS --- */}
+        <TabsContent value="materias" className="mt-6 space-y-4">
+          <div className="flex justify-between items-center">
+            <h2 className="text-xl font-bold">Malla Curricular</h2>
+            <div className="flex gap-2">
+              <input type="file" ref={materiaFileInputRef} onChange={handleImportMateriasExcel} accept=".xlsx, .xls" className="hidden" />
+              <Button variant="outline" className="rounded-xl border-slate-300" onClick={() => materiaFileInputRef.current?.click()}><Upload className="w-4 h-4 mr-2" /> Excel</Button>
+              <Dialog open={openDialog === 'materia'} onOpenChange={(o) => setOpenDialog(o ? 'materia' : null)}>
+                <DialogTrigger asChild>
+                  <Button className="bg-primary rounded-xl font-bold shadow-lg shadow-primary/20"><Plus className="w-4 h-4 mr-2" /> Nueva Materia</Button>
+                </DialogTrigger>
+                <DialogContent className="rounded-3xl">
+                  <DialogHeader><DialogTitle>Nueva Materia</DialogTitle></DialogHeader>
+                  <div className="space-y-4 py-4">
+                    <div className="space-y-2"><Label>Nombre</Label><Input value={newMateria.nombre} onChange={e => setNewMateria({...newMateria, nombre: e.target.value})} /></div>
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="space-y-2"><Label>Código</Label><Input value={newMateria.codigo} onChange={e => setNewMateria({...newMateria, codigo: e.target.value})} /></div>
+                      <div className="space-y-2"><Label>Cuatrimestre</Label><Input value={newMateria.cuatrimestre} onChange={e => setNewMateria({...newMateria, cuatrimestre: e.target.value})} placeholder="1" /></div>
                     </div>
-                    <Button variant="ghost" size="icon" className="h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity" onClick={() => handleDelete('materias', m.id)}><Trash2 className="w-4 h-4" /></Button>
-                  </div>
-                  <p className="font-bold text-sm leading-tight">{m.nombre}</p>
-                  <p className="text-[10px] text-muted-foreground mt-1 truncate">{carreras?.find(c => c.id === m.carreraId)?.nombre}</p>
-                </div>
-              ))}
-            </div>
-          </div>
-        </TabsContent>
-
-        {/* --- CONTENIDO GRUPOS --- */}
-        <TabsContent value="grupos" className="mt-6 space-y-6">
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            <Card className="rounded-3xl border-border/40">
-              <CardHeader><CardTitle className="text-lg">Nuevo Grupo</CardTitle></CardHeader>
-              <CardContent className="space-y-4">
-                <div className="space-y-2"><Label>Nombre de Grupo</Label><Input value={newGrupo.nombre} onChange={e => setNewGrupo({...newGrupo, nombre: e.target.value})} placeholder="Ej: G1, Sección A" /></div>
-                <div className="space-y-2">
-                  <Label>Materia</Label>
-                  <Select value={newGrupo.materiaId} onValueChange={v => setNewGrupo({...newGrupo, materiaId: v})}>
-                    <SelectTrigger className="rounded-xl"><SelectValue placeholder="Seleccionar Materia" /></SelectTrigger>
-                    <SelectContent>
-                      {materias?.map(m => <SelectItem key={m.id} value={m.id}>{m.nombre}</SelectItem>)}
-                    </SelectContent>
-                  </Select>
-                </div>
-                <Button onClick={() => handleAdd(gruposRef, newGrupo, setNewGrupo, {nombre: '', materiaId: ''}, "Grupo")} className="w-full bg-primary font-bold rounded-xl">Guardar</Button>
-              </CardContent>
-            </Card>
-            <div className="lg:col-span-2 space-y-3">
-              {grupos?.map(g => (
-                <div key={g.id} className="p-4 bg-white border border-border/40 rounded-2xl flex justify-between items-center hover:border-primary/50 transition-colors">
-                  <div className="flex items-center gap-4">
-                    <div className="bg-slate-900 text-white w-10 h-10 rounded-xl flex items-center justify-center font-black">{g.nombre}</div>
-                    <div>
-                       <p className="font-bold">{materias?.find(m => m.id === g.materiaId)?.nombre}</p>
-                       <p className="text-xs text-muted-foreground">Código Materia: {materias?.find(m => m.id === g.materiaId)?.codigo}</p>
+                    <div className="space-y-2">
+                      <Label>Carrera</Label>
+                      <Select value={newMateria.carreraId} onValueChange={v => setNewMateria({...newMateria, carreraId: v})}>
+                        <SelectTrigger className="rounded-xl"><SelectValue placeholder="Seleccionar Carrera" /></SelectTrigger>
+                        <SelectContent>{carreras?.map(c => <SelectItem key={c.id} value={c.id}>{c.nombre}</SelectItem>)}</SelectContent>
+                      </Select>
                     </div>
                   </div>
-                  <Button variant="ghost" size="icon" onClick={() => handleDelete('grupos', g.id)}><Trash2 className="w-4 h-4" /></Button>
-                </div>
-              ))}
+                  <DialogFooter><Button onClick={() => handleAdd(materiasRef, newMateria, setNewMateria, {nombre: '', codigo: '', carreraId: '', cuatrimestre: ''}, "Materia")} className="w-full bg-primary font-bold">Guardar</Button></DialogFooter>
+                </DialogContent>
+              </Dialog>
             </div>
+          </div>
+          <div className="bg-white border rounded-3xl overflow-hidden shadow-sm">
+            <Table>
+              <TableHeader className="bg-slate-50">
+                <TableRow>
+                  <TableHead className="px-6 font-bold py-4">Código</TableHead>
+                  <TableHead className="font-bold">Nombre</TableHead>
+                  <TableHead className="font-bold">Carrera</TableHead>
+                  <TableHead className="font-bold">Cuatri.</TableHead>
+                  <TableHead className="font-bold text-right pr-6">Acciones</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {materias?.sort((a,b) => Number(a.cuatrimestre) - Number(b.cuatrimestre)).map(m => (
+                  <TableRow key={m.id}>
+                    <TableCell className="px-6 font-black text-primary text-xs">{m.codigo}</TableCell>
+                    <TableCell className="font-medium">{m.nombre}</TableCell>
+                    <TableCell className="text-xs text-muted-foreground">{carreras?.find(c => c.id === m.carreraId)?.nombre}</TableCell>
+                    <TableCell className="font-bold">{m.cuatrimestre}</TableCell>
+                    <TableCell className="text-right pr-6"><Button variant="ghost" size="icon" onClick={() => handleDelete('materias', m.id)} className="text-primary"><Trash2 className="w-4 h-4" /></Button></TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
           </div>
         </TabsContent>
 
-        {/* --- CONTENIDO HORARIOS --- */}
-        <TabsContent value="horarios" className="mt-6 space-y-6">
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            <Card className="rounded-3xl border-border/40">
-              <CardHeader><CardTitle className="text-lg">Nuevo Horario</CardTitle></CardHeader>
-              <CardContent className="space-y-4">
-                <div className="space-y-2">
-                  <Label>Grupo</Label>
-                  <Select value={newHorario.grupoId} onValueChange={v => setNewHorario({...newHorario, grupoId: v})}>
-                    <SelectTrigger className="rounded-xl"><SelectValue placeholder="Seleccionar Grupo" /></SelectTrigger>
-                    <SelectContent>
-                      {grupos?.map(g => <SelectItem key={g.id} value={g.id}>{g.nombre} - {materias?.find(m => m.id === g.materiaId)?.nombre}</SelectItem>)}
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="space-y-2">
-                  <Label>Día</Label>
-                  <Select value={newHorario.dia} onValueChange={v => setNewHorario({...newHorario, dia: v})}>
-                    <SelectTrigger className="rounded-xl"><SelectValue /></SelectTrigger>
-                    <SelectContent>
-                      {["Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado"].map(d => <SelectItem key={d} value={d}>{d}</SelectItem>)}
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="grid grid-cols-2 gap-4">
-                   <div className="space-y-2"><Label>Inicio</Label><Input type="time" value={newHorario.horaInicio} onChange={e => setNewHorario({...newHorario, horaInicio: e.target.value})} /></div>
-                   <div className="space-y-2"><Label>Fin</Label><Input type="time" value={newHorario.horaFin} onChange={e => setNewHorario({...newHorario, horaFin: e.target.value})} /></div>
-                </div>
-                <div className="space-y-2"><Label>Aula</Label><Input value={newHorario.aula} onChange={e => setNewHorario({...newHorario, aula: e.target.value})} placeholder="Ej: Aula 302" /></div>
-                <Button onClick={() => handleAdd(horariosRef, newHorario, setNewHorario, {grupoId: '', dia: '', horaInicio: '', horaFin: '', aula: ''}, "Horario")} className="w-full bg-primary font-bold rounded-xl">Guardar</Button>
-              </CardContent>
-            </Card>
-            <div className="lg:col-span-2 space-y-3">
-              {horarios?.map(h => {
-                const grupo = grupos?.find(g => g.id === h.grupoId);
-                const materia = materias?.find(m => m.id === grupo?.materiaId);
-                return (
-                  <div key={h.id} className="p-4 bg-white border border-border/40 rounded-2xl flex justify-between items-center">
-                    <div className="flex gap-4 items-center">
-                      <div className="bg-primary/5 text-primary p-3 rounded-xl"><Clock className="w-5 h-5" /></div>
-                      <div>
-                        <p className="font-bold">{h.dia} | {h.horaInicio} - {h.horaFin}</p>
-                        <p className="text-xs text-muted-foreground">{materia?.nombre} ({grupo?.nombre}) - {h.aula}</p>
-                      </div>
-                    </div>
-                    <Button variant="ghost" size="icon" onClick={() => handleDelete('horarios', h.id)}><Trash2 className="w-4 h-4" /></Button>
+        {/* --- GRUPOS --- */}
+        <TabsContent value="grupos" className="mt-6 space-y-4">
+          <div className="flex justify-between items-center">
+            <h2 className="text-xl font-bold">Gestión de Grupos</h2>
+            <Dialog open={openDialog === 'grupo'} onOpenChange={(o) => setOpenDialog(o ? 'grupo' : null)}>
+              <DialogTrigger asChild>
+                <Button className="bg-primary rounded-xl font-bold shadow-lg shadow-primary/20"><Plus className="w-4 h-4 mr-2" /> Nuevo Grupo</Button>
+              </DialogTrigger>
+              <DialogContent className="rounded-3xl">
+                <DialogHeader><DialogTitle>Crear Nuevo Grupo</DialogTitle><DialogDescription>Configura una sección para una materia específica.</DialogDescription></DialogHeader>
+                <div className="space-y-4 py-4">
+                  <div className="space-y-2">
+                    <Label>Seleccionar Carrera</Label>
+                    <Select value={newGrupo.carreraId} onValueChange={v => setNewGrupo({...newGrupo, carreraId: v, materiaId: ''})}>
+                      <SelectTrigger className="rounded-xl"><SelectValue placeholder="Primero elige la carrera" /></SelectTrigger>
+                      <SelectContent>{carreras?.map(c => <SelectItem key={c.id} value={c.id}>{c.nombre}</SelectItem>)}</SelectContent>
+                    </Select>
                   </div>
-                );
-              })}
-            </div>
+                  <div className="space-y-2">
+                    <Label>Seleccionar Materia</Label>
+                    <Select disabled={!newGrupo.carreraId} value={newGrupo.materiaId} onValueChange={v => setNewGrupo({...newGrupo, materiaId: v})}>
+                      <SelectTrigger className="rounded-xl"><SelectValue placeholder="Luego elige la materia" /></SelectTrigger>
+                      <SelectContent>{materiasFiltradas.map(m => <SelectItem key={m.id} value={m.id}>{m.nombre} ({m.codigo})</SelectItem>)}</SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-2"><Label>Nombre del Grupo / Sección</Label><Input value={newGrupo.nombre} onChange={e => setNewGrupo({...newGrupo, nombre: e.target.value})} placeholder="Ej: G1, Sección A" /></div>
+                </div>
+                <DialogFooter><Button onClick={() => handleAdd(gruposRef, {nombre: newGrupo.nombre, materiaId: newGrupo.materiaId}, setNewGrupo, {nombre: '', carreraId: '', materiaId: ''}, "Grupo")} className="w-full bg-primary font-bold">Guardar</Button></DialogFooter>
+              </DialogContent>
+            </Dialog>
+          </div>
+          <div className="bg-white border rounded-3xl overflow-hidden shadow-sm">
+            <Table>
+              <TableHeader className="bg-slate-50">
+                <TableRow>
+                  <TableHead className="px-6 font-bold py-4">Grupo</TableHead>
+                  <TableHead className="font-bold">Materia</TableHead>
+                  <TableHead className="font-bold">Carrera</TableHead>
+                  <TableHead className="font-bold text-right pr-6">Acciones</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {grupos?.map(g => {
+                  const materia = materias?.find(m => m.id === g.materiaId);
+                  const carrera = carreras?.find(c => c.id === materia?.carreraId);
+                  return (
+                    <TableRow key={g.id}>
+                      <TableCell className="px-6"><span className="bg-slate-900 text-white px-3 py-1 rounded-lg font-black text-xs uppercase">{g.nombre}</span></TableCell>
+                      <TableCell className="font-medium">{materia?.nombre}</TableCell>
+                      <TableCell className="text-xs text-muted-foreground">{carrera?.nombre}</TableCell>
+                      <TableCell className="text-right pr-6"><Button variant="ghost" size="icon" onClick={() => handleDelete('grupos', g.id)} className="text-primary"><Trash2 className="w-4 h-4" /></Button></TableCell>
+                    </TableRow>
+                  );
+                })}
+              </TableBody>
+            </Table>
+          </div>
+        </TabsContent>
+
+        {/* --- HORARIOS --- */}
+        <TabsContent value="horarios" className="mt-6 space-y-4">
+          <div className="flex justify-between items-center">
+            <h2 className="text-xl font-bold">Horarios de Clase</h2>
+            <Dialog open={openDialog === 'horario'} onOpenChange={(o) => setOpenDialog(o ? 'horario' : null)}>
+              <DialogTrigger asChild>
+                <Button className="bg-primary rounded-xl font-bold shadow-lg shadow-primary/20"><Plus className="w-4 h-4 mr-2" /> Nuevo Horario</Button>
+              </DialogTrigger>
+              <DialogContent className="rounded-3xl">
+                <DialogHeader><DialogTitle>Asignar Horario</DialogTitle></DialogHeader>
+                <div className="space-y-4 py-4">
+                  <div className="space-y-2">
+                    <Label>Grupo</Label>
+                    <Select value={newHorario.grupoId} onValueChange={v => setNewHorario({...newHorario, grupoId: v})}>
+                      <SelectTrigger className="rounded-xl"><SelectValue placeholder="Seleccionar Grupo" /></SelectTrigger>
+                      <SelectContent>
+                        {grupos?.map(g => {
+                          const mat = materias?.find(m => m.id === g.materiaId);
+                          return <SelectItem key={g.id} value={g.id}>{g.nombre} - {mat?.nombre}</SelectItem>
+                        })}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Día</Label>
+                    <Select value={newHorario.dia} onValueChange={v => setNewHorario({...newHorario, dia: v})}>
+                      <SelectTrigger className="rounded-xl"><SelectValue placeholder="Elegir Día" /></SelectTrigger>
+                      <SelectContent>{["Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado"].map(d => <SelectItem key={d} value={d}>{d}</SelectItem>)}</SelectContent>
+                    </Select>
+                  </div>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2"><Label>Inicio</Label><Input type="time" value={newHorario.horaInicio} onChange={e => setNewHorario({...newHorario, horaInicio: e.target.value})} /></div>
+                    <div className="space-y-2"><Label>Fin</Label><Input type="time" value={newHorario.horaFin} onChange={e => setNewHorario({...newHorario, horaFin: e.target.value})} /></div>
+                  </div>
+                  <div className="space-y-2"><Label>Aula</Label><Input value={newHorario.aula} onChange={e => setNewHorario({...newHorario, aula: e.target.value})} placeholder="Ej: Aula 302" /></div>
+                </div>
+                <DialogFooter><Button onClick={() => handleAdd(horariosRef, newHorario, setNewHorario, {grupoId: '', dia: '', horaInicio: '', horaFin: '', aula: ''}, "Horario")} className="w-full bg-primary font-bold">Guardar</Button></DialogFooter>
+              </DialogContent>
+            </Dialog>
+          </div>
+          <div className="bg-white border rounded-3xl overflow-hidden shadow-sm">
+            <Table>
+              <TableHeader className="bg-slate-50">
+                <TableRow>
+                  <TableHead className="px-6 font-bold py-4">Día</TableHead>
+                  <TableHead className="font-bold">Horas</TableHead>
+                  <TableHead className="font-bold">Grupo / Materia</TableHead>
+                  <TableHead className="font-bold">Aula</TableHead>
+                  <TableHead className="font-bold text-right pr-6">Acciones</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {horarios?.map(h => {
+                  const grupo = grupos?.find(g => g.id === h.grupoId);
+                  const materia = materias?.find(m => m.id === grupo?.materiaId);
+                  return (
+                    <TableRow key={h.id}>
+                      <TableCell className="px-6 font-bold">{h.dia}</TableCell>
+                      <TableCell className="text-xs font-medium">{h.horaInicio} - {h.horaFin}</TableCell>
+                      <TableCell>
+                        <div className="flex flex-col">
+                          <span className="font-bold text-sm">{materia?.nombre}</span>
+                          <span className="text-[10px] text-muted-foreground uppercase">{grupo?.nombre}</span>
+                        </div>
+                      </TableCell>
+                      <TableCell className="font-bold text-primary">{h.aula}</TableCell>
+                      <TableCell className="text-right pr-6"><Button variant="ghost" size="icon" onClick={() => handleDelete('horarios', h.id)} className="text-primary"><Trash2 className="w-4 h-4" /></Button></TableCell>
+                    </TableRow>
+                  );
+                })}
+              </TableBody>
+            </Table>
           </div>
         </TabsContent>
       </Tabs>
