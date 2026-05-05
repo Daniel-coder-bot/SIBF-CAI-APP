@@ -1,0 +1,106 @@
+/**
+ * Firestore Security Rules for UniAttend System
+ * 
+ * CORE PHILOSOPHY
+ * This ruleset implements a dual-layered authorization model: strict User Ownership for personal 
+ * data and a Global Admin Role for system-wide management. It is designed to support rapid 
+ * prototyping by enforcing who can access data without restricting the specific fields being written.
+ * 
+ * DATA STRUCTURE
+ * - /users/{userId}: Primary user profiles where the document ID matches the Firebase Auth UID.
+ * - /admin_roles/{adminUid}: A signaling collection. The presence of a document here grants 
+ *   global administrative privileges to the corresponding UID.
+ * 
+ * KEY SECURITY DECISIONS
+ * - Authorization Independence: User access is determined by their UID matching the path, 
+ *   avoiding expensive lookups.
+ * - Existence over Content: Admin status is verified using `exists()`, which is more performant 
+ *   and secure than checking fields within a document.
+ * - List Operations: Only users with the Admin role can list all users. Standard users are 
+ *   restricted to `get` operations on their own documents.
+ * - Self-Creation: New users can create their own profile document during registration, 
+ *   provided the internal ID matches their authenticated UID.
+ * 
+ * DENORMALIZATION FOR AUTHORIZATION
+ * The 'id' field is required inside the user document to ensure it matches the document path, 
+ * providing a secondary layer of relational integrity during creation and updates.
+ */
+
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // --- Helper Functions ---
+
+    /** @description Checks if the request is from an authenticated user. */
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    /** @description Checks if the authenticated user's UID matches the provided userId. */
+    function isOwner(userId) {
+      return isSignedIn() && request.auth.uid == userId;
+    }
+
+    /** @description Checks if the user has global administrative privileges via the admin_roles collection. */
+    function isAdmin() {
+      return isSignedIn() && exists(/databases/$(database)/documents/admin_roles/$(request.auth.uid));
+    }
+
+    // The 'isExistingOwner' function was removed because it was unused
+    // and incorrectly referenced the global `resource` variable.
+    // The `resource != null` checks in update/delete operations are generally
+    // redundant as `resource` by definition refers to the existing document
+    // for these operations.
+
+    // --- Collection Rules ---
+
+    /** 
+     * @description Security rules for the administrative roles signaling collection.
+     * @path /admin_roles/{adminUid}
+     * @allow (get) Signed-in users can check if a UID has admin status.
+     * @allow (list, create, update, delete) Only existing administrators.
+     * @deny (write) Any non-admin user attempting to promote themselves.
+     * @principle Global Roles (DBAC) via Existence over Content.
+     */
+    match /admin_roles/{adminUid} {
+      allow get: if isSignedIn();
+      allow list: if isAdmin();
+      allow create, update, delete: if isAdmin();
+    }
+
+    /** 
+     * @description Security rules for user profile management.
+     * @path /users/{userId}
+     * @allow (get) The user themselves or any administrator.
+     * @allow (list) Only administrators.
+     * @allow (create) The user themselves (for registration) or an administrator.
+     * @allow (update) The user themselves or an administrator.
+     * @allow (delete) Only administrators.
+     * @deny (list) Regular users attempting to fetch the full directory.
+     * @principle Ownership-based access with administrative override.
+     */
+    match /users/{userId} {
+      
+      // READS
+      allow get: if isOwner(userId) || isAdmin();
+      allow list: if isAdmin();
+
+      // WRITES
+      
+      // On Create: Ensure the user is creating their own record or is an admin.
+      // Must validate that the internal 'id' matches the path.
+      allow create: if (isOwner(userId) && request.resource.data.id == userId) || isAdmin();
+      
+      // On Update: Ensure the record exists and user is owner or admin.
+      // Enforce immutability of the 'id' field to maintain relational integrity.
+      // The `resource != null` check is redundant here as `resource` always refers to an existing document during an update.
+      allow update: if (isOwner(userId) || isAdmin()) && (request.resource.data.id == resource.data.id);
+      
+      // On Delete: Only administrators can remove user records.
+      // The `resource != null` check is redundant here as `resource` always refers to an existing document during a delete.
+      allow delete: if isAdmin();
+    }
+
+  }
+}
