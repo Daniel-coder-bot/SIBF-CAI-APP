@@ -1,49 +1,50 @@
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
 @layer base {
   :root {
-    --background: 0 0% 100%; /* Blanco puro */
+    --background: 0 0% 100%;
     --foreground: 0 0% 10%;
     --card: 0 0% 100%;
     --card-foreground: 0 0% 10%;
     --popover: 0 0% 100%;
     --popover-foreground: 0 0% 10%;
-    --primary: 0 72% 51%; /* Rojo vibrante */
+    --primary: 0 72% 51%; /* Rojo UniAttend */
     --primary-foreground: 0 0% 100%;
     --secondary: 0 0% 96%;
     --secondary-foreground: 0 0% 10%;
     --muted: 0 0% 96%;
     --muted-foreground: 0 0% 45%;
-    --accent: 0 0% 15%; /* Negro/Gris oscuro para reemplazar el rosa */
+    --accent: 0 0% 10%; /* Negro para acentos fuertes */
     --accent-foreground: 0 0% 100%;
     --destructive: 0 84% 60%;
     --destructive-foreground: 0 0% 98%;
     --border: 0 0% 90%;
     --input: 0 0% 90%;
     --ring: 0 72% 51%;
-    --radius: 0.75rem;
+    --radius: 1rem;
   }
   .dark {
-    --background: 0 0% 10%;
+    --background: 0 0% 5%;
     --foreground: 0 0% 98%;
-    --card: 0 0% 12%;
+    --card: 0 0% 8%;
     --card-foreground: 0 0% 98%;
-    --popover: 0 0% 12%;
+    --popover: 0 0% 8%;
     --popover-foreground: 0 0% 98%;
     --primary: 0 72% 51%;
     --primary-foreground: 0 0% 100%;
-    --secondary: 0 0% 18%;
+    --secondary: 0 0% 15%;
     --secondary-foreground: 0 0% 98%;
-    --muted: 0 0% 20%;
-    --muted-foreground: 0 0% 70%;
-    --accent: 0 0% 90%;
+    --muted: 0 0% 15%;
+    --muted-foreground: 0 0% 65%;
+    --accent: 0 0% 100%;
     --accent-foreground: 0 0% 10%;
     --destructive: 0 62% 30%;
     --destructive-foreground: 0 0% 98%;
-    --border: 0 0% 20%;
-    --input: 0 0% 20%;
+    --border: 0 0% 18%;
+    --input: 0 0% 18%;
     --ring: 0 72% 51%;
   }
 }

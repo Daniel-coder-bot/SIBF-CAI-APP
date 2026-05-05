@@ -10,7 +10,6 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter }
 import { Eye, EyeOff, Lock, User, GraduationCap } from 'lucide-react';
 import { useToast } from "@/hooks/use-toast";
 
-// Vista de Login para el Administrador
 export default function LoginPage() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -23,30 +22,29 @@ export default function LoginPage() {
     e.preventDefault();
     setIsLoading(true);
 
-    // Simulación de autenticación (MVC: Controlador de Auth)
+    // Simulación de autenticación (Admin: admin / 1234)
     setTimeout(() => {
-      if (email === "admin@uniattend.edu" && password === "admin123") {
+      if (email === "admin" && password === "1234") {
         toast({
           title: "Acceso concedido",
-          description: "Bienvenido al panel de administración.",
+          description: "Bienvenido al panel de administración central.",
         });
         router.push('/dashboard');
       } else {
         toast({
           variant: "destructive",
           title: "Error de acceso",
-          description: "Credenciales incorrectas. Intente con admin@uniattend.edu / admin123",
+          description: "Credenciales incorrectas. Intente con admin / 1234",
         });
         setIsLoading(false);
       }
-    }, 1500);
+    }, 1000);
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center p-4 relative overflow-hidden bg-background">
-      {/* Fondo Decorativo */}
-      <div className="absolute top-0 right-0 w-1/2 h-full bg-primary opacity-5 hidden lg:block -skew-x-12 transform translate-x-24" />
-      <div className="absolute bottom-0 left-0 w-64 h-64 bg-accent opacity-10 rounded-full blur-3xl -translate-x-1/2 translate-y-1/2" />
+    <div className="min-h-screen flex items-center justify-center p-4 relative overflow-hidden bg-white">
+      {/* Fondo Decorativo Sutil */}
+      <div className="absolute top-0 right-0 w-1/2 h-full bg-primary/5 hidden lg:block -skew-x-12 transform translate-x-24" />
       
       <div className="w-full max-w-md z-10">
         <div className="flex flex-col items-center mb-8">
@@ -54,26 +52,26 @@ export default function LoginPage() {
             <GraduationCap className="w-12 h-12 text-white" />
           </div>
           <h1 className="text-4xl font-bold text-primary mb-1 tracking-tight">UniAttend</h1>
-          <p className="text-muted-foreground font-medium">Gestión Universitaria Inteligente</p>
+          <p className="text-muted-foreground font-medium uppercase tracking-widest text-[10px]">Portal Administrativo</p>
         </div>
 
-        <Card className="border-none shadow-2xl bg-white/80 backdrop-blur-sm">
-          <CardHeader className="space-y-1 pb-4">
-            <CardTitle className="text-2xl text-center">Iniciar Sesión</CardTitle>
-            <CardDescription className="text-center">
-              Módulo de Administrador
+        <Card className="border border-border/50 shadow-2xl bg-white/80 backdrop-blur-sm rounded-3xl overflow-hidden">
+          <CardHeader className="space-y-1 pb-4 border-b border-border/50 bg-slate-50/50">
+            <CardTitle className="text-xl text-center font-bold">Iniciar Sesión</CardTitle>
+            <CardDescription className="text-center text-xs">
+              Ingrese sus credenciales de administrador
             </CardDescription>
           </CardHeader>
           <form onSubmit={handleLogin}>
-            <CardContent className="space-y-4">
+            <CardContent className="space-y-4 pt-6">
               <div className="space-y-2">
-                <Label htmlFor="email">Usuario o Correo</Label>
+                <Label htmlFor="email" className="text-xs font-bold uppercase text-muted-foreground">Usuario</Label>
                 <div className="relative">
                   <User className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
                   <Input 
                     id="email" 
-                    placeholder="admin@uniattend.edu" 
-                    className="pl-10" 
+                    placeholder="admin" 
+                    className="pl-10 h-11 rounded-xl" 
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
                     required
@@ -81,14 +79,14 @@ export default function LoginPage() {
                 </div>
               </div>
               <div className="space-y-2">
-                <Label htmlFor="password">Contraseña</Label>
+                <Label htmlFor="password" title="Pista: 1234" className="text-xs font-bold uppercase text-muted-foreground">Contraseña</Label>
                 <div className="relative">
                   <Lock className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
                   <Input 
                     id="password" 
                     type={showPassword ? "text" : "password"} 
-                    className="pl-10 pr-10"
-                    placeholder="••••••••"
+                    className="pl-10 pr-10 h-11 rounded-xl"
+                    placeholder="••••"
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
                     required
@@ -103,19 +101,19 @@ export default function LoginPage() {
                 </div>
               </div>
             </CardContent>
-            <CardFooter>
+            <CardFooter className="pb-8">
               <Button 
-                className="w-full bg-primary hover:bg-primary/90 text-white font-semibold h-12 rounded-xl transition-all shadow-md shadow-primary/20" 
+                className="w-full bg-primary hover:bg-primary/90 text-white font-bold h-12 rounded-xl transition-all shadow-lg shadow-primary/25" 
                 disabled={isLoading}
               >
-                {isLoading ? "Validando..." : "Iniciar Sesión"}
+                {isLoading ? "Verificando..." : "Acceder al Sistema"}
               </Button>
             </CardFooter>
           </form>
         </Card>
         
-        <p className="mt-8 text-center text-sm text-muted-foreground">
-          &copy; {new Date().getFullYear()} UniAttend. Reservados todos los derechos.
+        <p className="mt-8 text-center text-[10px] text-muted-foreground font-medium uppercase tracking-tighter">
+          &copy; {new Date().getFullYear()} UniAttend Network. Control de Acceso Universitario.
         </p>
       </div>
     </div>
