@@ -7,12 +7,14 @@ import { usePathname } from 'next/navigation';
 import { 
   Users, 
   GraduationCap, 
-  Briefcase, 
   CalendarCheck, 
   LayoutDashboard, 
   LogOut, 
   Menu,
-  ChevronRight
+  ChevronRight,
+  FolderTree,
+  FileBarChart,
+  Settings
 } from 'lucide-react';
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -31,9 +33,10 @@ import {
 const navItems = [
   { name: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
   { name: 'Usuarios', href: '/dashboard/usuarios', icon: Users },
-  { name: 'Alumnos', href: '/dashboard/alumnos', icon: GraduationCap },
-  { name: 'Docentes', href: '/dashboard/docentes', icon: Briefcase },
-  { name: 'Asistencias', href: '/dashboard/asistencias', icon: CalendarCheck },
+  { name: 'Catálogos', href: '/dashboard/catalogos', icon: FolderTree },
+  { name: 'Asistencia', href: '/dashboard/asistencia', icon: CalendarCheck },
+  { name: 'Reportes', href: '/dashboard/reportes', icon: FileBarChart },
+  { name: 'Configuración', href: '/dashboard/configuracion', icon: Settings },
 ];
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
@@ -42,13 +45,12 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   return (
     <SidebarProvider defaultOpen={true}>
       <div className="flex h-screen w-full bg-background overflow-hidden">
-        {/* Sidebar MVC: Vista de Navegación */}
         <Sidebar className="border-r border-border/50">
           <SidebarHeader className="p-6 flex items-center gap-3">
             <div className="bg-primary p-2 rounded-lg">
               <GraduationCap className="w-6 h-6 text-white" />
             </div>
-            <span className="text-xl font-bold text-primary">UniAttend</span>
+            <span className="text-xl font-bold text-primary tracking-tighter">UniAttend</span>
           </SidebarHeader>
           <SidebarContent className="px-3">
             <SidebarMenu>
@@ -85,14 +87,13 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           </SidebarFooter>
         </Sidebar>
 
-        {/* Contenido Principal */}
-        <main className="flex-1 overflow-y-auto p-4 md:p-8">
+        <main className="flex-1 overflow-y-auto p-4 md:p-8 bg-white">
           <header className="flex items-center justify-between mb-8 md:hidden">
              <SidebarTrigger>
                <Menu className="w-6 h-6" />
              </SidebarTrigger>
              <h1 className="text-xl font-bold text-primary">UniAttend</h1>
-             <div className="w-6 h-6" /> {/* Espaciador */}
+             <div className="w-6 h-6" />
           </header>
           <div className="max-w-7xl mx-auto">
             {children}
