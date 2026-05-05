@@ -22,7 +22,9 @@ import {
   Check,
   Search,
   Filter,
-  XCircle
+  XCircle,
+  Wrench,
+  AlertTriangle
 } from 'lucide-react';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -56,6 +58,7 @@ import {
   useCollection, 
   useMemoFirebase,
   addDocumentNonBlocking,
+  updateDocumentNonBlocking,
   deleteDocumentNonBlocking
 } from '@/firebase';
 import { collection, doc, serverTimestamp } from 'firebase/firestore';
@@ -92,6 +95,9 @@ export default function CatalogosPage() {
   const [newGrupo, setNewGrupo] = useState({ nombre: '', carreraId: '', materiaId: '' });
   const [newHorario, setNewHorario] = useState({ grupoId: '', dia: '', horaInicio: '', horaFin: '', aula: '' });
 
+  // Estados para mantenimiento
+  const [targetMaintenanceCarreraId, setTargetMaintenanceCarreraId] = useState('');
+
   // Estados para filtros de Materias
   const [materiaSearch, setMateriaSearch] = useState('');
   const [materiaCarreraFilter, setMateriaCarreraFilter] = useState('all');
@@ -103,13 +109,26 @@ export default function CatalogosPage() {
     return materias.filter(m => m.carreraId === newGrupo.carreraId);
   }, [newGrupo.carreraId, materias]);
 
+  // Identificar materias huérfanas
+  const materiasHuerfanas = useMemo(() => {
+    if (!materias) return [];
+    return materias.filter(m => !m.carreraId || m.carreraId === "" || m.carreraId === "null");
+  }, [materias]);
+
   // Filtrado de materias para la tabla (visualización)
   const materiasFiltradasTabla = useMemo(() => {
     if (!materias) return [];
     return materias.filter(m => {
       const matchSearch = m.nombre.toLowerCase().includes(materiaSearch.toLowerCase()) || 
-                          m.codigo?.toLowerCase().includes(materiaSearch.toLowerCase());
-      const matchCarrera = materiaCarreraFilter === 'all' || m.carreraId === materiaCarreraFilter;
+                          (m.codigo?.toLowerCase().includes(materiaSearch.toLowerCase()) || false);
+      
+      let matchCarrera = true;
+      if (materiaCarreraFilter === 'orphans') {
+        matchCarrera = !m.carreraId || m.carreraId === "" || m.carreraId === "null";
+      } else if (materiaCarreraFilter !== 'all') {
+        matchCarrera = m.carreraId === materiaCarreraFilter;
+      }
+
       const matchCuatri = materiaCuatriFilter === 'all' || m.cuatrimestre === materiaCuatriFilter;
       return matchSearch && matchCarrera && matchCuatri;
     }).sort((a,b) => Number(a.cuatrimestre) - Number(b.cuatrimestre));
@@ -126,6 +145,24 @@ export default function CatalogosPage() {
     const docRef = doc(db, collectionName, id);
     deleteDocumentNonBlocking(docRef);
     toast({ variant: "destructive", title: "Eliminado correctamente" });
+  };
+
+  const handleBulkAssignCareer = () => {
+    if (!targetMaintenanceCarreraId || materiasHuerfanas.length === 0) return;
+
+    materiasHuerfanas.forEach(m => {
+      const docRef = doc(db, 'materias', m.id);
+      updateDocumentNonBlocking(docRef, { 
+        carreraId: targetMaintenanceCarreraId,
+        updatedAt: serverTimestamp()
+      });
+    });
+
+    toast({ 
+      title: "Vincualción Masiva", 
+      description: `${materiasHuerfanas.length} materias asignadas correctamente.` 
+    });
+    setOpenDialog(null);
   };
 
   const copyToClipboard = (text: string) => {
@@ -175,7 +212,7 @@ export default function CatalogosPage() {
             }
           }
 
-          if (row.nombre && targetCarreraId && row.cuatrimestre) {
+          if (row.nombre && row.cuatrimestre) {
             const namePrefix = String(row.nombre).substring(0, 3).toUpperCase();
             const randomSuffix = Math.floor(100 + Math.random() * 900);
             const autoCodigo = row.codigo || `MAT-${namePrefix}-${row.cuatrimestre}-${randomSuffix}`;
@@ -339,7 +376,51 @@ export default function CatalogosPage() {
         {/* --- MATERIAS --- */}
         <TabsContent value="materias" className="mt-6 space-y-4">
           <div className="flex justify-between items-center">
-            <h2 className="text-xl font-bold">Malla Curricular</h2>
+            <div className="flex items-center gap-4">
+              <h2 className="text-xl font-bold">Malla Curricular</h2>
+              {materiasHuerfanas.length > 0 && (
+                <Dialog open={openDialog === 'maintenance'} onOpenChange={(o) => setOpenDialog(o ? 'maintenance' : null)}>
+                  <DialogTrigger asChild>
+                    <Button variant="outline" className="h-8 rounded-full border-primary text-primary bg-primary/5 px-4 font-bold animate-pulse text-xs">
+                      <Wrench className="w-3 h-3 mr-2" /> {materiasHuerfanas.length} Sin Carrera
+                    </Button>
+                  </DialogTrigger>
+                  <DialogContent className="rounded-3xl">
+                    <DialogHeader>
+                      <DialogTitle className="flex items-center gap-2 text-primary">
+                        <AlertTriangle className="w-5 h-5" /> 
+                        Herramienta de Vinculación
+                      </DialogTitle>
+                      <DialogDescription>
+                        Se han detectado {materiasHuerfanas.length} materias sin carrera asignada. Seleccióna a qué carrera pertenecen para corregir la base de datos.
+                      </DialogDescription>
+                    </DialogHeader>
+                    <div className="py-6 space-y-4">
+                      <div className="space-y-2">
+                        <Label>Asignar a la Carrera:</Label>
+                        <Select value={targetMaintenanceCarreraId} onValueChange={setTargetMaintenanceCarreraId}>
+                          <SelectTrigger className="rounded-xl">
+                            <SelectValue placeholder="Seleccionar Carrera Destino" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {carreras?.map(c => <SelectItem key={c.id} value={c.id}>{c.nombre}</SelectItem>)}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    </div>
+                    <DialogFooter>
+                      <Button 
+                        onClick={handleBulkAssignCareer} 
+                        disabled={!targetMaintenanceCarreraId}
+                        className="w-full bg-primary font-bold"
+                      >
+                        Vincular Todas Ahora
+                      </Button>
+                    </DialogFooter>
+                  </DialogContent>
+                </Dialog>
+              )}
+            </div>
             <div className="flex gap-2">
               <input type="file" ref={materiaFileInputRef} onChange={handleImportMateriasExcel} accept=".xlsx, .xls" className="hidden" />
               <Button variant="outline" className="rounded-xl border-slate-300" onClick={handleDownloadTemplate}><Download className="w-4 h-4 mr-2" /> Plantilla</Button>
@@ -393,6 +474,7 @@ export default function CatalogosPage() {
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">Todas las carreras</SelectItem>
+                  <SelectItem value="orphans" className="text-primary font-bold">Sin Carrera Asignada</SelectItem>
                   {carreras?.map(c => <SelectItem key={c.id} value={c.id}>{c.nombre}</SelectItem>)}
                 </SelectContent>
               </Select>
@@ -443,24 +525,29 @@ export default function CatalogosPage() {
                     </TableCell>
                   </TableRow>
                 ) : (
-                  materiasFiltradasTabla.map(m => (
-                    <TableRow key={m.id} className="hover:bg-slate-50/50 transition-colors">
-                      <TableCell className="px-6 font-black text-primary text-xs">{m.codigo}</TableCell>
-                      <TableCell className="font-medium">{m.nombre}</TableCell>
-                      <TableCell className="text-xs text-muted-foreground">{carreras?.find(c => c.id === m.carreraId)?.nombre}</TableCell>
-                      <TableCell className="font-bold">{m.cuatrimestre}</TableCell>
-                      <TableCell className="text-right pr-6">
-                        <Button 
-                          variant="ghost" 
-                          size="icon" 
-                          onClick={() => handleDelete('materias', m.id)} 
-                          className="text-primary hover:bg-primary/5 rounded-full"
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </Button>
-                      </TableCell>
-                    </TableRow>
-                  ))
+                  materiasFiltradasTabla.map(m => {
+                    const carrera = carreras?.find(c => c.id === m.carreraId);
+                    return (
+                      <TableRow key={m.id} className="hover:bg-slate-50/50 transition-colors">
+                        <TableCell className="px-6 font-black text-primary text-xs">{m.codigo}</TableCell>
+                        <TableCell className="font-medium">{m.nombre}</TableCell>
+                        <TableCell className={cn("text-xs", !carrera ? "text-red-500 font-bold italic" : "text-muted-foreground")}>
+                          {carrera?.nombre || '⚠️ Sin Asignar'}
+                        </TableCell>
+                        <TableCell className="font-bold">{m.cuatrimestre}</TableCell>
+                        <TableCell className="text-right pr-6">
+                          <Button 
+                            variant="ghost" 
+                            size="icon" 
+                            onClick={() => handleDelete('materias', m.id)} 
+                            className="text-primary hover:bg-primary/5 rounded-full"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </Button>
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })
                 )}
               </TableBody>
             </Table>
