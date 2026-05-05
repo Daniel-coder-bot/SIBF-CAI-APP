@@ -10,7 +10,6 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter }
 import { Eye, EyeOff, Lock, User, GraduationCap, Loader2 } from 'lucide-react';
 import { useToast } from "@/hooks/use-toast";
 
-// Firebase Imports
 import { useAuth, useUser, useFirestore, initiateAnonymousSignIn } from '@/firebase';
 import { collection, query, where, getDocs, limit } from 'firebase/firestore';
 
@@ -26,7 +25,6 @@ export default function LoginPage() {
   const db = useFirestore();
   const { user, isUserLoading } = useUser();
 
-  // Redirigir si ya está logueado
   useEffect(() => {
     if (user && !isVerifying) {
       router.push('/dashboard');
@@ -37,9 +35,18 @@ export default function LoginPage() {
     e.preventDefault();
     setIsVerifying(true);
 
+    // Hardcoded bypass for admin request
+    if (email === 'admin' && password === '1234') {
+        initiateAnonymousSignIn(auth);
+        toast({
+          title: `Bienvenido, Administrador`,
+          description: "Acceso maestro concedido.",
+        });
+        setTimeout(() => { router.push('/dashboard'); }, 800);
+        return;
+    }
+
     try {
-      // 1. Validar contra Firestore (Estrategia de prototipado)
-      // Buscamos un usuario que coincida con el correo y la contraseña
       const usersRef = collection(db, 'users');
       const q = query(
         usersRef, 
@@ -51,27 +58,18 @@ export default function LoginPage() {
       const querySnapshot = await getDocs(q);
 
       if (!querySnapshot.empty) {
-        // Usuario encontrado en Firestore
         const userData = querySnapshot.docs[0].data();
-        
-        // 2. Iniciamos sesión real en Firebase Auth (Anónima) para satisfacer las reglas de seguridad
         initiateAnonymousSignIn(auth);
-        
         toast({
           title: `Bienvenido, ${userData.firstName}`,
-          description: "Acceso concedido. Sincronizando con el servidor...",
+          description: "Acceso concedido.",
         });
-        
-        // Margen para propagación de estado
-        setTimeout(() => {
-          router.push('/dashboard');
-        }, 800);
+        setTimeout(() => { router.push('/dashboard'); }, 800);
       } else {
-        // No hay coincidencia
         toast({
           variant: "destructive",
           title: "Error de acceso",
-          description: "Credenciales incorrectas o usuario no registrado.",
+          description: "Credenciales incorrectas.",
         });
         setIsVerifying(false);
       }
@@ -80,7 +78,7 @@ export default function LoginPage() {
       toast({
         variant: "destructive",
         title: "Error de conexión",
-        description: "No se pudo validar el acceso con Firestore.",
+        description: "No se pudo validar el acceso.",
       });
       setIsVerifying(false);
     }
@@ -96,7 +94,6 @@ export default function LoginPage() {
 
   return (
     <div className="min-h-screen flex items-center justify-center p-4 relative overflow-hidden bg-white">
-      {/* Fondo Decorativo */}
       <div className="absolute top-0 right-0 w-1/2 h-full bg-primary/5 hidden lg:block -skew-x-12 transform translate-x-24" />
       
       <div className="w-full max-w-md z-10">
@@ -104,27 +101,26 @@ export default function LoginPage() {
           <div className="bg-primary p-3 rounded-2xl shadow-lg shadow-primary/20 mb-4">
             <GraduationCap className="w-12 h-12 text-white" />
           </div>
-          <h1 className="text-4xl font-bold text-primary mb-1 tracking-tight">UniAttend</h1>
-          <p className="text-muted-foreground font-medium uppercase tracking-widest text-[10px]">Portal Administrativo</p>
+          <h1 className="text-4xl font-bold text-foreground mb-1 tracking-tight">UniAttend</h1>
+          <p className="text-muted-foreground font-medium uppercase tracking-widest text-[10px]">Gestión Universitaria</p>
         </div>
 
         <Card className="border border-border/50 shadow-2xl bg-white/80 backdrop-blur-sm rounded-3xl overflow-hidden">
           <CardHeader className="space-y-1 pb-4 border-b border-border/50 bg-slate-50/50">
             <CardTitle className="text-xl text-center font-bold">Iniciar Sesión</CardTitle>
             <CardDescription className="text-center text-xs">
-              Usa tus credenciales registradas por el administrador
+              Ingresa tus credenciales de acceso
             </CardDescription>
           </CardHeader>
           <form onSubmit={handleLogin}>
             <CardContent className="space-y-4 pt-6">
               <div className="space-y-2">
-                <Label htmlFor="email" className="text-xs font-bold uppercase text-muted-foreground">Correo Institucional</Label>
+                <Label htmlFor="email" className="text-xs font-bold uppercase text-muted-foreground">Usuario / Correo</Label>
                 <div className="relative">
                   <User className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
                   <Input 
                     id="email" 
-                    type="email"
-                    placeholder="usuario@uniattend.edu" 
+                    placeholder="admin" 
                     className="pl-10 h-11 rounded-xl" 
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
@@ -133,7 +129,7 @@ export default function LoginPage() {
                 </div>
               </div>
               <div className="space-y-2">
-                <Label htmlFor="password" title="Pista: La que definiste en el panel de Usuarios" className="text-xs font-bold uppercase text-muted-foreground">Contraseña</Label>
+                <Label htmlFor="password" title="Pista: 1234 para admin" className="text-xs font-bold uppercase text-muted-foreground">Contraseña</Label>
                 <div className="relative">
                   <Lock className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
                   <Input 
@@ -158,13 +154,13 @@ export default function LoginPage() {
             <CardFooter className="pb-8">
               <Button 
                 type="submit"
-                className="w-full bg-primary hover:bg-primary/90 text-white font-bold h-12 rounded-xl transition-all shadow-lg shadow-primary/25" 
+                className="w-full bg-primary hover:bg-accent text-white font-bold h-12 rounded-xl transition-all shadow-lg shadow-primary/25" 
                 disabled={isVerifying}
               >
                 {isVerifying ? (
                   <>
                     <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    Validando Acceso...
+                    Validando...
                   </>
                 ) : "Acceder al Sistema"}
               </Button>
@@ -173,7 +169,7 @@ export default function LoginPage() {
         </Card>
         
         <p className="mt-8 text-center text-[10px] text-muted-foreground font-medium uppercase tracking-tighter">
-          &copy; {new Date().getFullYear()} UniAttend Network. Control de Acceso Universitario.
+          &copy; {new Date().getFullYear()} UniAttend Network.
         </p>
       </div>
     </div>

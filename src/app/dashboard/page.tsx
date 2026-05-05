@@ -27,10 +27,10 @@ import {
 import { cn } from "@/lib/utils";
 
 const stats = [
-  { title: "Total Alumnos", value: "1,248", icon: GraduationCap, color: "bg-accent", trend: "+12%" },
-  { title: "Docentes Activos", value: "84", icon: Briefcase, color: "bg-primary", trend: "+2%" },
-  { title: "Asistencia Hoy", value: "92%", icon: UserCheck, color: "bg-green-600", trend: "+5%" },
-  { title: "Reportes Pendientes", value: "12", icon: FileText, color: "bg-slate-700", trend: "Reciente" },
+  { title: "Total Alumnos", value: "1,248", icon: GraduationCap, color: "bg-primary", trend: "+12%" },
+  { title: "Docentes Activos", value: "84", icon: Briefcase, color: "bg-accent", trend: "+2%" },
+  { title: "Asistencia Hoy", value: "92%", icon: UserCheck, color: "bg-slate-900", trend: "+5%" },
+  { title: "Reportes Pendientes", value: "12", icon: FileText, color: "bg-secondary", trend: "Reciente" },
 ];
 
 const attendanceData = [
@@ -48,7 +48,7 @@ export default function DashboardPage() {
         <div>
           <div className="flex items-center gap-2 mb-2">
             <div className="w-2 h-8 bg-primary rounded-full" />
-            <h1 className="text-3xl font-black tracking-tight text-accent uppercase">Panel de Control</h1>
+            <h1 className="text-3xl font-black tracking-tight text-foreground uppercase">Panel de Control</h1>
           </div>
           <p className="text-muted-foreground font-medium">
             Sistema de Gestión UniAttend | <span className="text-primary font-bold">Administrador</span>
@@ -62,7 +62,6 @@ export default function DashboardPage() {
         </div>
       </div>
 
-      {/* Tarjetas de Estadísticas Administrativas */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
         {stats.map((stat, i) => (
           <Card key={i} className="border border-border/40 shadow-sm overflow-hidden group hover:shadow-xl transition-all duration-300 rounded-3xl">
@@ -72,7 +71,7 @@ export default function DashboardPage() {
                   <p className="text-[10px] font-black text-muted-foreground uppercase tracking-widest">{stat.title}</p>
                   <h3 className="text-3xl font-black tracking-tighter">{stat.value}</h3>
                   <div className="flex items-center pt-2">
-                    <span className="text-[10px] font-bold text-green-600 bg-green-50 px-2 py-0.5 rounded-full border border-green-100 flex items-center">
+                    <span className="text-[10px] font-bold text-primary bg-primary/5 px-2 py-0.5 rounded-full border border-primary/10 flex items-center">
                       <TrendingUp className="w-3 h-3 mr-1" />
                       {stat.trend}
                     </span>
@@ -88,7 +87,6 @@ export default function DashboardPage() {
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-        {/* Gráfico de Asistencia con colores ajustados */}
         <Card className="lg:col-span-2 border border-border/40 shadow-sm rounded-3xl overflow-hidden">
           <CardHeader className="bg-slate-50/50 border-b border-border/40">
             <CardTitle className="text-lg font-bold">Reporte de Asistencia Semanal</CardTitle>
@@ -102,12 +100,12 @@ export default function DashboardPage() {
                   dataKey="day" 
                   axisLine={false} 
                   tickLine={false} 
-                  tick={{fill: '#64748b', fontSize: 11, fontWeight: 700}}
+                  tick={{fill: '#8A8A8A', fontSize: 11, fontWeight: 700}}
                 />
                 <YAxis 
                   axisLine={false} 
                   tickLine={false} 
-                  tick={{fill: '#64748b', fontSize: 11, fontWeight: 700}}
+                  tick={{fill: '#8A8A8A', fontSize: 11, fontWeight: 700}}
                   domain={[0, 100]}
                 />
                 <Tooltip 
@@ -118,7 +116,7 @@ export default function DashboardPage() {
                   {attendanceData.map((entry, index) => (
                     <Cell 
                       key={`cell-${index}`} 
-                      fill={entry.value > 90 ? 'hsl(var(--primary))' : '#475569'} 
+                      fill={entry.value > 90 ? 'hsl(var(--primary))' : 'hsl(var(--accent))'} 
                       className="hover:opacity-80 transition-opacity"
                     />
                   ))}
@@ -128,9 +126,8 @@ export default function DashboardPage() {
           </CardContent>
         </Card>
 
-        {/* Notificaciones Críticas */}
         <Card className="border border-border/40 shadow-sm rounded-3xl flex flex-col">
-          <CardHeader className="bg-accent text-white rounded-t-3xl">
+          <CardHeader className="bg-foreground text-white rounded-t-3xl">
             <CardTitle className="text-lg font-bold flex items-center gap-2">
               <AlertCircle className="w-5 h-5 text-primary" />
               Notificaciones
@@ -144,7 +141,7 @@ export default function DashboardPage() {
               { title: "Backup Completo", desc: "Respaldo semanal realizado con éxito.", time: "Hoy 04:00 AM", urgent: false },
             ].map((item, i) => (
               <div key={i} className="flex items-start gap-4 p-3 rounded-2xl hover:bg-slate-50 transition-colors border border-transparent hover:border-border/50">
-                <div className={cn("w-2 h-2 mt-2 rounded-full", item.urgent ? "bg-primary animate-pulse" : "bg-slate-400")} />
+                <div className={cn("w-2 h-2 mt-2 rounded-full", item.urgent ? "bg-primary animate-pulse" : "bg-secondary")} />
                 <div className="flex-1 space-y-1">
                   <p className="text-sm font-bold tracking-tight">{item.title}</p>
                   <p className="text-xs text-muted-foreground leading-snug">{item.desc}</p>
