@@ -1,4 +1,3 @@
-
 "use client";
 
 import React from 'react';
@@ -27,13 +26,14 @@ import {
   Tooltip,
   Cell
 } from 'recharts';
+import { cn } from "@/lib/utils";
 
 // Datos falsos para el panel
 const stats = [
-  { title: "Total Alumnos", value: "1,248", icon: GraduationCap, color: "bg-blue-500", trend: "+12%" },
+  { title: "Total Alumnos", value: "1,248", icon: GraduationCap, color: "bg-slate-900", trend: "+12%" },
   { title: "Total Docentes", value: "84", icon: Briefcase, color: "bg-primary", trend: "+2%" },
-  { title: "Asistencia Hoy", value: "92%", icon: CheckCircle2, color: "bg-green-500", trend: "+5%" },
-  { title: "Alertas Activas", value: "3", icon: AlertCircle, color: "bg-accent", trend: "0" },
+  { title: "Asistencia Hoy", value: "92%", icon: CheckCircle2, color: "bg-green-600", trend: "+5%" },
+  { title: "Alertas Activas", value: "3", icon: AlertCircle, color: "bg-orange-500", trend: "0" },
 ];
 
 const attendanceData = [
@@ -49,12 +49,12 @@ export default function DashboardPage() {
     <div className="space-y-8 animate-in fade-in duration-500">
       <div className="flex flex-col md:flex-row md:items-end justify-between gap-4">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight mb-2">Resumen General</h1>
+          <h1 className="text-3xl font-bold tracking-tight mb-2 text-primary">Resumen General</h1>
           <p className="text-muted-foreground font-medium">
             Bienvenido, Administrador. Aquí tienes el estado actual del sistema.
           </p>
         </div>
-        <div className="flex items-center gap-2 bg-white p-2 rounded-xl shadow-sm border border-border/40 px-4">
+        <div className="flex items-center gap-2 bg-slate-50 p-2 rounded-xl shadow-sm border border-border/40 px-4">
           <Clock className="w-4 h-4 text-primary" />
           <span className="text-sm font-semibold">{new Date().toLocaleDateString('es-ES', { weekday: 'long', day: 'numeric', month: 'long' })}</span>
         </div>
@@ -63,13 +63,13 @@ export default function DashboardPage() {
       {/* Tarjetas de Estadísticas */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
         {stats.map((stat, i) => (
-          <Card key={i} className="border-none shadow-lg shadow-black/[0.03] overflow-hidden group hover:scale-[1.02] transition-transform">
+          <Card key={i} className="border border-border/40 shadow-sm overflow-hidden group hover:shadow-md transition-shadow">
             <CardContent className="p-6 relative">
               <div className="flex items-start justify-between">
                 <div>
                   <p className="text-sm font-medium text-muted-foreground mb-1">{stat.title}</p>
                   <h3 className="text-3xl font-bold">{stat.value}</h3>
-                  <div className="flex items-center mt-2 text-xs font-bold text-green-500 bg-green-50 w-fit px-2 py-1 rounded-full">
+                  <div className="flex items-center mt-2 text-xs font-bold text-green-600 bg-green-50 w-fit px-2 py-1 rounded-full">
                     <TrendingUp className="w-3 h-3 mr-1" />
                     {stat.trend}
                   </div>
@@ -85,7 +85,7 @@ export default function DashboardPage() {
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
         {/* Gráfico de Asistencia */}
-        <Card className="lg:col-span-2 border-none shadow-lg shadow-black/[0.03]">
+        <Card className="lg:col-span-2 border border-border/40 shadow-sm">
           <CardHeader>
             <CardTitle>Rendimiento de Asistencia Semanal</CardTitle>
             <CardDescription>Porcentaje de alumnos presentes en el campus.</CardDescription>
@@ -112,7 +112,8 @@ export default function DashboardPage() {
                 />
                 <Bar dataKey="value" radius={[6, 6, 0, 0]} barSize={40}>
                   {attendanceData.map((entry, index) => (
-                    <Cell key={`cell-${index}`} fill={entry.value > 90 ? '#FF1E2D' : '#991F60'} />
+                    // Usamos el color primario (rojo) o un gris para las barras
+                    <Cell key={`cell-${index}`} fill={entry.value > 90 ? 'hsl(var(--primary))' : '#cbd5e1'} />
                   ))}
                 </Bar>
               </BarChart>
@@ -121,7 +122,7 @@ export default function DashboardPage() {
         </Card>
 
         {/* Lista de Alertas o Actividad Reciente */}
-        <Card className="border-none shadow-lg shadow-black/[0.03]">
+        <Card className="border border-border/40 shadow-sm">
           <CardHeader>
             <CardTitle>Actividad Reciente</CardTitle>
             <CardDescription>Últimos registros en el sistema.</CardDescription>
