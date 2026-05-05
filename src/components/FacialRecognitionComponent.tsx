@@ -6,6 +6,7 @@ import * as faceapi from 'face-api.js';
 import { Loader2, Camera, CheckCircle2, AlertCircle } from 'lucide-react';
 import { Button } from "@/components/ui/button";
 import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert";
+import { cn } from "@/lib/utils";
 
 interface FacialRecognitionProps {
   mode: 'enroll' | 'recognize';
