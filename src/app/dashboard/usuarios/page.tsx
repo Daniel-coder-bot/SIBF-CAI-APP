@@ -1,4 +1,3 @@
-
 "use client";
 
 import React, { useState } from 'react';
@@ -13,6 +12,7 @@ import {
   Camera,
   Filter
 } from 'lucide-react';
+import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { 
@@ -168,7 +168,6 @@ export default function UsuariosPage() {
                 </Select>
               </div>
 
-              {/* Sección Preparatoria para Reconocimiento Facial */}
               <div className="bg-accent/5 p-4 rounded-2xl border border-accent/20 border-dashed">
                 <div className="flex items-center gap-2 text-accent mb-2">
                   <Camera className="w-4 h-4" />
