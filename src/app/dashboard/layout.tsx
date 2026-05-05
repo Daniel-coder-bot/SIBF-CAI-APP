@@ -30,7 +30,8 @@ import {
   SidebarTrigger,
   SidebarFooter
 } from "@/components/ui/sidebar";
-import { useUser } from '@/firebase';
+import { useUser, useAuth } from '@/firebase';
+import { signOut } from 'firebase/auth';
 
 const navItems = [
   { name: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
@@ -45,6 +46,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   const pathname = usePathname();
   const router = useRouter();
   const { user, isUserLoading } = useUser();
+  const auth = useAuth();
 
   // Protección de ruta: Redirigir si no hay usuario
   useEffect(() => {
@@ -52,6 +54,15 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       router.push('/login');
     }
   }, [user, isUserLoading, router]);
+
+  const handleLogout = async () => {
+    try {
+      await signOut(auth);
+      router.push('/login');
+    } catch (error) {
+      console.error("Error signing out:", error);
+    }
+  };
 
   if (isUserLoading) {
     return (
@@ -99,11 +110,13 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
             </SidebarMenu>
           </SidebarContent>
           <SidebarFooter className="p-4 mt-auto">
-            <Button variant="ghost" className="w-full justify-start text-muted-foreground hover:text-destructive hover:bg-destructive/10 rounded-xl py-6" asChild>
-              <Link href="/login">
-                <LogOut className="mr-2 h-5 w-5" />
-                <span className="font-medium text-base">Cerrar Sesión</span>
-              </Link>
+            <Button 
+              variant="ghost" 
+              className="w-full justify-start text-muted-foreground hover:text-destructive hover:bg-destructive/10 rounded-xl py-6" 
+              onClick={handleLogout}
+            >
+              <LogOut className="mr-2 h-5 w-5" />
+              <span className="font-medium text-base">Cerrar Sesión</span>
             </Button>
           </SidebarFooter>
         </Sidebar>

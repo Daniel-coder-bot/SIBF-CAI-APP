@@ -115,8 +115,13 @@ export default function UsuariosPage() {
     
     toast({
       title: "Usuario registrado",
-      description: `El perfil de ${userData.firstName} ha sido creado con éxito.`,
+      description: `El perfil de ${userData.firstName} ha sido creado. Recargando datos...`,
     });
+
+    // Recargar página según requerimiento del usuario
+    setTimeout(() => {
+      window.location.reload();
+    }, 1000);
   };
 
   const handleEditUser = (e: React.FormEvent) => {
@@ -140,8 +145,13 @@ export default function UsuariosPage() {
     
     toast({
       title: "Perfil actualizado",
-      description: "Los cambios han sido guardados en Firestore.",
+      description: "Los cambios han sido guardados. Sincronizando...",
     });
+
+    // Recargar página según requerimiento del usuario
+    setTimeout(() => {
+      window.location.reload();
+    }, 1000);
   };
 
   const handleDeleteUser = (userId: string) => {
@@ -151,8 +161,13 @@ export default function UsuariosPage() {
     toast({
       variant: "destructive",
       title: "Usuario eliminado",
-      description: "Los datos han sido removidos del sistema.",
+      description: "Removiendo datos del sistema...",
     });
+
+    // Recargar página según requerimiento del usuario
+    setTimeout(() => {
+      window.location.reload();
+    }, 1000);
   };
 
   const filteredUsers = (users || []).filter(u => 
