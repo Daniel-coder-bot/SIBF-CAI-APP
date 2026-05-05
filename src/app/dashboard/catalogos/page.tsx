@@ -27,8 +27,7 @@ import {
   Wrench,
   AlertTriangle,
   MoreVertical,
-  CheckSquare,
-  Square
+  AlertCircle
 } from 'lucide-react';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -63,6 +62,16 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { Checkbox } from "@/components/ui/checkbox";
 import { 
   useFirestore, 
@@ -116,6 +125,7 @@ export default function CatalogosPage() {
   // Estados para selección masiva de materias
   const [selectedMateriaIds, setSelectedMateriaIds] = useState<string[]>([]);
   const [bulkTargetCareerId, setBulkTargetCareerId] = useState('');
+  const [showBulkDeleteAlert, setShowBulkDeleteAlert] = useState(false);
 
   // Estados para filtros de Materias
   const [materiaSearch, setMateriaSearch] = useState('');
@@ -133,7 +143,7 @@ export default function CatalogosPage() {
   const materiasFiltradasTabla = useMemo(() => {
     if (!materias) return [];
     return materias.filter(m => {
-      const matchSearch = m.nombre.toLowerCase().includes(materiaSearch.toLowerCase()) || 
+      const matchSearch = (m.nombre || "").toLowerCase().includes(materiaSearch.toLowerCase()) || 
                           (m.codigo?.toLowerCase().includes(materiaSearch.toLowerCase()) || false);
       
       let matchCarrera = true;
@@ -153,7 +163,7 @@ export default function CatalogosPage() {
     setter(emptyData);
     setOpenDialog(null);
     toast({ title: `${title} guardado`, description: "Sincronizando..." });
-    setTimeout(() => window.location.reload(), 800);
+    setTimeout(() => window.location.reload(), 1000);
   };
 
   const handleUpdate = (collectionName: string, id: string, data: any, title: string) => {
@@ -161,14 +171,14 @@ export default function CatalogosPage() {
     updateDocumentNonBlocking(docRef, { ...data, updatedAt: serverTimestamp() });
     setOpenDialog(null);
     toast({ title: `${title} actualizado`, description: "Sincronizando..." });
-    setTimeout(() => window.location.reload(), 800);
+    setTimeout(() => window.location.reload(), 1000);
   };
 
   const handleDelete = (collectionName: string, id: string) => {
     const docRef = doc(db, collectionName, id);
     deleteDocumentNonBlocking(docRef);
     toast({ variant: "destructive", title: "Eliminado", description: "Actualizando..." });
-    setTimeout(() => window.location.reload(), 800);
+    setTimeout(() => window.location.reload(), 1000);
   };
 
   const toggleSelectMateria = (id: string) => {
@@ -202,7 +212,25 @@ export default function CatalogosPage() {
     });
     setOpenDialog(null);
     setSelectedMateriaIds([]);
-    setTimeout(() => window.location.reload(), 1000);
+    setTimeout(() => window.location.reload(), 1500);
+  };
+
+  const handleBulkDelete = () => {
+    if (selectedMateriaIds.length === 0) return;
+
+    selectedMateriaIds.forEach(id => {
+      const docRef = doc(db, 'materias', id);
+      deleteDocumentNonBlocking(docRef);
+    });
+
+    toast({ 
+      variant: "destructive",
+      title: "Eliminación Masiva", 
+      description: `${selectedMateriaIds.length} materias eliminadas.` 
+    });
+    setSelectedMateriaIds([]);
+    setShowBulkDeleteAlert(false);
+    setTimeout(() => window.location.reload(), 1500);
   };
 
   const copyToClipboard = (text: string) => {
@@ -222,7 +250,7 @@ export default function CatalogosPage() {
 
   const handleImportMateriasExcel = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-    if (!file || !materiasRef || !carreras) return;
+    if (!file || !materiasRef) return;
 
     const reader = new FileReader();
     reader.onload = (evt) => {
@@ -233,29 +261,35 @@ export default function CatalogosPage() {
         const ws = workbook.Sheets[wsname];
         const data = XLSX.utils.sheet_to_json(ws) as any[];
 
+        let count = 0;
         data.forEach((row) => {
-          let targetCarreraId = row.carreraId || '';
-          if (!targetCarreraId && row.carrera) {
-            const matched = carreras.find(c => c.nombre.toLowerCase() === String(row.carrera).toLowerCase());
+          // Priorizamos carreraId del excel
+          let targetCarreraId = String(row.carreraId || '').trim();
+          
+          // Si no hay ID, intentamos por nombre de carrera si existe la columna
+          if (!targetCarreraId && row.carrera && carreras) {
+            const matched = carreras.find(c => c.nombre.toLowerCase() === String(row.carrera).toLowerCase().trim());
             if (matched) targetCarreraId = matched.id;
           }
 
           if (row.nombre && row.cuatrimestre) {
-            const code = `MAT-${String(row.nombre).substring(0,3).toUpperCase()}-${row.cuatrimestre}`;
+            const code = `MAT-${String(row.nombre).substring(0,3).toUpperCase()}-${row.cuatrimestre}-${Math.floor(Math.random()*1000)}`;
             addDocumentNonBlocking(materiasRef, {
               nombre: String(row.nombre),
               codigo: row.codigo || code,
-              carreraId: String(targetCarreraId),
+              carreraId: targetCarreraId,
               cuatrimestre: String(row.cuatrimestre),
               createdAt: serverTimestamp()
             });
+            count++;
           }
         });
 
-        toast({ title: "Importación finalizada" });
-        setTimeout(() => window.location.reload(), 1500);
+        toast({ title: "Importación finalizada", description: `${count} materias procesadas.` });
+        if (materiaFileInputRef.current) materiaFileInputRef.current.value = '';
+        setTimeout(() => window.location.reload(), 2000);
       } catch (error) {
-        toast({ variant: "destructive", title: "Error en archivo" });
+        toast({ variant: "destructive", title: "Error en archivo", description: "Verifique el formato del Excel." });
       }
     };
     reader.readAsBinaryString(file);
@@ -271,7 +305,7 @@ export default function CatalogosPage() {
       </div>
 
       <Tabs defaultValue="sedes" className="w-full">
-        <TabsList className="bg-slate-100/80 p-1 rounded-2xl h-14 w-full justify-start gap-2 border">
+        <TabsList className="bg-slate-100/80 p-1 rounded-2xl h-14 w-full justify-start gap-2 border overflow-x-auto">
           <TabsTrigger value="sedes" className="rounded-xl data-[state=active]:bg-white data-[state=active]:text-primary px-6 font-bold flex gap-2">
             <Building2 className="w-4 h-4" /> Sedes
           </TabsTrigger>
@@ -380,7 +414,7 @@ export default function CatalogosPage() {
               <TableHeader className="bg-slate-50">
                 <TableRow>
                   <TableHead className="px-6 font-bold py-4">Nombre</TableHead>
-                  <TableHead className="font-bold">ID (Para Excel)</TableHead>
+                  <TableHead className="font-bold">ID (Usar en Excel)</TableHead>
                   <TableHead className="font-bold">Sede</TableHead>
                   <TableHead className="font-bold text-right pr-6">Acciones</TableHead>
                 </TableRow>
@@ -461,17 +495,27 @@ export default function CatalogosPage() {
                       <DialogFooter><Button onClick={handleBulkAssignCareer} disabled={!bulkTargetCareerId} className="w-full bg-primary font-bold">Vincular Ahora</Button></DialogFooter>
                     </DialogContent>
                   </Dialog>
+                  
+                  <Button 
+                    variant="destructive" 
+                    size="sm" 
+                    className="h-7 rounded-full font-bold text-[10px] uppercase px-4"
+                    onClick={() => setShowBulkDeleteAlert(true)}
+                  >
+                    <Trash2 className="w-3 h-3 mr-2" /> Eliminar
+                  </Button>
+
                   <Button variant="ghost" size="icon" className="h-6 w-6 rounded-full hover:bg-white" onClick={() => setSelectedMateriaIds([])}><XCircle className="w-4 h-4 text-muted-foreground" /></Button>
                 </div>
               )}
             </div>
-            <div className="flex gap-2">
+            <div className="flex gap-2 flex-wrap justify-end">
               <input type="file" ref={materiaFileInputRef} onChange={handleImportMateriasExcel} className="hidden" />
-              <Button variant="outline" className="rounded-xl" onClick={handleDownloadTemplate}><Download className="w-4 h-4 mr-2" /> Plantilla</Button>
-              <Button variant="outline" className="rounded-xl" onClick={() => materiaFileInputRef.current?.click()}><Upload className="w-4 h-4 mr-2" /> Importar</Button>
+              <Button variant="outline" className="rounded-xl h-10" onClick={handleDownloadTemplate} title="Descargar formato excel"><Download className="w-4 h-4 mr-2" /> Plantilla</Button>
+              <Button variant="outline" className="rounded-xl h-10" onClick={() => materiaFileInputRef.current?.click()}><Upload className="w-4 h-4 mr-2" /> Importar Excel</Button>
               <Dialog open={openDialog === 'materia'} onOpenChange={(o) => setOpenDialog(o ? 'materia' : null)}>
                 <DialogTrigger asChild>
-                  <Button className="bg-primary rounded-xl font-bold"><Plus className="w-4 h-4 mr-2" /> Nueva Materia</Button>
+                  <Button className="bg-primary rounded-xl font-bold h-10"><Plus className="w-4 h-4 mr-2" /> Nueva Materia</Button>
                 </DialogTrigger>
                 <DialogContent className="rounded-3xl">
                   <DialogHeader><DialogTitle>Nueva Materia</DialogTitle></DialogHeader>
@@ -591,6 +635,21 @@ export default function CatalogosPage() {
               <DialogFooter><Button onClick={() => handleUpdate('materias', editingMateria.id, {nombre: editingMateria.nombre, codigo: editingMateria.codigo, carreraId: editingMateria.carreraId, cuatrimestre: editingMateria.cuatrimestre}, "Materia")} className="w-full bg-primary font-bold">Actualizar</Button></DialogFooter>
             </DialogContent>
           </Dialog>
+
+          <AlertDialog open={showBulkDeleteAlert} onOpenChange={setShowBulkDeleteAlert}>
+            <AlertDialogContent className="rounded-3xl">
+              <AlertDialogHeader>
+                <AlertDialogTitle className="flex items-center gap-2 text-destructive"><AlertCircle className="w-5 h-5" /> ¿Eliminar Selección?</AlertDialogTitle>
+                <AlertDialogDescription>
+                  Se eliminarán permanentemente {selectedMateriaIds.length} materias seleccionadas. Esta acción no se puede deshacer.
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel className="rounded-xl">Cancelar</AlertDialogCancel>
+                <AlertDialogAction onClick={handleBulkDelete} className="bg-destructive text-white rounded-xl hover:bg-destructive/90">Eliminar Ahora</AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
         </TabsContent>
 
         {/* --- GRUPOS --- */}
