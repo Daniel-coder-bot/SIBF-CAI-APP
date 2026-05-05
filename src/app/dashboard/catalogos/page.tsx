@@ -154,20 +154,23 @@ export default function CatalogosPage() {
     addDocumentNonBlocking(ref, { ...data, createdAt: serverTimestamp() });
     setter(emptyData);
     setOpenDialog(null);
-    toast({ title: `${title} guardado`, description: "Los datos se están sincronizando." });
+    toast({ title: `${title} guardado`, description: "Sincronizando y recargando..." });
+    setTimeout(() => window.location.reload(), 1000);
   };
 
   const handleUpdate = (collectionName: string, id: string, data: any, title: string) => {
     const docRef = doc(db, collectionName, id);
     updateDocumentNonBlocking(docRef, { ...data, updatedAt: serverTimestamp() });
     setOpenDialog(null);
-    toast({ title: `${title} actualizado`, description: "Cambios guardados correctamente." });
+    toast({ title: `${title} actualizado`, description: "Sincronizando y recargando..." });
+    setTimeout(() => window.location.reload(), 1000);
   };
 
   const handleDelete = (collectionName: string, id: string) => {
     const docRef = doc(db, collectionName, id);
     deleteDocumentNonBlocking(docRef);
-    toast({ variant: "destructive", title: "Eliminado correctamente" });
+    toast({ variant: "destructive", title: "Eliminado", description: "Actualizando lista..." });
+    setTimeout(() => window.location.reload(), 1000);
   };
 
   const handleBulkAssignCareer = () => {
@@ -183,9 +186,10 @@ export default function CatalogosPage() {
 
     toast({ 
       title: "Vincualción Masiva", 
-      description: `${materiasHuerfanas.length} materias asignadas correctamente.` 
+      description: `${materiasHuerfanas.length} materias asignadas. Recargando...` 
     });
     setOpenDialog(null);
+    setTimeout(() => window.location.reload(), 1000);
   };
 
   const copyToClipboard = (text: string) => {
@@ -251,8 +255,8 @@ export default function CatalogosPage() {
           }
         });
 
-        toast({ title: "Importación completa", description: `${importCount} materias procesadas.` });
-        if (materiaFileInputRef.current) materiaFileInputRef.current.value = '';
+        toast({ title: "Importación completa", description: `${importCount} materias procesadas. Recargando...` });
+        setTimeout(() => window.location.reload(), 1500);
       } catch (error) {
         toast({ variant: "destructive", title: "Error Excel", description: "Verifica el formato del archivo." });
       }
