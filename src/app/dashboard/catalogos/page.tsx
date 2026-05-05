@@ -18,7 +18,8 @@ import {
   Trash2, 
   Upload,
   Download,
-  FileSpreadsheet
+  Copy,
+  Check
 } from 'lucide-react';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -56,6 +57,7 @@ import {
 } from '@/firebase';
 import { collection, doc, serverTimestamp } from 'firebase/firestore';
 import { useToast } from "@/hooks/use-toast";
+import { cn } from "@/lib/utils";
 import * as XLSX from 'xlsx';
 
 export default function CatalogosPage() {
@@ -78,6 +80,7 @@ export default function CatalogosPage() {
 
   // Estados para diálogos
   const [openDialog, setOpenDialog] = useState<string | null>(null);
+  const [copiedId, setCopiedId] = useState<string | null>(null);
 
   // Estados para formularios
   const [newSede, setNewSede] = useState({ nombre: '', ubicacion: '' });
@@ -105,15 +108,27 @@ export default function CatalogosPage() {
     toast({ variant: "destructive", title: "Eliminado correctamente" });
   };
 
+  const copyToClipboard = (text: string) => {
+    navigator.clipboard.writeText(text);
+    setCopiedId(text);
+    setTimeout(() => setCopiedId(null), 2000);
+    toast({ title: "ID Copiado", description: "Puedes pegarlo en tu archivo Excel." });
+  };
+
   const handleDownloadTemplate = () => {
     const data = [
-      { nombre: 'Ejemplo Materia', cuatrimestre: '1', carreraId: 'Pegar_ID_Aqui' }
+      { 
+        nombre: 'Matemáticas I', 
+        cuatrimestre: '1', 
+        carrera: 'Ingeniería de Sistemas (O usa el ID)', 
+        carreraId: '' 
+      }
     ];
     const worksheet = XLSX.utils.json_to_sheet(data);
     const workbook = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(workbook, worksheet, "Plantilla Materias");
     XLSX.writeFile(workbook, "Plantilla_Materias_UniAttend.xlsx");
-    toast({ title: "Plantilla descargada", description: "Completa el ID de carrera para una vinculación correcta." });
+    toast({ title: "Plantilla descargada", description: "Usa el nombre de la carrera o su ID para la vinculación." });
   };
 
   const handleImportMateriasExcel = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -131,16 +146,18 @@ export default function CatalogosPage() {
 
         let importCount = 0;
         data.forEach((row) => {
-          let carreraId = row.carreraId;
+          let targetCarreraId = row.carreraId || '';
           
-          // Si no hay ID pero hay nombre, intentar buscar la carrera
-          if (!carreraId && row.carreraNombre) {
-            const matchedCarrera = carreras.find(c => c.nombre.toLowerCase() === String(row.carreraNombre).toLowerCase());
-            if (matchedCarrera) carreraId = matchedCarrera.id;
+          // Resolución inteligente: Si no hay ID o el ID no es válido, buscar por nombre
+          if (!targetCarreraId || targetCarreraId.length < 5) {
+            const carreraNombre = row.carrera || row.carreraNombre || row.nombre_carrera;
+            if (carreraNombre) {
+              const matched = carreras.find(c => c.nombre.toLowerCase().trim() === String(carreraNombre).toLowerCase().trim());
+              if (matched) targetCarreraId = matched.id;
+            }
           }
 
-          if (row.nombre && carreraId && row.cuatrimestre) {
-            // Generar código automático si no viene en el excel: MAT-NombrePrefix-Cuatri-Random
+          if (row.nombre && targetCarreraId && row.cuatrimestre) {
             const namePrefix = String(row.nombre).substring(0, 3).toUpperCase();
             const randomSuffix = Math.floor(100 + Math.random() * 900);
             const autoCodigo = row.codigo || `MAT-${namePrefix}-${row.cuatrimestre}-${randomSuffix}`;
@@ -148,7 +165,7 @@ export default function CatalogosPage() {
             addDocumentNonBlocking(materiasRef, {
               nombre: String(row.nombre),
               codigo: String(autoCodigo),
-              carreraId: String(carreraId),
+              carreraId: String(targetCarreraId),
               cuatrimestre: String(row.cuatrimestre),
               createdAt: serverTimestamp()
             });
@@ -215,7 +232,8 @@ export default function CatalogosPage() {
             <Table>
               <TableHeader className="bg-slate-50">
                 <TableRow>
-                  <TableHead className="font-bold py-4 px-6">Nombre</TableHead>
+                  <TableHead className="font-bold py-4 px-6">ID</TableHead>
+                  <TableHead className="font-bold">Nombre</TableHead>
                   <TableHead className="font-bold">Ubicación</TableHead>
                   <TableHead className="font-bold text-right pr-6">Acciones</TableHead>
                 </TableRow>
@@ -223,7 +241,8 @@ export default function CatalogosPage() {
               <TableBody>
                 {sedes?.map(s => (
                   <TableRow key={s.id}>
-                    <TableCell className="px-6 font-medium">{s.nombre}</TableCell>
+                    <TableCell className="px-6 font-mono text-[10px] text-muted-foreground">{s.id}</TableCell>
+                    <TableCell className="font-medium">{s.nombre}</TableCell>
                     <TableCell className="text-muted-foreground">{s.ubicacion}</TableCell>
                     <TableCell className="text-right pr-6"><Button variant="ghost" size="icon" onClick={() => handleDelete('sedes', s.id)} className="text-primary"><Trash2 className="w-4 h-4" /></Button></TableCell>
                   </TableRow>
@@ -252,7 +271,6 @@ export default function CatalogosPage() {
                       <SelectContent>{sedes?.map(s => <SelectItem key={s.id} value={s.id}>{s.nombre}</SelectItem>)}</SelectContent>
                     </Select>
                   </div>
-                  <div className="p-3 bg-slate-50 rounded-xl text-[10px] text-muted-foreground">ID para Excel: <span className="font-bold text-primary select-all">{newCarrera.sedeId || 'Selecciona una sede'}</span></div>
                 </div>
                 <DialogFooter><Button onClick={() => handleAdd(carrerasRef, newCarrera, setNewCarrera, {nombre: '', sedeId: ''}, "Carrera")} className="w-full bg-primary font-bold">Guardar</Button></DialogFooter>
               </DialogContent>
@@ -263,7 +281,7 @@ export default function CatalogosPage() {
               <TableHeader className="bg-slate-50">
                 <TableRow>
                   <TableHead className="px-6 font-bold py-4">Carrera</TableHead>
-                  <TableHead className="font-bold">ID Carrera</TableHead>
+                  <TableHead className="font-bold">ID para Excel</TableHead>
                   <TableHead className="font-bold">Sede</TableHead>
                   <TableHead className="font-bold text-right pr-6">Acciones</TableHead>
                 </TableRow>
@@ -272,7 +290,19 @@ export default function CatalogosPage() {
                 {carreras?.map(c => (
                   <TableRow key={c.id}>
                     <TableCell className="px-6 font-bold">{c.nombre}</TableCell>
-                    <TableCell className="font-mono text-[10px] text-primary select-all">{c.id}</TableCell>
+                    <TableCell>
+                      <div className="flex items-center gap-2">
+                        <code className="bg-slate-100 px-2 py-1 rounded text-[10px] font-mono select-all">{c.id}</code>
+                        <Button 
+                          variant="ghost" 
+                          size="icon" 
+                          className="h-6 w-6" 
+                          onClick={() => copyToClipboard(c.id)}
+                        >
+                          {copiedId === c.id ? <Check className="w-3 h-3 text-green-600" /> : <Copy className="w-3 h-3" />}
+                        </Button>
+                      </div>
+                    </TableCell>
                     <TableCell>{sedes?.find(s => s.id === c.sedeId)?.nombre || 'Sede N/A'}</TableCell>
                     <TableCell className="text-right pr-6"><Button variant="ghost" size="icon" onClick={() => handleDelete('carreras', c.id)} className="text-primary"><Trash2 className="w-4 h-4" /></Button></TableCell>
                   </TableRow>
@@ -478,3 +508,4 @@ export default function CatalogosPage() {
     </div>
   );
 }
+
