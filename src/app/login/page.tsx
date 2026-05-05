@@ -1,45 +1,80 @@
-
 "use client";
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from "@/components/ui/card";
-import { Eye, EyeOff, Lock, User, GraduationCap } from 'lucide-react';
+import { Eye, EyeOff, Lock, User, GraduationCap, Loader2 } from 'lucide-react';
 import { useToast } from "@/hooks/use-toast";
+
+// Firebase Imports
+import { useAuth, useUser, initiateAnonymousSignIn } from '@/firebase';
 
 export default function LoginPage() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
-  const [isLoading, setIsLoading] = useState(false);
+  const [isVerifying, setIsVerifying] = useState(false);
+  
   const router = useRouter();
   const { toast } = useToast();
+  const auth = useAuth();
+  const { user, isUserLoading } = useUser();
+
+  // Redirigir si ya está logueado
+  useEffect(() => {
+    if (user && !isVerifying) {
+      router.push('/dashboard');
+    }
+  }, [user, router, isVerifying]);
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
-    setIsLoading(true);
+    setIsVerifying(true);
 
-    // Simulación de autenticación (Admin: admin / 1234)
-    setTimeout(() => {
-      if (email === "admin" && password === "1234") {
+    // Simulación de validación de credenciales administrativas
+    if (email === "admin" && password === "1234") {
+      try {
+        // Iniciamos sesión real en Firebase (Anónima para este MVP)
+        // Esto otorgará un UID y permitirá que las reglas de Firestore pasen el check isSignedIn()
+        initiateAnonymousSignIn(auth);
+        
         toast({
           title: "Acceso concedido",
-          description: "Bienvenido al panel de administración central.",
+          description: "Sincronizando con el servidor de seguridad...",
         });
-        router.push('/dashboard');
-      } else {
+        
+        // Damos un pequeño margen para que el estado de auth se propague
+        setTimeout(() => {
+          router.push('/dashboard');
+        }, 800);
+      } catch (error) {
         toast({
           variant: "destructive",
-          title: "Error de acceso",
-          description: "Credenciales incorrectas. Intente con admin / 1234",
+          title: "Error de conexión",
+          description: "No se pudo establecer comunicación con Firebase.",
         });
-        setIsLoading(false);
+        setIsVerifying(false);
       }
-    }, 1000);
+    } else {
+      toast({
+        variant: "destructive",
+        title: "Error de acceso",
+        description: "Credenciales incorrectas. Intente con admin / 1234",
+      });
+      setIsVerifying(false);
+    }
   };
+
+  if (isUserLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-white">
+        <Loader2 className="w-12 h-12 animate-spin text-primary" />
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen flex items-center justify-center p-4 relative overflow-hidden bg-white">
@@ -75,6 +110,7 @@ export default function LoginPage() {
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
                     required
+                    autoComplete="username"
                   />
                 </div>
               </div>
@@ -90,6 +126,7 @@ export default function LoginPage() {
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
                     required
+                    autoComplete="current-password"
                   />
                   <button
                     type="button"
@@ -103,10 +140,16 @@ export default function LoginPage() {
             </CardContent>
             <CardFooter className="pb-8">
               <Button 
+                type="submit"
                 className="w-full bg-primary hover:bg-primary/90 text-white font-bold h-12 rounded-xl transition-all shadow-lg shadow-primary/25" 
-                disabled={isLoading}
+                disabled={isVerifying}
               >
-                {isLoading ? "Verificando..." : "Acceder al Sistema"}
+                {isVerifying ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Autenticando...
+                  </>
+                ) : "Acceder al Sistema"}
               </Button>
             </CardFooter>
           </form>
