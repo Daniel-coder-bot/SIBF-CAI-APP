@@ -3,10 +3,11 @@
 
 import React, { useEffect, useRef, useState } from 'react';
 import * as faceapi from 'face-api.js';
-import { Loader2, Camera, CheckCircle2, AlertCircle } from 'lucide-react';
+import { Loader2, Camera, CheckCircle2, AlertCircle, UserCheck } from 'lucide-react';
 import { Button } from "@/components/ui/button";
 import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert";
 import { cn } from "@/lib/utils";
+import { useToast } from "@/hooks/use-toast";
 
 interface FacialRecognitionProps {
   mode: 'enroll' | 'recognize';
@@ -17,16 +18,23 @@ interface FacialRecognitionProps {
 export function FacialRecognitionComponent({ mode, onCapture, labeledDescriptors }: FacialRecognitionProps) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
+  const { toast } = useToast();
+  
   const [isLoaded, setIsLoaded] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [detection, setDetection] = useState<any>(null);
   const [capturedDescriptor, setCapturedDescriptor] = useState<number[] | null>(null);
   const [matcher, setMatcher] = useState<faceapi.FaceMatcher | null>(null);
+  
+  // Estado para el feedback visual (destello blanco)
+  const [showSuccessFlash, setShowSuccessFlash] = useState(false);
+  const [lastRecognizedId, setLastRecognizedId] = useState<string | null>(null);
+  const cooldownRef = useRef<NodeJS.Timeout | null>(null);
 
   useEffect(() => {
     const loadModels = async () => {
       try {
-        const MODEL_URL = '/models'; // Ubicación en public/models
+        const MODEL_URL = '/models'; 
         await Promise.all([
           faceapi.nets.tinyFaceDetector.loadFromUri(MODEL_URL),
           faceapi.nets.faceLandmark68Net.loadFromUri(MODEL_URL),
@@ -60,10 +68,10 @@ export function FacialRecognitionComponent({ mode, onCapture, labeledDescriptors
         const stream = videoRef.current.srcObject as MediaStream;
         stream.getTracks().forEach(track => track.stop());
       }
+      if (cooldownRef.current) clearTimeout(cooldownRef.current);
     };
   }, []);
 
-  // Inicializar el Matcher si estamos en modo reconocimiento
   useEffect(() => {
     if (mode === 'recognize' && labeledDescriptors && labeledDescriptors.length > 0) {
       const labeledFaceDescriptors = labeledDescriptors.map(ld => {
@@ -106,15 +114,57 @@ export function FacialRecognitionComponent({ mode, onCapture, labeledDescriptors
         
         resizedResults.forEach(result => {
           const { detection, descriptor } = result;
-          let label = mode === 'enroll' ? 'Rostro Detectado' : 'Desconocido';
-
+          
           if (mode === 'recognize' && matcher) {
             const bestMatch = matcher.findBestMatch(descriptor);
-            label = bestMatch.toString();
-          }
+            
+            // Si hay un match positivo
+            if (bestMatch.label !== 'unknown') {
+              // Evitar disparar múltiples veces para el mismo alumno seguidas
+              if (lastRecognizedId !== bestMatch.label) {
+                setLastRecognizedId(bestMatch.label);
+                setShowSuccessFlash(true);
+                
+                toast({
+                  title: "Alumno Identificado",
+                  description: `${bestMatch.label} está en el sistema.`,
+                });
 
-          const drawBox = new faceapi.draw.DrawBox(detection.box, { label });
-          drawBox.draw(canvas);
+                // Quitar el flash después de 500ms
+                setTimeout(() => setShowSuccessFlash(false), 500);
+                
+                // Cooldown para volver a reconocer al mismo alumno
+                if (cooldownRef.current) clearTimeout(cooldownRef.current);
+                cooldownRef.current = setTimeout(() => {
+                  setLastRecognizedId(null);
+                }, 5000);
+              }
+              
+              // Dibujar solo el cuadro, sin texto arriba (pasando label vacío o nulo)
+              const drawBox = new faceapi.draw.DrawBox(detection.box, { 
+                label: '', 
+                boxColor: 'rgba(34, 197, 94, 1)', // Verde para éxito
+                lineWidth: 4 
+              });
+              drawBox.draw(canvas);
+            } else {
+              // Rostro desconocido (Cuadro rojo/gris)
+              const drawBox = new faceapi.draw.DrawBox(detection.box, { 
+                label: '', 
+                boxColor: 'rgba(239, 68, 68, 0.5)', 
+                lineWidth: 2 
+              });
+              drawBox.draw(canvas);
+            }
+          } else {
+            // Modo Enrolamiento: Dibujar cuadro neutro
+            const drawBox = new faceapi.draw.DrawBox(detection.box, { 
+              label: mode === 'enroll' ? 'Posiciona tu rostro' : '',
+              boxColor: 'rgba(255, 31, 45, 1)', 
+              lineWidth: 2
+            });
+            drawBox.draw(canvas);
+          }
         });
       } else {
         setDetection(null);
@@ -162,6 +212,16 @@ export function FacialRecognitionComponent({ mode, onCapture, labeledDescriptors
           className="absolute top-0 left-0 w-full h-full pointer-events-none" 
         />
         
+        {/* DESTELLO BLANCO DE ÉXITO */}
+        {showSuccessFlash && (
+          <div className="absolute inset-0 bg-white animate-in fade-in duration-300 z-20 flex items-center justify-center">
+             <div className="text-primary flex flex-col items-center scale-110">
+               <UserCheck className="w-24 h-24 mb-4" />
+               <h2 className="text-4xl font-black uppercase tracking-tighter">Acceso Concedido</h2>
+             </div>
+          </div>
+        )}
+
         {mode === 'enroll' && detection && !capturedDescriptor && (
           <div className="absolute bottom-6 left-1/2 -translate-x-1/2">
             <Button 
