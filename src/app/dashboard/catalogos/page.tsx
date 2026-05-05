@@ -127,7 +127,17 @@ export default function CatalogosPage() {
   const [newMateria, setNewMateria] = useState({ nombre: '', codigo: '', carreraId: '', cuatrimestre: '' });
   const [newGrupo, setNewGrupo] = useState({ nombre: '', carreraId: '', cuatrimestre: '' });
   const [newHorario, setNewHorario] = useState({ grupoId: '', dia: '', horaInicio: '', horaFin: '', aula: '' });
-  const [newUser, setNewUser] = useState({ firstName: '', lastName: '', email: '', password: '', role: 'Alumno', carreraId: '', sedeId: '' });
+  const [newUser, setNewUser] = useState({ 
+    firstName: '', 
+    lastName: '', 
+    email: '', 
+    password: '', 
+    role: 'Alumno', 
+    carreraId: '', 
+    sedeId: '',
+    matricula: '',
+    grupoId: ''
+  });
 
   // Estados para edición
   const [editingSede, setEditingSede] = useState<any>(null);
@@ -694,7 +704,7 @@ export default function CatalogosPage() {
                   <div className="space-y-2"><Label>Correo Electrónico</Label><Input type="email" value={newUser.email} onChange={e => setNewUser({...newUser, email: e.target.value})} /></div>
                   <div className="space-y-2"><Label>Contraseña</Label><div className="relative"><Key className="absolute left-3 top-3 w-4 h-4 text-muted-foreground" /><Input type="password" value={newUser.password} onChange={e => setNewUser({...newUser, password: e.target.value})} className="pl-10" /></div></div>
                 </div>
-                <DialogFooter><Button onClick={() => handleAdd(usersRef, {...newUser, role: 'Docente'}, setNewUser, {firstName: '', lastName: '', email: '', password: '', role: 'Alumno', carreraId: '', sedeId: ''}, "Docente")} className="w-full bg-primary font-bold">Dar de Alta</Button></DialogFooter>
+                <DialogFooter><Button onClick={() => handleAdd(usersRef, {...newUser, role: 'Docente'}, setNewUser, {firstName: '', lastName: '', email: '', password: '', role: 'Alumno', carreraId: '', sedeId: '', matricula: '', grupoId: ''}, "Docente")} className="w-full bg-primary font-bold">Dar de Alta</Button></DialogFooter>
               </DialogContent>
             </Dialog>
           </div>
@@ -747,22 +757,42 @@ export default function CatalogosPage() {
                 </DialogTrigger>
                 <DialogContent className="rounded-3xl">
                   <DialogHeader><DialogTitle>Inscripción de Alumno</DialogTitle></DialogHeader>
-                  <div className="space-y-4 py-4">
+                  <div className="space-y-4 py-4 max-h-[70vh] overflow-y-auto px-1">
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="space-y-2"><Label>Matrícula</Label><Input value={newUser.matricula} onChange={e => setNewUser({...newUser, matricula: e.target.value})} placeholder="Ej: 2024001" /></div>
+                    </div>
                     <div className="grid grid-cols-2 gap-4">
                       <div className="space-y-2"><Label>Nombre(s)</Label><Input value={newUser.firstName} onChange={e => setNewUser({...newUser, firstName: e.target.value})} /></div>
                       <div className="space-y-2"><Label>Apellido(s)</Label><Input value={newUser.lastName} onChange={e => setNewUser({...newUser, lastName: e.target.value})} /></div>
                     </div>
                     <div className="space-y-2"><Label>Correo Institucional</Label><Input type="email" value={newUser.email} onChange={e => setNewUser({...newUser, email: e.target.value})} /></div>
-                    <div className="space-y-2">
-                      <Label>Carrera</Label>
-                      <Select value={newUser.carreraId} onValueChange={v => setNewUser({...newUser, carreraId: v})}>
-                        <SelectTrigger className="rounded-xl"><SelectValue placeholder="Seleccionar Carrera" /></SelectTrigger>
-                        <SelectContent>{carreras?.map(c => <SelectItem key={c.id} value={c.id}>{c.nombre}</SelectItem>)}</SelectContent>
-                      </Select>
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="space-y-2">
+                        <Label>Carrera</Label>
+                        <Select value={newUser.carreraId} onValueChange={v => setNewUser({...newUser, carreraId: v, grupoId: ''})}>
+                          <SelectTrigger className="rounded-xl"><SelectValue placeholder="Carrera" /></SelectTrigger>
+                          <SelectContent>{carreras?.map(c => <SelectItem key={c.id} value={c.id}>{c.nombre}</SelectItem>)}</SelectContent>
+                        </Select>
+                      </div>
+                      <div className="space-y-2">
+                        <Label>Grupo</Label>
+                        <Select 
+                          disabled={!newUser.carreraId} 
+                          value={newUser.grupoId} 
+                          onValueChange={v => setNewUser({...newUser, grupoId: v})}
+                        >
+                          <SelectTrigger className="rounded-xl"><SelectValue placeholder="Grupo" /></SelectTrigger>
+                          <SelectContent>
+                            {grupos?.filter(g => g.carreraId === newUser.carreraId).map(g => (
+                              <SelectItem key={g.id} value={g.id}>{g.nombre} ({g.cuatrimestre}°)</SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
                     </div>
                     <div className="space-y-2"><Label>Contraseña</Label><div className="relative"><Key className="absolute left-3 top-3 w-4 h-4 text-muted-foreground" /><Input type="password" value={newUser.password} onChange={e => setNewUser({...newUser, password: e.target.value})} className="pl-10" /></div></div>
                   </div>
-                  <DialogFooter><Button onClick={() => handleAdd(usersRef, {...newUser, role: 'Alumno'}, setNewUser, {firstName: '', lastName: '', email: '', password: '', role: 'Alumno', carreraId: '', sedeId: ''}, "Alumno")} className="w-full bg-primary font-bold">Inscribir</Button></DialogFooter>
+                  <DialogFooter><Button onClick={() => handleAdd(usersRef, {...newUser, role: 'Alumno'}, setNewUser, {firstName: '', lastName: '', email: '', password: '', role: 'Alumno', carreraId: '', sedeId: '', matricula: '', grupoId: ''}, "Alumno")} className="w-full bg-primary font-bold">Inscribir</Button></DialogFooter>
                 </DialogContent>
               </Dialog>
             </div>
@@ -771,19 +801,22 @@ export default function CatalogosPage() {
             <Table>
               <TableHeader className="bg-slate-50">
                 <TableRow>
-                  <TableHead className="px-6 font-bold py-4">Alumno</TableHead>
+                  <TableHead className="px-6 font-bold py-4">Matrícula</TableHead>
+                  <TableHead className="font-bold">Alumno</TableHead>
                   <TableHead className="font-bold">Biometría</TableHead>
-                  <TableHead className="font-bold">Carrera</TableHead>
+                  <TableHead className="font-bold">Carrera / Grupo</TableHead>
                   <TableHead className="font-bold text-right pr-6">Acciones</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {alumnos?.map(a => {
                   const carrera = carreras?.find(c => c.id === a.carreraId);
+                  const grupo = grupos?.find(g => g.id === a.grupoId);
                   const hasFace = !!a.faceDescriptor;
                   return (
                     <TableRow key={a.id}>
-                      <TableCell className="px-6 font-medium">{a.firstName} {a.lastName}</TableCell>
+                      <TableCell className="px-6 font-mono text-xs font-bold">{a.matricula || '---'}</TableCell>
+                      <TableCell className="font-medium">{a.firstName} {a.lastName}</TableCell>
                       <TableCell>
                         {hasFace ? (
                           <span className="flex items-center gap-1 text-green-600 text-xs font-bold">
@@ -800,7 +833,12 @@ export default function CatalogosPage() {
                           </Button>
                         )}
                       </TableCell>
-                      <TableCell><span className="text-xs font-bold text-primary">{carrera?.nombre || 'N/A'}</span></TableCell>
+                      <TableCell>
+                        <div className="flex flex-col">
+                          <span className="text-xs font-bold text-primary">{carrera?.nombre || 'N/A'}</span>
+                          <span className="text-[10px] text-muted-foreground font-medium">{grupo?.nombre ? `Grupo: ${grupo.nombre}` : 'Sin Grupo'}</span>
+                        </div>
+                      </TableCell>
                       <TableCell className="text-right pr-6">
                         <DropdownMenu>
                           <DropdownMenuTrigger asChild><Button variant="ghost" size="icon" className="h-8 w-8"><MoreVertical className="w-4 h-4" /></Button></DropdownMenuTrigger>
@@ -937,10 +975,14 @@ export default function CatalogosPage() {
                mode="recognize" 
                labeledDescriptors={alumnos
                  .filter(a => a.faceDescriptor)
-                 .map(a => ({
-                   label: `${a.firstName} ${a.lastName}`,
-                   descriptor: a.faceDescriptor
-                 }))}
+                 .map(a => {
+                   const carrera = carreras?.find(c => c.id === a.carreraId)?.nombre || 'S/C';
+                   const grupo = grupos?.find(g => g.id === a.grupoId)?.nombre || 'S/G';
+                   return {
+                     label: `${a.firstName} ${a.lastName} (${a.matricula || 'N/A'}) | ${carrera} - ${grupo}`,
+                     descriptor: a.faceDescriptor
+                   };
+                 })}
              />
           </div>
         </DialogContent>
@@ -951,20 +993,40 @@ export default function CatalogosPage() {
         <DialogContent className="rounded-3xl">
           <DialogHeader><DialogTitle>Editar Perfil</DialogTitle></DialogHeader>
           {editingUser && (
-            <div className="space-y-4 py-4">
+            <div className="space-y-4 py-4 max-h-[70vh] overflow-y-auto px-1">
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2"><Label>Nombre(s)</Label><Input value={editingUser.firstName} onChange={e => setEditingUser({...editingUser, firstName: e.target.value})} /></div>
                 <div className="space-y-2"><Label>Apellido(s)</Label><Input value={editingUser.lastName} onChange={e => setEditingUser({...editingUser, lastName: e.target.value})} /></div>
               </div>
               <div className="space-y-2"><Label>Email</Label><Input value={editingUser.email} onChange={e => setEditingUser({...editingUser, email: e.target.value})} /></div>
               {editingUser.role === 'Alumno' && (
-                <div className="space-y-2">
-                  <Label>Carrera</Label>
-                  <Select value={editingUser.carreraId} onValueChange={v => setEditingUser({...editingUser, carreraId: v})}>
-                    <SelectTrigger className="rounded-xl"><SelectValue placeholder="Seleccionar Carrera" /></SelectTrigger>
-                    <SelectContent>{carreras?.map(c => <SelectItem key={c.id} value={c.id}>{c.nombre}</SelectItem>)}</SelectContent>
-                  </Select>
-                </div>
+                <>
+                  <div className="space-y-2"><Label>Matrícula</Label><Input value={editingUser.matricula} onChange={e => setEditingUser({...editingUser, matricula: e.target.value})} /></div>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label>Carrera</Label>
+                      <Select value={editingUser.carreraId} onValueChange={v => setEditingUser({...editingUser, carreraId: v, grupoId: ''})}>
+                        <SelectTrigger className="rounded-xl"><SelectValue placeholder="Carrera" /></SelectTrigger>
+                        <SelectContent>{carreras?.map(c => <SelectItem key={c.id} value={c.id}>{c.nombre}</SelectItem>)}</SelectContent>
+                      </Select>
+                    </div>
+                    <div className="space-y-2">
+                      <Label>Grupo</Label>
+                      <Select 
+                        disabled={!editingUser.carreraId} 
+                        value={editingUser.grupoId} 
+                        onValueChange={v => setEditingUser({...editingUser, grupoId: v})}
+                      >
+                        <SelectTrigger className="rounded-xl"><SelectValue placeholder="Grupo" /></SelectTrigger>
+                        <SelectContent>
+                          {grupos?.filter(g => g.carreraId === editingUser.carreraId).map(g => (
+                            <SelectItem key={g.id} value={g.id}>{g.nombre} ({g.cuatrimestre}°)</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
+                </>
               )}
             </div>
           )}
