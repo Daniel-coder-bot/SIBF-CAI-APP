@@ -1,7 +1,7 @@
 
 "use client";
 
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import { 
   Tabs, 
   TabsContent, 
@@ -23,7 +23,9 @@ import {
   Clock, 
   Plus, 
   Trash2, 
-  Loader2 
+  Loader2,
+  Upload,
+  Download
 } from 'lucide-react';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -45,11 +47,13 @@ import {
 } from '@/firebase';
 import { collection, doc, serverTimestamp } from 'firebase/firestore';
 import { useToast } from "@/hooks/use-toast";
+import * as XLSX from 'xlsx';
 
 export default function CatalogosPage() {
   const db = useFirestore();
   const { toast } = useToast();
   const { user } = useUser();
+  const materiaFileInputRef = useRef<HTMLInputElement>(null);
 
   // Queries para datos relacionados
   const sedesRef = useMemoFirebase(() => collection(db, 'sedes'), [db]);
@@ -67,7 +71,7 @@ export default function CatalogosPage() {
   // Estados para formularios rápidos
   const [newSede, setNewSede] = useState({ nombre: '', ubicacion: '' });
   const [newCarrera, setNewCarrera] = useState({ nombre: '', sedeId: '' });
-  const [newMateria, setNewMateria] = useState({ nombre: '', codigo: '', carreraId: '' });
+  const [newMateria, setNewMateria] = useState({ nombre: '', codigo: '', carreraId: '', cuatrimestre: '' });
   const [newGrupo, setNewGrupo] = useState({ nombre: '', materiaId: '' });
   const [newHorario, setNewHorario] = useState({ grupoId: '', dia: '', horaInicio: '', horaFin: '', aula: '' });
 
@@ -83,11 +87,55 @@ export default function CatalogosPage() {
     toast({ variant: "destructive", title: "Eliminado correctamente" });
   };
 
+  const handleImportMateriasExcel = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || !materiasRef || !carreras) return;
+
+    const reader = new FileReader();
+    reader.onload = (evt) => {
+      try {
+        const bstr = evt.target?.result;
+        const workbook = XLSX.read(bstr, { type: 'binary' });
+        const wsname = workbook.SheetNames[0];
+        const ws = workbook.Sheets[wsname];
+        const data = XLSX.utils.sheet_to_json(ws) as any[];
+
+        data.forEach((row) => {
+          // Intentar buscar la carrera por nombre si no viene el ID directo
+          let carreraId = row.carreraId;
+          if (!carreraId && row.carreraNombre) {
+            const matchedCarrera = carreras.find(c => c.nombre.toLowerCase() === String(row.carreraNombre).toLowerCase());
+            if (matchedCarrera) carreraId = matchedCarrera.id;
+          }
+
+          if (row.nombre && row.codigo && carreraId && row.cuatrimestre) {
+            const materiaData = {
+              nombre: String(row.nombre),
+              codigo: String(row.codigo),
+              carreraId: String(carreraId),
+              cuatrimestre: String(row.cuatrimestre),
+              createdAt: serverTimestamp()
+            };
+            addDocumentNonBlocking(materiasRef, materiaData);
+          }
+        });
+
+        toast({ title: "Importación de Materias", description: `${data.length} registros procesados.` });
+        if (materiaFileInputRef.current) materiaFileInputRef.current.value = '';
+      } catch (error) {
+        toast({ variant: "destructive", title: "Error", description: "No se pudo procesar el archivo Excel." });
+      }
+    };
+    reader.readAsBinaryString(file);
+  };
+
   return (
     <div className="space-y-6 animate-in fade-in duration-500">
-      <div>
-        <h1 className="text-3xl font-bold tracking-tight text-foreground">Catálogos Académicos</h1>
-        <p className="text-muted-foreground font-medium text-sm">Gestiona la estructura base de la universidad.</p>
+      <div className="flex justify-between items-end">
+        <div>
+          <h1 className="text-3xl font-bold tracking-tight text-foreground">Catálogos Académicos</h1>
+          <p className="text-muted-foreground font-medium text-sm">Gestiona la estructura base de la universidad.</p>
+        </div>
       </div>
 
       <Tabs defaultValue="sedes" className="w-full">
@@ -185,10 +233,33 @@ export default function CatalogosPage() {
         <TabsContent value="materias" className="mt-6 space-y-6">
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
             <Card className="rounded-3xl border-border/40">
-              <CardHeader><CardTitle className="text-lg">Nueva Materia</CardTitle></CardHeader>
+              <CardHeader className="flex flex-row items-center justify-between space-y-0">
+                <CardTitle className="text-lg">Nueva Materia</CardTitle>
+                <div>
+                   <input 
+                    type="file" 
+                    ref={materiaFileInputRef} 
+                    onChange={handleImportMateriasExcel} 
+                    accept=".xlsx, .xls" 
+                    className="hidden" 
+                  />
+                  <Button 
+                    variant="outline" 
+                    size="sm" 
+                    className="h-8 rounded-lg"
+                    onClick={() => materiaFileInputRef.current?.click()}
+                  >
+                    <Upload className="w-3 h-3 mr-2" />
+                    Excel
+                  </Button>
+                </div>
+              </CardHeader>
               <CardContent className="space-y-4">
                 <div className="space-y-2"><Label>Nombre</Label><Input value={newMateria.nombre} onChange={e => setNewMateria({...newMateria, nombre: e.target.value})} /></div>
-                <div className="space-y-2"><Label>Código</Label><Input value={newMateria.codigo} onChange={e => setNewMateria({...newMateria, codigo: e.target.value})} /></div>
+                <div className="grid grid-cols-2 gap-4">
+                   <div className="space-y-2"><Label>Código</Label><Input value={newMateria.codigo} onChange={e => setNewMateria({...newMateria, codigo: e.target.value})} /></div>
+                   <div className="space-y-2"><Label>Cuatri.</Label><Input value={newMateria.cuatrimestre} onChange={e => setNewMateria({...newMateria, cuatrimestre: e.target.value})} placeholder="Ej: 1" /></div>
+                </div>
                 <div className="space-y-2">
                   <Label>Carrera</Label>
                   <Select value={newMateria.carreraId} onValueChange={v => setNewMateria({...newMateria, carreraId: v})}>
@@ -198,15 +269,18 @@ export default function CatalogosPage() {
                     </SelectContent>
                   </Select>
                 </div>
-                <Button onClick={() => handleAdd(materiasRef, newMateria, setNewMateria, {nombre: '', codigo: '', carreraId: ''}, "Materia")} className="w-full bg-primary font-bold rounded-xl">Guardar</Button>
+                <Button onClick={() => handleAdd(materiasRef, newMateria, setNewMateria, {nombre: '', codigo: '', carreraId: '', cuatrimestre: ''}, "Materia")} className="w-full bg-primary font-bold rounded-xl">Guardar</Button>
               </CardContent>
             </Card>
-            <div className="lg:col-span-2 grid grid-cols-2 gap-4">
-              {materias?.map(m => (
-                <div key={m.id} className="p-4 bg-white border border-border/40 rounded-2xl">
+            <div className="lg:col-span-2 grid grid-cols-1 md:grid-cols-2 gap-4">
+              {materias?.sort((a,b) => Number(a.cuatrimestre) - Number(b.cuatrimestre)).map(m => (
+                <div key={m.id} className="p-4 bg-white border border-border/40 rounded-2xl group">
                   <div className="flex justify-between items-start mb-2">
-                    <span className="text-[10px] font-black uppercase text-primary px-2 py-0.5 bg-primary/5 rounded-full">{m.codigo}</span>
-                    <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => handleDelete('materias', m.id)}><Trash2 className="w-4 h-4" /></Button>
+                    <div className="flex gap-2">
+                       <span className="text-[10px] font-black uppercase text-primary px-2 py-0.5 bg-primary/5 rounded-full">{m.codigo}</span>
+                       <span className="text-[10px] font-bold text-slate-500 px-2 py-0.5 bg-slate-100 rounded-full">Cuatri {m.cuatrimestre}</span>
+                    </div>
+                    <Button variant="ghost" size="icon" className="h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity" onClick={() => handleDelete('materias', m.id)}><Trash2 className="w-4 h-4" /></Button>
                   </div>
                   <p className="font-bold text-sm leading-tight">{m.nombre}</p>
                   <p className="text-[10px] text-muted-foreground mt-1 truncate">{carreras?.find(c => c.id === m.carreraId)?.nombre}</p>

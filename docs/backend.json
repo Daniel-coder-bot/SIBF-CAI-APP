@@ -44,9 +44,10 @@
         "id": { "type": "string" },
         "nombre": { "type": "string" },
         "codigo": { "type": "string" },
-        "carreraId": { "type": "string" }
+        "carreraId": { "type": "string" },
+        "cuatrimestre": { "type": "string", "description": "Número de cuatrimestre al que pertenece la materia" }
       },
-      "required": ["nombre", "carreraId"]
+      "required": ["nombre", "carreraId", "cuatrimestre"]
     },
     "Grupo": {
       "title": "Grupo",
