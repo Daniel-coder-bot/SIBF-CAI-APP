@@ -263,11 +263,11 @@ export default function CatalogosPage() {
 
         let count = 0;
         data.forEach((row) => {
-          // Priorizamos carreraId del excel
+          // Priorizamos carreraId del excel por cada fila
           let targetCarreraId = String(row.carreraId || '').trim();
           
-          // Si no hay ID, intentamos por nombre de carrera si existe la columna
-          if (!targetCarreraId && row.carrera && carreras) {
+          // Si no hay ID o parece ser un nombre, intentamos buscarlo por nombre
+          if ((!targetCarreraId || targetCarreraId.length < 5) && row.carrera && carreras) {
             const matched = carreras.find(c => c.nombre.toLowerCase() === String(row.carrera).toLowerCase().trim());
             if (matched) targetCarreraId = matched.id;
           }
