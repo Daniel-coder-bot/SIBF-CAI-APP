@@ -15,6 +15,11 @@
         "password": { "type": "string" },
         "sedeId": { "type": "string" },
         "carreraId": { "type": "string" },
+        "faceDescriptor": { 
+          "type": "array", 
+          "items": { "type": "number" },
+          "description": "Biometric facial features (128 values)"
+        },
         "createdAt": { "type": "string", "format": "date-time" },
         "updatedAt": { "type": "string", "format": "date-time" }
       },

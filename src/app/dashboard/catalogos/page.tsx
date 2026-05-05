@@ -30,7 +30,10 @@ import {
   AlertCircle,
   Briefcase,
   GraduationCap,
-  Key
+  Key,
+  Camera,
+  ScanFace,
+  UserCheck
 } from 'lucide-react';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -88,6 +91,7 @@ import { collection, doc, serverTimestamp } from 'firebase/firestore';
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
 import * as XLSX from 'xlsx';
+import { FacialRecognitionComponent } from '@/components/FacialRecognitionComponent';
 
 export default function CatalogosPage() {
   const db = useFirestore();
@@ -132,6 +136,9 @@ export default function CatalogosPage() {
   const [editingGrupo, setEditingGrupo] = useState<any>(null);
   const [editingHorario, setEditingHorario] = useState<any>(null);
   const [editingUser, setEditingUser] = useState<any>(null);
+
+  // Estado para Reconocimiento Facial
+  const [faceTargetUser, setFaceTargetUser] = useState<any>(null);
 
   // Estados para selección masiva de materias
   const [selectedMateriaIds, setSelectedMateriaIds] = useState<string[]>([]);
@@ -182,6 +189,19 @@ export default function CatalogosPage() {
     deleteDocumentNonBlocking(docRef);
     toast({ variant: "destructive", title: "Eliminado", description: "Actualizando..." });
     setTimeout(() => window.location.reload(), 1000);
+  };
+
+  const handleSaveFaceDescriptor = (descriptor: number[]) => {
+    if (!faceTargetUser) return;
+    const docRef = doc(db, 'users', faceTargetUser.id);
+    updateDocumentNonBlocking(docRef, { 
+      faceDescriptor: descriptor,
+      updatedAt: serverTimestamp()
+    });
+    setOpenDialog(null);
+    setFaceTargetUser(null);
+    toast({ title: "Biometría Guardada", description: "Rostro enrolado con éxito." });
+    setTimeout(() => window.location.reload(), 1500);
   };
 
   const toggleSelectMateria = (id: string) => {
@@ -712,54 +732,81 @@ export default function CatalogosPage() {
         <TabsContent value="alumnos" className="mt-6 space-y-4">
           <div className="flex justify-between items-center">
             <h2 className="text-xl font-bold">Alumnos</h2>
-            <Dialog open={openDialog === 'alumno'} onOpenChange={(o) => setOpenDialog(o ? 'alumno' : null)}>
-              <DialogTrigger asChild>
-                <Button className="bg-primary rounded-xl font-bold"><Plus className="w-4 h-4 mr-2" /> Nuevo Alumno</Button>
-              </DialogTrigger>
-              <DialogContent className="rounded-3xl">
-                <DialogHeader><DialogTitle>Inscripción de Alumno</DialogTitle></DialogHeader>
-                <div className="space-y-4 py-4">
-                  <div className="grid grid-cols-2 gap-4">
-                    <div className="space-y-2"><Label>Nombre(s)</Label><Input value={newUser.firstName} onChange={e => setNewUser({...newUser, firstName: e.target.value})} /></div>
-                    <div className="space-y-2"><Label>Apellido(s)</Label><Input value={newUser.lastName} onChange={e => setNewUser({...newUser, lastName: e.target.value})} /></div>
+            <div className="flex gap-2">
+              <Button 
+                variant="outline" 
+                className="rounded-xl font-bold border-primary text-primary"
+                onClick={() => setOpenDialog('verifyFace')}
+              >
+                <ScanFace className="w-4 h-4 mr-2" />
+                Verificar Rostro
+              </Button>
+              <Dialog open={openDialog === 'alumno'} onOpenChange={(o) => setOpenDialog(o ? 'alumno' : null)}>
+                <DialogTrigger asChild>
+                  <Button className="bg-primary rounded-xl font-bold"><Plus className="w-4 h-4 mr-2" /> Nuevo Alumno</Button>
+                </DialogTrigger>
+                <DialogContent className="rounded-3xl">
+                  <DialogHeader><DialogTitle>Inscripción de Alumno</DialogTitle></DialogHeader>
+                  <div className="space-y-4 py-4">
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="space-y-2"><Label>Nombre(s)</Label><Input value={newUser.firstName} onChange={e => setNewUser({...newUser, firstName: e.target.value})} /></div>
+                      <div className="space-y-2"><Label>Apellido(s)</Label><Input value={newUser.lastName} onChange={e => setNewUser({...newUser, lastName: e.target.value})} /></div>
+                    </div>
+                    <div className="space-y-2"><Label>Correo Institucional</Label><Input type="email" value={newUser.email} onChange={e => setNewUser({...newUser, email: e.target.value})} /></div>
+                    <div className="space-y-2">
+                      <Label>Carrera</Label>
+                      <Select value={newUser.carreraId} onValueChange={v => setNewUser({...newUser, carreraId: v})}>
+                        <SelectTrigger className="rounded-xl"><SelectValue placeholder="Seleccionar Carrera" /></SelectTrigger>
+                        <SelectContent>{carreras?.map(c => <SelectItem key={c.id} value={c.id}>{c.nombre}</SelectItem>)}</SelectContent>
+                      </Select>
+                    </div>
+                    <div className="space-y-2"><Label>Contraseña</Label><div className="relative"><Key className="absolute left-3 top-3 w-4 h-4 text-muted-foreground" /><Input type="password" value={newUser.password} onChange={e => setNewUser({...newUser, password: e.target.value})} className="pl-10" /></div></div>
                   </div>
-                  <div className="space-y-2"><Label>Correo Institucional</Label><Input type="email" value={newUser.email} onChange={e => setNewUser({...newUser, email: e.target.value})} /></div>
-                  <div className="space-y-2">
-                    <Label>Carrera</Label>
-                    <Select value={newUser.carreraId} onValueChange={v => setNewUser({...newUser, carreraId: v})}>
-                      <SelectTrigger className="rounded-xl"><SelectValue placeholder="Seleccionar Carrera" /></SelectTrigger>
-                      <SelectContent>{carreras?.map(c => <SelectItem key={c.id} value={c.id}>{c.nombre}</SelectItem>)}</SelectContent>
-                    </Select>
-                  </div>
-                  <div className="space-y-2"><Label>Contraseña</Label><div className="relative"><Key className="absolute left-3 top-3 w-4 h-4 text-muted-foreground" /><Input type="password" value={newUser.password} onChange={e => setNewUser({...newUser, password: e.target.value})} className="pl-10" /></div></div>
-                </div>
-                <DialogFooter><Button onClick={() => handleAdd(usersRef, {...newUser, role: 'Alumno'}, setNewUser, {firstName: '', lastName: '', email: '', password: '', role: 'Alumno', carreraId: '', sedeId: ''}, "Alumno")} className="w-full bg-primary font-bold">Inscribir</Button></DialogFooter>
-              </DialogContent>
-            </Dialog>
+                  <DialogFooter><Button onClick={() => handleAdd(usersRef, {...newUser, role: 'Alumno'}, setNewUser, {firstName: '', lastName: '', email: '', password: '', role: 'Alumno', carreraId: '', sedeId: ''}, "Alumno")} className="w-full bg-primary font-bold">Inscribir</Button></DialogFooter>
+                </DialogContent>
+              </Dialog>
+            </div>
           </div>
           <div className="bg-white border rounded-3xl overflow-hidden shadow-sm">
             <Table>
               <TableHeader className="bg-slate-50">
                 <TableRow>
                   <TableHead className="px-6 font-bold py-4">Alumno</TableHead>
+                  <TableHead className="font-bold">Biometría</TableHead>
                   <TableHead className="font-bold">Carrera</TableHead>
-                  <TableHead className="font-bold">Email</TableHead>
                   <TableHead className="font-bold text-right pr-6">Acciones</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {alumnos?.map(a => {
                   const carrera = carreras?.find(c => c.id === a.carreraId);
+                  const hasFace = !!a.faceDescriptor;
                   return (
                     <TableRow key={a.id}>
                       <TableCell className="px-6 font-medium">{a.firstName} {a.lastName}</TableCell>
+                      <TableCell>
+                        {hasFace ? (
+                          <span className="flex items-center gap-1 text-green-600 text-xs font-bold">
+                            <UserCheck className="w-3 h-3" /> Enrolado
+                          </span>
+                        ) : (
+                          <Button 
+                            variant="ghost" 
+                            size="sm" 
+                            className="h-7 text-[10px] font-bold text-primary hover:bg-primary/10 rounded-full"
+                            onClick={() => { setFaceTargetUser(a); setOpenDialog('enrollFace'); }}
+                          >
+                            <ScanFace className="w-3 h-3 mr-1" /> Enrolar
+                          </Button>
+                        )}
+                      </TableCell>
                       <TableCell><span className="text-xs font-bold text-primary">{carrera?.nombre || 'N/A'}</span></TableCell>
-                      <TableCell className="text-muted-foreground text-xs">{a.email}</TableCell>
                       <TableCell className="text-right pr-6">
                         <DropdownMenu>
                           <DropdownMenuTrigger asChild><Button variant="ghost" size="icon" className="h-8 w-8"><MoreVertical className="w-4 h-4" /></Button></DropdownMenuTrigger>
                           <DropdownMenuContent align="end" className="rounded-xl">
                             <DropdownMenuItem onClick={() => { setEditingUser(a); setOpenDialog('editUser'); }} className="gap-2 font-bold"><Edit2 className="w-4 h-4" /> Editar</DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => { setFaceTargetUser(a); setOpenDialog('enrollFace'); }} className="gap-2 font-bold"><Camera className="w-4 h-4" /> Recalibrar Rostro</DropdownMenuItem>
                             <DropdownMenuItem onClick={() => handleDelete('users', a.id)} className="gap-2 text-primary font-bold"><Trash2 className="w-4 h-4" /> Eliminar</DropdownMenuItem>
                           </DropdownMenuContent>
                         </DropdownMenu>
@@ -861,6 +908,43 @@ export default function CatalogosPage() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* DIÁLOGO ENROLAMIENTO FACIAL */}
+      <Dialog open={openDialog === 'enrollFace'} onOpenChange={(o) => { setOpenDialog(o ? 'enrollFace' : null); if(!o) setFaceTargetUser(null); }}>
+        <DialogContent className="max-w-2xl rounded-3xl overflow-hidden p-0">
+          <DialogHeader className="p-6 pb-0">
+            <DialogTitle>Enrolamiento Biométrico</DialogTitle>
+            <DialogDescription>Posiciona el rostro de {faceTargetUser?.firstName} frente a la cámara.</DialogDescription>
+          </DialogHeader>
+          <div className="p-6">
+             <FacialRecognitionComponent 
+               mode="enroll" 
+               onCapture={handleSaveFaceDescriptor} 
+             />
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* DIÁLOGO VERIFICACIÓN FACIAL */}
+      <Dialog open={openDialog === 'verifyFace'} onOpenChange={(o) => setOpenDialog(o ? 'verifyFace' : null)}>
+        <DialogContent className="max-w-2xl rounded-3xl overflow-hidden p-0">
+          <DialogHeader className="p-6 pb-0">
+            <DialogTitle>Reconocimiento en Tiempo Real</DialogTitle>
+            <DialogDescription>El sistema identificará a los alumnos enrolados automáticamente.</DialogDescription>
+          </DialogHeader>
+          <div className="p-6">
+             <FacialRecognitionComponent 
+               mode="recognize" 
+               labeledDescriptors={alumnos
+                 .filter(a => a.faceDescriptor)
+                 .map(a => ({
+                   label: `${a.firstName} ${a.lastName}`,
+                   descriptor: a.faceDescriptor
+                 }))}
+             />
+          </div>
+        </DialogContent>
+      </Dialog>
 
       {/* DIÁLOGO EDICIÓN USUARIO (DOCENTE/ALUMNO) */}
       <Dialog open={openDialog === 'editUser'} onOpenChange={(o) => setOpenDialog(o ? 'editUser' : null)}>
