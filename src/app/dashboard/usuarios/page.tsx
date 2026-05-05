@@ -7,10 +7,10 @@ import {
   MoreVertical, 
   Edit2, 
   Trash2, 
-  UserPlus, 
-  Shield, 
   Camera,
-  Filter
+  Filter,
+  User as UserIcon,
+  Loader2
 } from 'lucide-react';
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -49,60 +49,82 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { useToast } from "@/hooks/use-toast";
 
+// Firebase Imports
+import { 
+  useFirestore, 
+  useCollection, 
+  useMemoFirebase,
+  addDocumentNonBlocking,
+  deleteDocumentNonBlocking
+} from '@/firebase';
+import { collection, doc, serverTimestamp } from 'firebase/firestore';
+
 type UserRole = 'Administrador' | 'Jefe de Carrera' | 'Docente' | 'Alumno';
 
-interface User {
+interface UserEntity {
   id: string;
-  name: string;
+  firstName: string;
+  lastName: string;
   email: string;
   role: UserRole;
-  status: 'Activo' | 'Inactivo';
+  createdAt: any;
+  updatedAt: any;
 }
 
-const mockUsers: User[] = [
-  { id: '1', name: 'Ana Martínez', email: 'ana.martinez@uni.edu', role: 'Administrador', status: 'Activo' },
-  { id: '2', name: 'Roberto Gómez', email: 'roberto.g@uni.edu', role: 'Docente', status: 'Activo' },
-  { id: '3', name: 'Karla Sierra', email: 'k.sierra@uni.edu', role: 'Jefe de Carrera', status: 'Activo' },
-  { id: '4', name: 'Juan Pérez', email: 'juan.p@uni.edu', role: 'Alumno', status: 'Inactivo' },
-];
-
 export default function UsuariosPage() {
-  const [users, setUsers] = useState<User[]>(mockUsers);
+  const db = useFirestore();
+  const { toast } = useToast();
+  
+  // States
   const [searchTerm, setSearchTerm] = useState('');
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
-  const { toast } = useToast();
-
-  const [newUser, setNewUser] = useState<Partial<User>>({
-    name: '',
+  const [newUser, setNewUser] = useState({
+    firstName: '',
+    lastName: '',
     email: '',
-    role: 'Alumno' as UserRole,
-    status: 'Activo'
+    role: 'Alumno' as UserRole
   });
+
+  // Firestore Real-time Collection
+  const usersRef = useMemoFirebase(() => collection(db, 'users'), [db]);
+  const { data: users, isLoading } = useCollection<UserEntity>(usersRef);
 
   const handleAddUser = (e: React.FormEvent) => {
     e.preventDefault();
-    const id = (users.length + 1).toString();
-    const userToAdd = { ...newUser, id } as User;
-    setUsers([userToAdd, ...users]);
+    
+    // En un sistema real, el ID vendría de Firebase Auth, 
+    // pero para la gestión de perfiles en Firestore usamos addDoc o un ID manual.
+    // Aquí usamos addDocumentNonBlocking que generará un ID automático.
+    const userData = {
+      ...newUser,
+      createdAt: serverTimestamp(),
+      updatedAt: serverTimestamp()
+    };
+
+    addDocumentNonBlocking(usersRef, userData);
+    
     setIsAddDialogOpen(false);
-    setNewUser({ name: '', email: '', role: 'Alumno', status: 'Activo' });
+    setNewUser({ firstName: '', lastName: '', email: '', role: 'Alumno' });
+    
     toast({
-      title: "Usuario creado",
-      description: `El usuario ${userToAdd.name} ha sido registrado exitosamente.`,
+      title: "Usuario registrado",
+      description: `El perfil de ${userData.firstName} ha sido creado en la base de datos.`,
     });
   };
 
-  const handleDeleteUser = (id: string) => {
-    setUsers(users.filter(u => u.id !== id));
+  const handleDeleteUser = (userId: string) => {
+    const userDocRef = doc(db, 'users', userId);
+    deleteDocumentNonBlocking(userDocRef);
+    
     toast({
       variant: "destructive",
       title: "Usuario eliminado",
-      description: "Los datos han sido removidos del sistema.",
+      description: "Los datos han sido removidos de Firestore.",
     });
   };
 
-  const filteredUsers = users.filter(user => 
-    user.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+  const filteredUsers = (users || []).filter(user => 
+    `${user.firstName} ${user.lastName}`.toLowerCase().includes(searchTerm.toLowerCase()) ||
     user.email.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
@@ -110,8 +132,8 @@ export default function UsuariosPage() {
     <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight">Gestión de Usuarios</h1>
-          <p className="text-muted-foreground font-medium">Crea, edita y administra los roles de acceso.</p>
+          <h1 className="text-3xl font-bold tracking-tight text-accent">Gestión de Usuarios</h1>
+          <p className="text-muted-foreground font-medium">Administra los accesos de Docentes, Jefes de Área y Administradores.</p>
         </div>
         
         <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
@@ -121,33 +143,48 @@ export default function UsuariosPage() {
               Nuevo Usuario
             </Button>
           </DialogTrigger>
-          <DialogContent className="sm:max-w-[425px] rounded-3xl">
+          <DialogContent className="sm:max-w-[450px] rounded-3xl">
             <DialogHeader>
-              <DialogTitle className="text-2xl font-bold">Agregar Usuario</DialogTitle>
+              <DialogTitle className="text-2xl font-bold">Agregar Nuevo Usuario</DialogTitle>
               <DialogDescription>
-                Ingresa los datos básicos para el nuevo integrante de la universidad.
+                Define el rol y los datos básicos para el acceso al sistema UniAttend.
               </DialogDescription>
             </DialogHeader>
             <form onSubmit={handleAddUser} className="space-y-4 py-4">
-              <div className="grid gap-2">
-                <Label htmlFor="name">Nombre Completo</Label>
-                <Input 
-                  id="name" 
-                  placeholder="Ej. Maria Lopez" 
-                  value={newUser.name}
-                  onChange={(e) => setNewUser({...newUser, name: e.target.value})}
-                  required
-                />
+              <div className="grid grid-cols-2 gap-4">
+                <div className="grid gap-2">
+                  <Label htmlFor="firstName">Nombre(s)</Label>
+                  <Input 
+                    id="firstName" 
+                    placeholder="Ej. Juan" 
+                    value={newUser.firstName}
+                    onChange={(e) => setNewUser({...newUser, firstName: e.target.value})}
+                    required
+                    className="rounded-xl"
+                  />
+                </div>
+                <div className="grid gap-2">
+                  <Label htmlFor="lastName">Apellido(s)</Label>
+                  <Input 
+                    id="lastName" 
+                    placeholder="Ej. Pérez" 
+                    value={newUser.lastName}
+                    onChange={(e) => setNewUser({...newUser, lastName: e.target.value})}
+                    required
+                    className="rounded-xl"
+                  />
+                </div>
               </div>
               <div className="grid gap-2">
                 <Label htmlFor="email">Correo Institucional</Label>
                 <Input 
                   id="email" 
                   type="email" 
-                  placeholder="ejemplo@uniattend.edu" 
+                  placeholder="usuario@uniattend.edu" 
                   value={newUser.email}
                   onChange={(e) => setNewUser({...newUser, email: e.target.value})}
                   required
+                  className="rounded-xl"
                 />
               </div>
               <div className="grid gap-2">
@@ -156,7 +193,7 @@ export default function UsuariosPage() {
                   value={newUser.role} 
                   onValueChange={(val: UserRole) => setNewUser({...newUser, role: val})}
                 >
-                  <SelectTrigger>
+                  <SelectTrigger className="rounded-xl">
                     <SelectValue placeholder="Selecciona un rol" />
                   </SelectTrigger>
                   <SelectContent>
@@ -168,21 +205,23 @@ export default function UsuariosPage() {
                 </Select>
               </div>
 
-              <div className="bg-accent/5 p-4 rounded-2xl border border-accent/20 border-dashed">
-                <div className="flex items-center gap-2 text-accent mb-2">
+              <div className="bg-primary/5 p-4 rounded-2xl border border-primary/20 border-dashed">
+                <div className="flex items-center gap-2 text-primary mb-2">
                   <Camera className="w-4 h-4" />
-                  <span className="text-sm font-bold">Biometría Facial</span>
+                  <span className="text-sm font-bold">Registro Biométrico</span>
                 </div>
                 <p className="text-xs text-muted-foreground mb-3">
-                  Próximamente: Registra el rostro del usuario para el control de asistencia.
+                  Asocia una firma facial para el control de asistencia automatizado.
                 </p>
-                <Button type="button" variant="outline" className="w-full text-xs h-8 border-accent/30 text-accent hover:bg-accent/10" disabled>
-                  Preparar Captura
+                <Button type="button" variant="outline" className="w-full text-xs h-8 border-primary/30 text-primary hover:bg-primary/10" disabled>
+                  Iniciar Escaneo Facial
                 </Button>
               </div>
 
-              <DialogFooter>
-                <Button type="submit" className="w-full bg-primary hover:bg-primary/90 rounded-xl py-6">Guardar Usuario</Button>
+              <DialogFooter className="pt-4">
+                <Button type="submit" className="w-full bg-primary hover:bg-primary/90 text-white rounded-xl py-6 font-bold shadow-lg shadow-primary/20">
+                  Registrar en Firestore
+                </Button>
               </DialogFooter>
             </form>
           </DialogContent>
@@ -199,53 +238,61 @@ export default function UsuariosPage() {
             onChange={(e) => setSearchTerm(e.target.value)}
           />
         </div>
-        <Button variant="outline" className="h-11 rounded-xl bg-white">
+        <Button variant="outline" className="h-11 rounded-xl bg-white border-border/60">
           <Filter className="w-4 h-4 mr-2" />
           Filtros
         </Button>
       </div>
 
-      <div className="bg-white rounded-3xl shadow-xl shadow-black/[0.02] border border-border/40 overflow-hidden">
+      <div className="bg-white rounded-3xl shadow-xl shadow-black/[0.01] border border-border/40 overflow-hidden">
         <Table>
           <TableHeader className="bg-slate-50/50">
             <TableRow className="border-b border-border/40">
               <TableHead className="font-bold py-5 px-6">Usuario</TableHead>
-              <TableHead className="font-bold">Rol</TableHead>
-              <TableHead className="font-bold">Estado</TableHead>
+              <TableHead className="font-bold">Rol de Acceso</TableHead>
+              <TableHead className="font-bold">ID Firestore</TableHead>
               <TableHead className="font-bold text-right pr-6">Acciones</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
-            {filteredUsers.length > 0 ? (
+            {isLoading ? (
+              <TableRow>
+                <TableCell colSpan={4} className="h-48 text-center">
+                  <div className="flex flex-col items-center justify-center gap-2 text-muted-foreground">
+                    <Loader2 className="w-8 h-8 animate-spin text-primary" />
+                    <p className="text-sm font-medium">Sincronizando con base de datos...</p>
+                  </div>
+                </TableCell>
+              </TableRow>
+            ) : filteredUsers.length > 0 ? (
               filteredUsers.map((user) => (
                 <TableRow key={user.id} className="group border-b border-border/40 last:border-0 hover:bg-slate-50/40 transition-colors">
                   <TableCell className="py-4 px-6">
                     <div className="flex items-center gap-3">
                       <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center text-primary font-bold">
-                        {user.name.charAt(0)}
+                        <UserIcon className="w-5 h-5" />
                       </div>
                       <div>
-                        <div className="font-semibold text-sm">{user.name}</div>
+                        <div className="font-semibold text-sm">{user.firstName} {user.lastName}</div>
                         <div className="text-xs text-muted-foreground">{user.email}</div>
                       </div>
                     </div>
                   </TableCell>
                   <TableCell>
-                    <Badge variant="secondary" className={cn(
-                      "font-medium",
-                      user.role === 'Administrador' ? "bg-red-50 text-red-600 border-red-100" : 
-                      user.role === 'Docente' ? "bg-blue-50 text-blue-600 border-blue-100" :
-                      user.role === 'Jefe de Carrera' ? "bg-purple-50 text-purple-600 border-purple-100" :
-                      "bg-slate-50 text-slate-600 border-slate-100"
+                    <Badge variant="outline" className={cn(
+                      "font-bold px-3 py-1 rounded-full",
+                      user.role === 'Administrador' ? "bg-red-50 text-red-600 border-red-200" : 
+                      user.role === 'Docente' ? "bg-slate-50 text-slate-700 border-slate-200" :
+                      user.role === 'Jefe de Carrera' ? "bg-accent/5 text-accent border-accent/20" :
+                      "bg-slate-50 text-slate-500 border-slate-100"
                     )}>
                       {user.role}
                     </Badge>
                   </TableCell>
                   <TableCell>
-                    <div className="flex items-center gap-2">
-                      <div className={cn("w-2 h-2 rounded-full", user.status === 'Activo' ? "bg-green-500" : "bg-slate-300")} />
-                      <span className="text-xs font-medium">{user.status}</span>
-                    </div>
+                    <code className="text-[10px] bg-slate-100 p-1 px-2 rounded-md font-mono text-muted-foreground">
+                      {user.id.substring(0, 12)}...
+                    </code>
                   </TableCell>
                   <TableCell className="text-right pr-6">
                     <DropdownMenu>
@@ -254,17 +301,17 @@ export default function UsuariosPage() {
                           <MoreVertical className="h-4 w-4" />
                         </Button>
                       </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end" className="rounded-xl p-1">
-                        <DropdownMenuItem className="rounded-lg gap-2 cursor-pointer">
+                      <DropdownMenuContent align="end" className="rounded-xl p-1 border-border/40">
+                        <DropdownMenuItem className="rounded-lg gap-2 cursor-pointer font-medium">
                           <Edit2 className="w-4 h-4" />
-                          <span>Editar</span>
+                          <span>Editar Perfil</span>
                         </DropdownMenuItem>
                         <DropdownMenuItem 
-                          className="rounded-lg gap-2 cursor-pointer text-destructive focus:text-destructive focus:bg-destructive/10"
+                          className="rounded-lg gap-2 cursor-pointer text-destructive focus:text-destructive focus:bg-destructive/10 font-medium"
                           onClick={() => handleDeleteUser(user.id)}
                         >
                           <Trash2 className="w-4 h-4" />
-                          <span>Eliminar</span>
+                          <span>Eliminar Acceso</span>
                         </DropdownMenuItem>
                       </DropdownMenuContent>
                     </DropdownMenu>
@@ -274,7 +321,7 @@ export default function UsuariosPage() {
             ) : (
               <TableRow>
                 <TableCell colSpan={4} className="h-32 text-center text-muted-foreground">
-                  No se encontraron usuarios que coincidan con la búsqueda.
+                  No hay usuarios registrados en esta categoría.
                 </TableCell>
               </TableRow>
             )}
