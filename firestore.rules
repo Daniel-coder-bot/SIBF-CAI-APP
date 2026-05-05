@@ -1,64 +1,33 @@
-/**
- * Firestore Security Rules for UniAttend System
- * 
- * CORE PHILOSOPHY
- * This ruleset implements a dual-layered authorization model: strict User Ownership for personal 
- * data and a Global Admin Role for system-wide management. It is designed to support rapid 
- * prototyping by enforcing who can access data without restricting the specific fields being written.
- */
 
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
     // --- Helper Functions ---
-
-    /** @description Checks if the request is from an authenticated user. */
     function isSignedIn() {
       return request.auth != null;
     }
 
-    /** @description Checks if the authenticated user's UID matches the provided userId. */
     function isOwner(userId) {
       return isSignedIn() && request.auth.uid == userId;
     }
 
-    /** @description Checks if the user has global administrative privileges via the admin_roles collection. */
     function isAdmin() {
       return isSignedIn() && exists(/databases/$(database)/documents/admin_roles/$(request.auth.uid));
     }
 
     // --- Collection Rules ---
 
-    /** 
-     * @description Security rules for the administrative roles signaling collection.
-     */
     match /admin_roles/{adminUid} {
       allow get: if isSignedIn();
-      allow list: if isAdmin();
-      allow create, update, delete: if isAdmin();
+      allow list, create, update, delete: if isAdmin();
     }
 
-    /** 
-     * @description Security rules for user profile management.
-     */
     match /users/{userId} {
-      
-      // READS
-      // Durante el prototipado, permitimos 'list' a cualquier usuario autenticado 
-      // para evitar errores de permisos antes de configurar los roles de admin en DB.
-      allow get: if isOwner(userId) || isSignedIn();
-      allow list: if isSignedIn();
-
-      // WRITES
-      // Permitimos crear perfiles si el usuario está autenticado (para registro inicial).
-      allow create: if isSignedIn();
-      
-      // Actualización: El dueño o un admin.
-      allow update: if isOwner(userId) || isAdmin() || isSignedIn();
-      
-      // Eliminación: En este punto del prototipo permitimos a usuarios autenticados gestionar la lista.
-      allow delete: if isSignedIn();
+      // Durante el prototipado, permitimos lectura pública para evitar bloqueos de UI
+      // pero mantenemos la escritura protegida por auth
+      allow read: if true; 
+      allow create, update, delete: if isSignedIn();
     }
 
   }

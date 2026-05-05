@@ -1,3 +1,4 @@
+
 "use client";
 
 import React, { useState } from 'react';
@@ -55,7 +56,8 @@ import {
   useCollection, 
   useMemoFirebase,
   addDocumentNonBlocking,
-  deleteDocumentNonBlocking
+  deleteDocumentNonBlocking,
+  useUser
 } from '@/firebase';
 import { collection, doc, serverTimestamp } from 'firebase/firestore';
 
@@ -74,6 +76,7 @@ interface UserEntity {
 export default function UsuariosPage() {
   const db = useFirestore();
   const { toast } = useToast();
+  const { user } = useUser();
   
   // States
   const [searchTerm, setSearchTerm] = useState('');
@@ -85,16 +88,14 @@ export default function UsuariosPage() {
     role: 'Alumno' as UserRole
   });
 
-  // Firestore Real-time Collection
-  const usersRef = useMemoFirebase(() => collection(db, 'users'), [db]);
+  // Firestore Real-time Collection - Solo se activa si hay un usuario autenticado
+  const usersRef = useMemoFirebase(() => user ? collection(db, 'users') : null, [db, user]);
   const { data: users, isLoading } = useCollection<UserEntity>(usersRef);
 
   const handleAddUser = (e: React.FormEvent) => {
     e.preventDefault();
+    if (!usersRef) return;
     
-    // En un sistema real, el ID vendría de Firebase Auth, 
-    // pero para la gestión de perfiles en Firestore usamos addDoc o un ID manual.
-    // Aquí usamos addDocumentNonBlocking que generará un ID automático.
     const userData = {
       ...newUser,
       createdAt: serverTimestamp(),
@@ -123,9 +124,9 @@ export default function UsuariosPage() {
     });
   };
 
-  const filteredUsers = (users || []).filter(user => 
-    `${user.firstName} ${user.lastName}`.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    user.email.toLowerCase().includes(searchTerm.toLowerCase())
+  const filteredUsers = (users || []).filter(u => 
+    `${u.firstName} ${u.lastName}`.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    u.email.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
   return (
@@ -265,33 +266,33 @@ export default function UsuariosPage() {
                 </TableCell>
               </TableRow>
             ) : filteredUsers.length > 0 ? (
-              filteredUsers.map((user) => (
-                <TableRow key={user.id} className="group border-b border-border/40 last:border-0 hover:bg-slate-50/40 transition-colors">
+              filteredUsers.map((u) => (
+                <TableRow key={u.id} className="group border-b border-border/40 last:border-0 hover:bg-slate-50/40 transition-colors">
                   <TableCell className="py-4 px-6">
                     <div className="flex items-center gap-3">
                       <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center text-primary font-bold">
                         <UserIcon className="w-5 h-5" />
                       </div>
                       <div>
-                        <div className="font-semibold text-sm">{user.firstName} {user.lastName}</div>
-                        <div className="text-xs text-muted-foreground">{user.email}</div>
+                        <div className="font-semibold text-sm">{u.firstName} {u.lastName}</div>
+                        <div className="text-xs text-muted-foreground">{u.email}</div>
                       </div>
                     </div>
                   </TableCell>
                   <TableCell>
                     <Badge variant="outline" className={cn(
                       "font-bold px-3 py-1 rounded-full",
-                      user.role === 'Administrador' ? "bg-red-50 text-red-600 border-red-200" : 
-                      user.role === 'Docente' ? "bg-slate-50 text-slate-700 border-slate-200" :
-                      user.role === 'Jefe de Carrera' ? "bg-accent/5 text-accent border-accent/20" :
+                      u.role === 'Administrador' ? "bg-red-50 text-red-600 border-red-200" : 
+                      u.role === 'Docente' ? "bg-slate-50 text-slate-700 border-slate-200" :
+                      u.role === 'Jefe de Carrera' ? "bg-slate-50 text-slate-700 border-slate-200" :
                       "bg-slate-50 text-slate-500 border-slate-100"
                     )}>
-                      {user.role}
+                      {u.role}
                     </Badge>
                   </TableCell>
                   <TableCell>
                     <code className="text-[10px] bg-slate-100 p-1 px-2 rounded-md font-mono text-muted-foreground">
-                      {user.id.substring(0, 12)}...
+                      {u.id.substring(0, 12)}...
                     </code>
                   </TableCell>
                   <TableCell className="text-right pr-6">
@@ -308,7 +309,7 @@ export default function UsuariosPage() {
                         </DropdownMenuItem>
                         <DropdownMenuItem 
                           className="rounded-lg gap-2 cursor-pointer text-destructive focus:text-destructive focus:bg-destructive/10 font-medium"
-                          onClick={() => handleDeleteUser(user.id)}
+                          onClick={() => handleDeleteUser(u.id)}
                         >
                           <Trash2 className="w-4 h-4" />
                           <span>Eliminar Acceso</span>
