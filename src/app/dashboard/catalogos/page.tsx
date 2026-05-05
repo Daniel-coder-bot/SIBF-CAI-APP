@@ -25,7 +25,8 @@ import {
   Filter,
   XCircle,
   Wrench,
-  AlertTriangle
+  AlertTriangle,
+  MoreVertical
 } from 'lucide-react';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -54,6 +55,12 @@ import {
   TableHeader, 
   TableRow 
 } from "@/components/ui/table";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { 
   useFirestore, 
   useCollection, 
@@ -321,9 +328,22 @@ export default function CatalogosPage() {
                     <TableCell className="px-6 font-mono text-[10px] text-muted-foreground">{s.id}</TableCell>
                     <TableCell className="font-medium">{s.nombre}</TableCell>
                     <TableCell className="text-muted-foreground">{s.ubicacion}</TableCell>
-                    <TableCell className="text-right pr-6 flex justify-end gap-1">
-                      <Button variant="ghost" size="icon" onClick={() => { setEditingSede(s); setOpenDialog('editSede'); }} className="text-slate-400 hover:text-primary"><Edit2 className="w-4 h-4" /></Button>
-                      <Button variant="ghost" size="icon" onClick={() => handleDelete('sedes', s.id)} className="text-primary"><Trash2 className="w-4 h-4" /></Button>
+                    <TableCell className="text-right pr-6">
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button variant="ghost" size="icon" className="h-8 w-8 rounded-full">
+                            <MoreVertical className="w-4 h-4" />
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end" className="rounded-xl">
+                          <DropdownMenuItem onClick={() => { setEditingSede(s); setOpenDialog('editSede'); }} className="gap-2 cursor-pointer font-bold">
+                            <Edit2 className="w-4 h-4" /> Editar
+                          </DropdownMenuItem>
+                          <DropdownMenuItem onClick={() => handleDelete('sedes', s.id)} className="gap-2 cursor-pointer text-primary font-bold">
+                            <Trash2 className="w-4 h-4" /> Eliminar
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
                     </TableCell>
                   </TableRow>
                 ))}
@@ -392,9 +412,22 @@ export default function CatalogosPage() {
                       </div>
                     </TableCell>
                     <TableCell>{sedes?.find(s => s.id === c.sedeId)?.nombre || 'Sede N/A'}</TableCell>
-                    <TableCell className="text-right pr-6 flex justify-end gap-1">
-                      <Button variant="ghost" size="icon" onClick={() => { setEditingCarrera(c); setOpenDialog('editCarrera'); }} className="text-slate-400 hover:text-primary"><Edit2 className="w-4 h-4" /></Button>
-                      <Button variant="ghost" size="icon" onClick={() => handleDelete('carreras', c.id)} className="text-primary"><Trash2 className="w-4 h-4" /></Button>
+                    <TableCell className="text-right pr-6">
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button variant="ghost" size="icon" className="h-8 w-8 rounded-full">
+                            <MoreVertical className="w-4 h-4" />
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end" className="rounded-xl">
+                          <DropdownMenuItem onClick={() => { setEditingCarrera(c); setOpenDialog('editCarrera'); }} className="gap-2 cursor-pointer font-bold">
+                            <Edit2 className="w-4 h-4" /> Editar
+                          </DropdownMenuItem>
+                          <DropdownMenuItem onClick={() => handleDelete('carreras', c.id)} className="gap-2 cursor-pointer text-primary font-bold">
+                            <Trash2 className="w-4 h-4" /> Eliminar
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
                     </TableCell>
                   </TableRow>
                 ))}
@@ -540,9 +573,22 @@ export default function CatalogosPage() {
                         <TableCell className="font-medium">{m.nombre}</TableCell>
                         <TableCell className={cn("text-xs", !carrera ? "text-red-500 font-bold italic" : "text-muted-foreground")}>{carrera?.nombre || '⚠️ Sin Asignar'}</TableCell>
                         <TableCell className="font-bold">{m.cuatrimestre}</TableCell>
-                        <TableCell className="text-right pr-6 flex justify-end gap-1">
-                          <Button variant="ghost" size="icon" onClick={() => { setEditingMateria(m); setOpenDialog('editMateria'); }} className="text-slate-400 hover:text-primary hover:bg-primary/5 rounded-full"><Edit2 className="w-4 h-4" /></Button>
-                          <Button variant="ghost" size="icon" onClick={() => handleDelete('materias', m.id)} className="text-primary hover:bg-primary/5 rounded-full"><Trash2 className="w-4 h-4" /></Button>
+                        <TableCell className="text-right pr-6">
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <Button variant="ghost" size="icon" className="h-8 w-8 rounded-full">
+                                <MoreVertical className="w-4 h-4" />
+                              </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end" className="rounded-xl">
+                              <DropdownMenuItem onClick={() => { setEditingMateria(m); setOpenDialog('editMateria'); }} className="gap-2 cursor-pointer font-bold">
+                                <Edit2 className="w-4 h-4" /> Editar
+                              </DropdownMenuItem>
+                              <DropdownMenuItem onClick={() => handleDelete('materias', m.id)} className="gap-2 cursor-pointer text-primary font-bold">
+                                <Trash2 className="w-4 h-4" /> Eliminar
+                              </DropdownMenuItem>
+                            </DropdownMenuContent>
+                          </DropdownMenu>
                         </TableCell>
                       </TableRow>
                     );
@@ -627,9 +673,22 @@ export default function CatalogosPage() {
                       <TableCell className="px-6"><span className="bg-slate-900 text-white px-3 py-1 rounded-lg font-black text-xs">{g.nombre}</span></TableCell>
                       <TableCell className="font-medium">{materia?.nombre}</TableCell>
                       <TableCell className="text-xs text-muted-foreground">{carrera?.nombre}</TableCell>
-                      <TableCell className="text-right pr-6 flex justify-end gap-1">
-                        <Button variant="ghost" size="icon" onClick={() => { setEditingGrupo({...g, carreraId: carrera?.id}); setOpenDialog('editGrupo'); }} className="text-slate-400 hover:text-primary"><Edit2 className="w-4 h-4" /></Button>
-                        <Button variant="ghost" size="icon" onClick={() => handleDelete('grupos', g.id)} className="text-primary"><Trash2 className="w-4 h-4" /></Button>
+                      <TableCell className="text-right pr-6">
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button variant="ghost" size="icon" className="h-8 w-8 rounded-full">
+                              <MoreVertical className="w-4 h-4" />
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end" className="rounded-xl">
+                            <DropdownMenuItem onClick={() => { setEditingGrupo({...g, carreraId: carrera?.id}); setOpenDialog('editGrupo'); }} className="gap-2 cursor-pointer font-bold">
+                              <Edit2 className="w-4 h-4" /> Editar
+                            </DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => handleDelete('grupos', g.id)} className="gap-2 cursor-pointer text-primary font-bold">
+                              <Trash2 className="w-4 h-4" /> Eliminar
+                            </DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
                       </TableCell>
                     </TableRow>
                   );
@@ -721,9 +780,22 @@ export default function CatalogosPage() {
                       <TableCell className="text-xs font-medium">{h.horaInicio} - {h.horaFin}</TableCell>
                       <TableCell><div className="flex flex-col"><span className="font-bold text-sm">{materia?.nombre}</span><span className="text-[10px] text-muted-foreground uppercase">{grupo?.nombre}</span></div></TableCell>
                       <TableCell className="font-bold text-primary">{h.aula}</TableCell>
-                      <TableCell className="text-right pr-6 flex justify-end gap-1">
-                        <Button variant="ghost" size="icon" onClick={() => { setEditingHorario(h); setOpenDialog('editHorario'); }} className="text-slate-400 hover:text-primary"><Edit2 className="w-4 h-4" /></Button>
-                        <Button variant="ghost" size="icon" onClick={() => handleDelete('horarios', h.id)} className="text-primary"><Trash2 className="w-4 h-4" /></Button>
+                      <TableCell className="text-right pr-6">
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button variant="ghost" size="icon" className="h-8 w-8 rounded-full">
+                              <MoreVertical className="w-4 h-4" />
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end" className="rounded-xl">
+                            <DropdownMenuItem onClick={() => { setEditingHorario(h); setOpenDialog('editHorario'); }} className="gap-2 cursor-pointer font-bold">
+                              <Edit2 className="w-4 h-4" /> Editar
+                            </DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => handleDelete('horarios', h.id)} className="gap-2 cursor-pointer text-primary font-bold">
+                              <Trash2 className="w-4 h-4" /> Eliminar
+                            </DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
                       </TableCell>
                     </TableRow>
                   );
