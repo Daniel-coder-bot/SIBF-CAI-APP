@@ -5,97 +5,83 @@
       "$schema": "http://json-schema.org/draft-07/schema#",
       "title": "User",
       "type": "object",
-      "description": "Represents a user account within the UniAttend system, including their access role and personal information. This entity is central to managing system access for administrators, department heads, teachers, and students.",
+      "description": "Represents a user account within the UniAttend system.",
       "properties": {
-        "id": {
-          "type": "string",
-          "description": "Unique identifier for the User entity."
-        },
-        "email": {
-          "type": "string",
-          "description": "The user's email address, used for authentication (via Firebase Auth) and as a unique identifier for communication. It must be a valid email format.",
-          "format": "email"
-        },
-        "password": {
-          "type": "string",
-          "description": "Access password for the system (stored for prototype validation)."
-        },
-        "firstName": {
-          "type": "string",
-          "description": "The first name of the user."
-        },
-        "lastName": {
-          "type": "string",
-          "description": "The last name of the user."
-        },
-        "role": {
-          "type": "string",
-          "description": "The assigned role for the user within the system. This determines their permissions and access levels. Possible values include: Administrador, Jefe de Carrera, Docente, Alumno."
-        },
-        "createdAt": {
-          "type": "string",
-          "description": "Timestamp indicating when the user account was created in UTC format.",
-          "format": "date-time"
-        },
-        "updatedAt": {
-          "type": "string",
-          "description": "Timestamp indicating when the user account was last updated in UTC format.",
-          "format": "date-time"
-        }
+        "id": { "type": "string" },
+        "email": { "type": "string", "format": "email" },
+        "firstName": { "type": "string" },
+        "lastName": { "type": "string" },
+        "role": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
       },
-      "required": [
-        "id",
-        "email",
-        "password",
-        "firstName",
-        "lastName",
-        "role",
-        "createdAt",
-        "updatedAt"
-      ]
+      "required": ["id", "email", "firstName", "lastName", "role"]
+    },
+    "Sede": {
+      "title": "Sede",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "nombre": { "type": "string" },
+        "ubicacion": { "type": "string" }
+      },
+      "required": ["nombre"]
+    },
+    "Carrera": {
+      "title": "Carrera",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "nombre": { "type": "string" },
+        "sedeId": { "type": "string" }
+      },
+      "required": ["nombre", "sedeId"]
+    },
+    "Materia": {
+      "title": "Materia",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "nombre": { "type": "string" },
+        "codigo": { "type": "string" },
+        "carreraId": { "type": "string" }
+      },
+      "required": ["nombre", "carreraId"]
+    },
+    "Grupo": {
+      "title": "Grupo",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "nombre": { "type": "string" },
+        "materiaId": { "type": "string" },
+        "docenteId": { "type": "string" }
+      },
+      "required": ["nombre", "materiaId"]
+    },
+    "Horario": {
+      "title": "Horario",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "grupoId": { "type": "string" },
+        "dia": { "type": "string", "enum": ["Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado"] },
+        "horaInicio": { "type": "string" },
+        "horaFin": { "type": "string" },
+        "aula": { "type": "string" }
+      },
+      "required": ["grupoId", "dia", "horaInicio", "horaFin"]
     }
   },
   "auth": {
-    "providers": [
-      "password",
-      "anonymous"
-    ]
+    "providers": ["password", "anonymous"]
   },
   "firestore": {
-    "structure": [
-      {
-        "path": "/users/{userId}",
-        "definition": {
-          "entityName": "User",
-          "schema": {
-            "$ref": "#/backend/entities/User"
-          },
-          "description": "Stores individual user profiles. The `userId` matches the Firebase Auth UID. Each document includes the user's assigned `role` (Administrador, Jefe de Carrera, Docente, Alumno), which is crucial for determining access levels. This collection is central to User Management CRUD operations by administrators. Access for individual users is path-based (owner can read their own document). Access for administrators is granted via the `/admin_roles` collection, ensuring authorization independence.",
-          "params": [
-            {
-              "name": "userId",
-              "description": "The unique Firebase Authentication User ID of the user."
-            }
-          ]
-        }
-      },
-      {
-        "path": "/admin_roles/{adminUid}",
-        "definition": {
-          "entityName": "admin_role",
-          "schema": {
-            "$ref": "#/backend/entities/User"
-          },
-          "description": "A dedicated collection for identifying administrators using the 'Existence over Content' DBAC model. A document at `/admin_roles/{adminUid}` signifies that the `adminUid` (which matches a Firebase Auth UID) has administrative privileges. This design provides Authorization Independence by avoiding `get()` calls in security rules; instead, a simple `exists()` check determines admin status. This collection simplifies security rules for administrative access across the application.",
-          "params": [
-            {
-              "name": "adminUid",
-              "description": "The unique Firebase Authentication User ID of an administrator."
-            }
-          ]
-        }
-      }
-    ],
-    "reasoning": "The Firestore structure is designed to be secure, scalable, and debuggable, strictly adhering to the core design principles and strategy mandates. For the `User` entity, a primary collection `/users/{userId}` will store individual user profiles, where `userId` is the Firebase Authentication UID. This approach naturally supports **Authorization Independence** for individual users, as their access to their own data (`request.auth.uid == userId`) does not require querying parent documents. The `role` field within each user document will define their system role (Administrador, Jefe de Carrera, Docente, Alumno).\n\nTo manage administrative privileges efficiently and securely, a separate collection, `/admin_roles/{adminUid}`, is introduced. This collection implements the **Global Roles (DBAC) via Existence over Content** strategy. The mere existence of a document with an `adminUid` matching `request.auth.uid` grants administrative access. This method avoids `get()` calls on potentially large or nested documents within security rules, ensuring **Authorization Independence** and improving rule performance and debuggability. For instance, an administrator's access to all user data will be governed by a simple `exists(/databases/$(database)/documents/admin_roles/$(request.auth.uid))` check.\n\nThis segregation also supports **QAPs (Rules are not Filters)** for `list` operations. Only users explicitly identified as administrators via the `/admin_roles` collection will be able to perform `list` operations on the `/users` collection, preventing unauthorized mass data retrieval. Regular users will only be able to `get` their own specific user document. This structure maintains **Structural Segregation** by clearly separating user profile data from authorization metadata, ensuring that security requirements are homogenous within each collection and simplifying security rules significantly."
+    "/users/{userId}": { "schema": { "$ref": "#/backend/entities/User" }, "description": "User profiles" },
+    "/sedes/{sedeId}": { "schema": { "$ref": "#/backend/entities/Sede" }, "description": "Campus locations" },
+    "/carreras/{carreraId}": { "schema": { "$ref": "#/backend/entities/Carrera" }, "description": "Academic programs" },
+    "/materias/{materiaId}": { "schema": { "$ref": "#/backend/entities/Materia" }, "description": "Subjects" },
+    "/grupos/{grupoId}": { "schema": { "$ref": "#/backend/entities/Grupo" }, "description": "Class groups" },
+    "/horarios/{horarioId}": { "schema": { "$ref": "#/backend/entities/Horario" }, "description": "Schedules" }
   }
 }

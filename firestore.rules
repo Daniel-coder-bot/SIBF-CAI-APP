@@ -2,33 +2,19 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
-
-    // --- Helper Functions ---
     function isSignedIn() {
       return request.auth != null;
     }
 
-    function isOwner(userId) {
-      return isSignedIn() && request.auth.uid == userId;
-    }
-
-    function isAdmin() {
-      return isSignedIn() && exists(/databases/$(database)/documents/admin_roles/$(request.auth.uid));
-    }
-
-    // --- Collection Rules ---
-
-    match /admin_roles/{adminUid} {
-      allow get: if isSignedIn();
-      allow list, create, update, delete: if isAdmin();
-    }
-
     match /users/{userId} {
-      // Durante el prototipado, permitimos lectura pública para evitar bloqueos de UI
-      // pero mantenemos la escritura protegida por auth
-      allow read: if true; 
-      allow create, update, delete: if isSignedIn();
+      allow read: if true;
+      allow write: if isSignedIn();
     }
 
+    match /sedes/{id} { allow read, write: if isSignedIn(); }
+    match /carreras/{id} { allow read, write: if isSignedIn(); }
+    match /materias/{id} { allow read, write: if isSignedIn(); }
+    match /grupos/{id} { allow read, write: if isSignedIn(); }
+    match /horarios/{id} { allow read, write: if isSignedIn(); }
   }
 }
