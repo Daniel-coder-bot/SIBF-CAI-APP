@@ -27,7 +27,10 @@ import {
   Wrench,
   AlertTriangle,
   MoreVertical,
-  AlertCircle
+  AlertCircle,
+  Briefcase,
+  GraduationCap,
+  Key
 } from 'lucide-react';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -97,12 +100,18 @@ export default function CatalogosPage() {
   const materiasRef = useMemoFirebase(() => collection(db, 'materias'), [db]);
   const gruposRef = useMemoFirebase(() => collection(db, 'grupos'), [db]);
   const horariosRef = useMemoFirebase(() => collection(db, 'horarios'), [db]);
+  const usersRef = useMemoFirebase(() => collection(db, 'users'), [db]);
 
   const { data: sedes } = useCollection(sedesRef);
   const { data: carreras } = useCollection(carrerasRef);
   const { data: materias } = useCollection(materiasRef);
   const { data: grupos } = useCollection(gruposRef);
   const { data: horarios } = useCollection(horariosRef);
+  const { data: allUsers } = useCollection(usersRef);
+
+  // Filtrado de usuarios por rol
+  const docentes = useMemo(() => allUsers?.filter(u => u.role === 'Docente') || [], [allUsers]);
+  const alumnos = useMemo(() => allUsers?.filter(u => u.role === 'Alumno') || [], [allUsers]);
 
   // Estados para diálogos
   const [openDialog, setOpenDialog] = useState<string | null>(null);
@@ -114,6 +123,7 @@ export default function CatalogosPage() {
   const [newMateria, setNewMateria] = useState({ nombre: '', codigo: '', carreraId: '', cuatrimestre: '' });
   const [newGrupo, setNewGrupo] = useState({ nombre: '', carreraId: '', cuatrimestre: '' });
   const [newHorario, setNewHorario] = useState({ grupoId: '', dia: '', horaInicio: '', horaFin: '', aula: '' });
+  const [newUser, setNewUser] = useState({ firstName: '', lastName: '', email: '', password: '', role: 'Alumno', carreraId: '', sedeId: '' });
 
   // Estados para edición
   const [editingSede, setEditingSede] = useState<any>(null);
@@ -121,6 +131,7 @@ export default function CatalogosPage() {
   const [editingMateria, setEditingMateria] = useState<any>(null);
   const [editingGrupo, setEditingGrupo] = useState<any>(null);
   const [editingHorario, setEditingHorario] = useState<any>(null);
+  const [editingUser, setEditingUser] = useState<any>(null);
 
   // Estados para selección masiva de materias
   const [selectedMateriaIds, setSelectedMateriaIds] = useState<string[]>([]);
@@ -285,30 +296,36 @@ export default function CatalogosPage() {
   };
 
   return (
-    <div className="space-y-6 animate-in fade-in duration-500">
+    <div className="space-y-6 animate-in fade-in duration-500 pb-20">
       <div className="flex justify-between items-end pb-4 border-b">
         <div>
           <h1 className="text-3xl font-black tracking-tighter text-foreground uppercase">Catálogos Institucionales</h1>
-          <p className="text-muted-foreground font-medium text-sm">Administra la estructura académica de la universidad.</p>
+          <p className="text-muted-foreground font-medium text-sm">Administra la estructura académica y personal de la universidad.</p>
         </div>
       </div>
 
       <Tabs defaultValue="sedes" className="w-full">
-        <TabsList className="bg-slate-100/80 p-1 rounded-2xl h-14 w-full justify-start gap-2 border overflow-x-auto">
-          <TabsTrigger value="sedes" className="rounded-xl data-[state=active]:bg-white data-[state=active]:text-primary px-6 font-bold flex gap-2">
+        <TabsList className="bg-slate-100/80 p-1 rounded-2xl h-14 w-full justify-start gap-1 border overflow-x-auto overflow-y-hidden scrollbar-hide">
+          <TabsTrigger value="sedes" className="rounded-xl data-[state=active]:bg-white data-[state=active]:text-primary px-4 font-bold flex gap-2">
             <Building2 className="w-4 h-4" /> Sedes
           </TabsTrigger>
-          <TabsTrigger value="carreras" className="rounded-xl data-[state=active]:bg-white data-[state=active]:text-primary px-6 font-bold flex gap-2">
+          <TabsTrigger value="carreras" className="rounded-xl data-[state=active]:bg-white data-[state=active]:text-primary px-4 font-bold flex gap-2">
             <BookOpen className="w-4 h-4" /> Carreras
           </TabsTrigger>
-          <TabsTrigger value="materias" className="rounded-xl data-[state=active]:bg-white data-[state=active]:text-primary px-6 font-bold flex gap-2">
+          <TabsTrigger value="materias" className="rounded-xl data-[state=active]:bg-white data-[state=active]:text-primary px-4 font-bold flex gap-2">
             <FolderTree className="w-4 h-4" /> Materias
           </TabsTrigger>
-          <TabsTrigger value="grupos" className="rounded-xl data-[state=active]:bg-white data-[state=active]:text-primary px-6 font-bold flex gap-2">
+          <TabsTrigger value="grupos" className="rounded-xl data-[state=active]:bg-white data-[state=active]:text-primary px-4 font-bold flex gap-2">
             <Users className="w-4 h-4" /> Grupos
           </TabsTrigger>
-          <TabsTrigger value="horarios" className="rounded-xl data-[state=active]:bg-white data-[state=active]:text-primary px-6 font-bold flex gap-2">
+          <TabsTrigger value="horarios" className="rounded-xl data-[state=active]:bg-white data-[state=active]:text-primary px-4 font-bold flex gap-2">
             <Clock className="w-4 h-4" /> Horarios
+          </TabsTrigger>
+          <TabsTrigger value="docentes" className="rounded-xl data-[state=active]:bg-white data-[state=active]:text-primary px-4 font-bold flex gap-2">
+            <Briefcase className="w-4 h-4" /> Docentes
+          </TabsTrigger>
+          <TabsTrigger value="alumnos" className="rounded-xl data-[state=active]:bg-white data-[state=active]:text-primary px-4 font-bold flex gap-2">
+            <GraduationCap className="w-4 h-4" /> Alumnos
           </TabsTrigger>
         </TabsList>
 
@@ -637,38 +654,122 @@ export default function CatalogosPage() {
               </TableBody>
             </Table>
           </div>
-          <Dialog open={openDialog === 'editGrupo'} onOpenChange={(o) => setOpenDialog(o ? 'editGrupo' : null)}>
-            <DialogContent className="rounded-3xl">
-              <DialogHeader><DialogTitle>Editar Grupo</DialogTitle></DialogHeader>
-              {editingGrupo && (
+        </TabsContent>
+
+        {/* --- DOCENTES --- */}
+        <TabsContent value="docentes" className="mt-6 space-y-4">
+          <div className="flex justify-between items-center">
+            <h2 className="text-xl font-bold">Docentes</h2>
+            <Dialog open={openDialog === 'docente'} onOpenChange={(o) => setOpenDialog(o ? 'docente' : null)}>
+              <DialogTrigger asChild>
+                <Button className="bg-primary rounded-xl font-bold"><Plus className="w-4 h-4 mr-2" /> Nuevo Docente</Button>
+              </DialogTrigger>
+              <DialogContent className="rounded-3xl">
+                <DialogHeader><DialogTitle>Alta de Docente</DialogTitle></DialogHeader>
                 <div className="space-y-4 py-4">
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2"><Label>Nombre(s)</Label><Input value={newUser.firstName} onChange={e => setNewUser({...newUser, firstName: e.target.value})} /></div>
+                    <div className="space-y-2"><Label>Apellido(s)</Label><Input value={newUser.lastName} onChange={e => setNewUser({...newUser, lastName: e.target.value})} /></div>
+                  </div>
+                  <div className="space-y-2"><Label>Correo Electrónico</Label><Input type="email" value={newUser.email} onChange={e => setNewUser({...newUser, email: e.target.value})} /></div>
+                  <div className="space-y-2"><Label>Contraseña</Label><div className="relative"><Key className="absolute left-3 top-3 w-4 h-4 text-muted-foreground" /><Input type="password" value={newUser.password} onChange={e => setNewUser({...newUser, password: e.target.value})} className="pl-10" /></div></div>
+                </div>
+                <DialogFooter><Button onClick={() => handleAdd(usersRef, {...newUser, role: 'Docente'}, setNewUser, {firstName: '', lastName: '', email: '', password: '', role: 'Alumno', carreraId: '', sedeId: ''}, "Docente")} className="w-full bg-primary font-bold">Dar de Alta</Button></DialogFooter>
+              </DialogContent>
+            </Dialog>
+          </div>
+          <div className="bg-white border rounded-3xl overflow-hidden shadow-sm">
+            <Table>
+              <TableHeader className="bg-slate-50">
+                <TableRow>
+                  <TableHead className="px-6 font-bold py-4">Nombre Completo</TableHead>
+                  <TableHead className="font-bold">Email</TableHead>
+                  <TableHead className="font-bold text-right pr-6">Acciones</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {docentes?.map(d => (
+                  <TableRow key={d.id}>
+                    <TableCell className="px-6 font-medium">{d.firstName} {d.lastName}</TableCell>
+                    <TableCell className="text-muted-foreground">{d.email}</TableCell>
+                    <TableCell className="text-right pr-6">
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild><Button variant="ghost" size="icon" className="h-8 w-8"><MoreVertical className="w-4 h-4" /></Button></DropdownMenuTrigger>
+                        <DropdownMenuContent align="end" className="rounded-xl">
+                          <DropdownMenuItem onClick={() => { setEditingUser(d); setOpenDialog('editUser'); }} className="gap-2 font-bold"><Edit2 className="w-4 h-4" /> Editar</DropdownMenuItem>
+                          <DropdownMenuItem onClick={() => handleDelete('users', d.id)} className="gap-2 text-primary font-bold"><Trash2 className="w-4 h-4" /> Eliminar</DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </div>
+        </TabsContent>
+
+        {/* --- ALUMNOS --- */}
+        <TabsContent value="alumnos" className="mt-6 space-y-4">
+          <div className="flex justify-between items-center">
+            <h2 className="text-xl font-bold">Alumnos</h2>
+            <Dialog open={openDialog === 'alumno'} onOpenChange={(o) => setOpenDialog(o ? 'alumno' : null)}>
+              <DialogTrigger asChild>
+                <Button className="bg-primary rounded-xl font-bold"><Plus className="w-4 h-4 mr-2" /> Nuevo Alumno</Button>
+              </DialogTrigger>
+              <DialogContent className="rounded-3xl">
+                <DialogHeader><DialogTitle>Inscripción de Alumno</DialogTitle></DialogHeader>
+                <div className="space-y-4 py-4">
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2"><Label>Nombre(s)</Label><Input value={newUser.firstName} onChange={e => setNewUser({...newUser, firstName: e.target.value})} /></div>
+                    <div className="space-y-2"><Label>Apellido(s)</Label><Input value={newUser.lastName} onChange={e => setNewUser({...newUser, lastName: e.target.value})} /></div>
+                  </div>
+                  <div className="space-y-2"><Label>Correo Institucional</Label><Input type="email" value={newUser.email} onChange={e => setNewUser({...newUser, email: e.target.value})} /></div>
                   <div className="space-y-2">
                     <Label>Carrera</Label>
-                    <Select value={editingGrupo.carreraId} onValueChange={v => setEditingGrupo({...editingGrupo, carreraId: v})}>
-                      <SelectTrigger className="rounded-xl"><SelectValue placeholder="Elegir Carrera" /></SelectTrigger>
+                    <Select value={newUser.carreraId} onValueChange={v => setNewUser({...newUser, carreraId: v})}>
+                      <SelectTrigger className="rounded-xl"><SelectValue placeholder="Seleccionar Carrera" /></SelectTrigger>
                       <SelectContent>{carreras?.map(c => <SelectItem key={c.id} value={c.id}>{c.nombre}</SelectItem>)}</SelectContent>
                     </Select>
                   </div>
-                  <div className="space-y-2">
-                    <Label>Cuatrimestre</Label>
-                    <Select value={editingGrupo.cuatrimestre} onValueChange={v => setEditingGrupo({...editingGrupo, cuatrimestre: v})}>
-                      <SelectTrigger className="rounded-xl"><SelectValue placeholder="Elegir Cuatrimestre" /></SelectTrigger>
-                      <SelectContent>{[1,2,3,4,5,6,7,8,9,10,11,12].map(n => <SelectItem key={n} value={String(n)}>{n}° Cuatrimestre</SelectItem>)}</SelectContent>
-                    </Select>
-                  </div>
-                  <div className="space-y-2"><Label>Nombre</Label><Input value={editingGrupo.nombre} onChange={e => setEditingGrupo({...editingGrupo, nombre: e.target.value})} /></div>
+                  <div className="space-y-2"><Label>Contraseña</Label><div className="relative"><Key className="absolute left-3 top-3 w-4 h-4 text-muted-foreground" /><Input type="password" value={newUser.password} onChange={e => setNewUser({...newUser, password: e.target.value})} className="pl-10" /></div></div>
                 </div>
-              )}
-              <DialogFooter>
-                <Button 
-                  onClick={() => handleUpdate('grupos', editingGrupo.id, {nombre: editingGrupo.nombre, carreraId: editingGrupo.carreraId, cuatrimestre: editingGrupo.cuatrimestre}, "Grupo")} 
-                  className="w-full bg-primary font-bold"
-                >
-                  Actualizar Registro
-                </Button>
-              </DialogFooter>
-            </DialogContent>
-          </Dialog>
+                <DialogFooter><Button onClick={() => handleAdd(usersRef, {...newUser, role: 'Alumno'}, setNewUser, {firstName: '', lastName: '', email: '', password: '', role: 'Alumno', carreraId: '', sedeId: ''}, "Alumno")} className="w-full bg-primary font-bold">Inscribir</Button></DialogFooter>
+              </DialogContent>
+            </Dialog>
+          </div>
+          <div className="bg-white border rounded-3xl overflow-hidden shadow-sm">
+            <Table>
+              <TableHeader className="bg-slate-50">
+                <TableRow>
+                  <TableHead className="px-6 font-bold py-4">Alumno</TableHead>
+                  <TableHead className="font-bold">Carrera</TableHead>
+                  <TableHead className="font-bold">Email</TableHead>
+                  <TableHead className="font-bold text-right pr-6">Acciones</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {alumnos?.map(a => {
+                  const carrera = carreras?.find(c => c.id === a.carreraId);
+                  return (
+                    <TableRow key={a.id}>
+                      <TableCell className="px-6 font-medium">{a.firstName} {a.lastName}</TableCell>
+                      <TableCell><span className="text-xs font-bold text-primary">{carrera?.nombre || 'N/A'}</span></TableCell>
+                      <TableCell className="text-muted-foreground text-xs">{a.email}</TableCell>
+                      <TableCell className="text-right pr-6">
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild><Button variant="ghost" size="icon" className="h-8 w-8"><MoreVertical className="w-4 h-4" /></Button></DropdownMenuTrigger>
+                          <DropdownMenuContent align="end" className="rounded-xl">
+                            <DropdownMenuItem onClick={() => { setEditingUser(a); setOpenDialog('editUser'); }} className="gap-2 font-bold"><Edit2 className="w-4 h-4" /> Editar</DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => handleDelete('users', a.id)} className="gap-2 text-primary font-bold"><Trash2 className="w-4 h-4" /> Eliminar</DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      </TableCell>
+                    </TableRow>
+                  );
+                })}
+              </TableBody>
+            </Table>
+          </div>
         </TabsContent>
 
         {/* --- HORARIOS --- */}
@@ -760,6 +861,32 @@ export default function CatalogosPage() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* DIÁLOGO EDICIÓN USUARIO (DOCENTE/ALUMNO) */}
+      <Dialog open={openDialog === 'editUser'} onOpenChange={(o) => setOpenDialog(o ? 'editUser' : null)}>
+        <DialogContent className="rounded-3xl">
+          <DialogHeader><DialogTitle>Editar Perfil</DialogTitle></DialogHeader>
+          {editingUser && (
+            <div className="space-y-4 py-4">
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2"><Label>Nombre(s)</Label><Input value={editingUser.firstName} onChange={e => setEditingUser({...editingUser, firstName: e.target.value})} /></div>
+                <div className="space-y-2"><Label>Apellido(s)</Label><Input value={editingUser.lastName} onChange={e => setEditingUser({...editingUser, lastName: e.target.value})} /></div>
+              </div>
+              <div className="space-y-2"><Label>Email</Label><Input value={editingUser.email} onChange={e => setEditingUser({...editingUser, email: e.target.value})} /></div>
+              {editingUser.role === 'Alumno' && (
+                <div className="space-y-2">
+                  <Label>Carrera</Label>
+                  <Select value={editingUser.carreraId} onValueChange={v => setEditingUser({...editingUser, carreraId: v})}>
+                    <SelectTrigger className="rounded-xl"><SelectValue placeholder="Seleccionar Carrera" /></SelectTrigger>
+                    <SelectContent>{carreras?.map(c => <SelectItem key={c.id} value={c.id}>{c.nombre}</SelectItem>)}</SelectContent>
+                  </Select>
+                </div>
+              )}
+            </div>
+          )}
+          <DialogFooter><Button onClick={() => handleUpdate('users', editingUser.id, editingUser, "Usuario")} className="w-full bg-primary font-bold">Actualizar</Button></DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
