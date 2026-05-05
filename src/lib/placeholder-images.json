@@ -1,3 +1,16 @@
 {
-  "placeholderImages": []
+  "placeholderImages": [
+    {
+      "id": "university-campus",
+      "description": "A modern university campus building with green areas.",
+      "imageUrl": "https://picsum.photos/seed/unid1/1200/800",
+      "imageHint": "university campus"
+    },
+    {
+      "id": "student-portrait",
+      "description": "A portrait of a smiling student in a university setting.",
+      "imageUrl": "https://picsum.photos/seed/unid2/400/400",
+      "imageHint": "student portrait"
+    }
+  ]
 }

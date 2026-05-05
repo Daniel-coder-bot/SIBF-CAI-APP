@@ -1,3 +1,7 @@
+
+import { redirect } from 'next/navigation';
+
 export default function Home() {
-  return <></>;
+  // Redirigir directamente al login para esta fase
+  redirect('/login');
 }
