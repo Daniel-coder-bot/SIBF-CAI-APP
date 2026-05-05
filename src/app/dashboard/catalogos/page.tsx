@@ -17,8 +17,8 @@ import {
   Plus, 
   Trash2, 
   Upload,
-  Search,
-  MoreVertical
+  Download,
+  FileSpreadsheet
 } from 'lucide-react';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -105,6 +105,17 @@ export default function CatalogosPage() {
     toast({ variant: "destructive", title: "Eliminado correctamente" });
   };
 
+  const handleDownloadTemplate = () => {
+    const data = [
+      { nombre: 'Ejemplo Materia', cuatrimestre: '1', carreraId: 'Pegar_ID_Aqui' }
+    ];
+    const worksheet = XLSX.utils.json_to_sheet(data);
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, worksheet, "Plantilla Materias");
+    XLSX.writeFile(workbook, "Plantilla_Materias_UniAttend.xlsx");
+    toast({ title: "Plantilla descargada", description: "Completa el ID de carrera para una vinculación correcta." });
+  };
+
   const handleImportMateriasExcel = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file || !materiasRef || !carreras) return;
@@ -118,28 +129,37 @@ export default function CatalogosPage() {
         const ws = workbook.Sheets[wsname];
         const data = XLSX.utils.sheet_to_json(ws) as any[];
 
+        let importCount = 0;
         data.forEach((row) => {
           let carreraId = row.carreraId;
+          
+          // Si no hay ID pero hay nombre, intentar buscar la carrera
           if (!carreraId && row.carreraNombre) {
             const matchedCarrera = carreras.find(c => c.nombre.toLowerCase() === String(row.carreraNombre).toLowerCase());
             if (matchedCarrera) carreraId = matchedCarrera.id;
           }
 
-          if (row.nombre && row.codigo && carreraId && row.cuatrimestre) {
+          if (row.nombre && carreraId && row.cuatrimestre) {
+            // Generar código automático si no viene en el excel: MAT-NombrePrefix-Cuatri-Random
+            const namePrefix = String(row.nombre).substring(0, 3).toUpperCase();
+            const randomSuffix = Math.floor(100 + Math.random() * 900);
+            const autoCodigo = row.codigo || `MAT-${namePrefix}-${row.cuatrimestre}-${randomSuffix}`;
+
             addDocumentNonBlocking(materiasRef, {
               nombre: String(row.nombre),
-              codigo: String(row.codigo),
+              codigo: String(autoCodigo),
               carreraId: String(carreraId),
               cuatrimestre: String(row.cuatrimestre),
               createdAt: serverTimestamp()
             });
+            importCount++;
           }
         });
 
-        toast({ title: "Importación completa", description: `${data.length} materias procesadas.` });
+        toast({ title: "Importación completa", description: `${importCount} materias procesadas.` });
         if (materiaFileInputRef.current) materiaFileInputRef.current.value = '';
       } catch (error) {
-        toast({ variant: "destructive", title: "Error Excel" });
+        toast({ variant: "destructive", title: "Error Excel", description: "Verifica el formato del archivo." });
       }
     };
     reader.readAsBinaryString(file);
@@ -150,7 +170,7 @@ export default function CatalogosPage() {
       <div className="flex justify-between items-end pb-4 border-b">
         <div>
           <h1 className="text-3xl font-black tracking-tighter text-foreground uppercase">Catálogos Institucionales</h1>
-          <p className="text-muted-foreground font-medium text-sm">Configuración de la estructura académica universitaria.</p>
+          <p className="text-muted-foreground font-medium text-sm">Gestión de la estructura académica y operativa.</p>
         </div>
       </div>
 
@@ -176,13 +196,13 @@ export default function CatalogosPage() {
         {/* --- SEDES --- */}
         <TabsContent value="sedes" className="mt-6 space-y-4">
           <div className="flex justify-between items-center">
-            <h2 className="text-xl font-bold">Listado de Sedes</h2>
+            <h2 className="text-xl font-bold">Sedes de la Institución</h2>
             <Dialog open={openDialog === 'sede'} onOpenChange={(o) => setOpenDialog(o ? 'sede' : null)}>
               <DialogTrigger asChild>
                 <Button className="bg-primary rounded-xl font-bold shadow-lg shadow-primary/20"><Plus className="w-4 h-4 mr-2" /> Nueva Sede</Button>
               </DialogTrigger>
               <DialogContent className="rounded-3xl">
-                <DialogHeader><DialogTitle>Agregar Nueva Sede</DialogTitle><DialogDescription>Ubicaciones físicas de la institución.</DialogDescription></DialogHeader>
+                <DialogHeader><DialogTitle>Agregar Nueva Sede</DialogTitle><DialogDescription>Ubicaciones físicas del campus.</DialogDescription></DialogHeader>
                 <div className="space-y-4 py-4">
                   <div className="space-y-2"><Label>Nombre</Label><Input value={newSede.nombre} onChange={e => setNewSede({...newSede, nombre: e.target.value})} placeholder="Ej: Campus Central" /></div>
                   <div className="space-y-2"><Label>Ubicación</Label><Input value={newSede.ubicacion} onChange={e => setNewSede({...newSede, ubicacion: e.target.value})} placeholder="Dirección..." /></div>
@@ -205,7 +225,7 @@ export default function CatalogosPage() {
                   <TableRow key={s.id}>
                     <TableCell className="px-6 font-medium">{s.nombre}</TableCell>
                     <TableCell className="text-muted-foreground">{s.ubicacion}</TableCell>
-                    <TableCell className="text-right pr-6"><Button variant="ghost" size="icon" onClick={() => handleDelete('sedes', s.id)} className="text-primary hover:bg-primary/5"><Trash2 className="w-4 h-4" /></Button></TableCell>
+                    <TableCell className="text-right pr-6"><Button variant="ghost" size="icon" onClick={() => handleDelete('sedes', s.id)} className="text-primary"><Trash2 className="w-4 h-4" /></Button></TableCell>
                   </TableRow>
                 ))}
               </TableBody>
@@ -232,6 +252,7 @@ export default function CatalogosPage() {
                       <SelectContent>{sedes?.map(s => <SelectItem key={s.id} value={s.id}>{s.nombre}</SelectItem>)}</SelectContent>
                     </Select>
                   </div>
+                  <div className="p-3 bg-slate-50 rounded-xl text-[10px] text-muted-foreground">ID para Excel: <span className="font-bold text-primary select-all">{newCarrera.sedeId || 'Selecciona una sede'}</span></div>
                 </div>
                 <DialogFooter><Button onClick={() => handleAdd(carrerasRef, newCarrera, setNewCarrera, {nombre: '', sedeId: ''}, "Carrera")} className="w-full bg-primary font-bold">Guardar</Button></DialogFooter>
               </DialogContent>
@@ -242,6 +263,7 @@ export default function CatalogosPage() {
               <TableHeader className="bg-slate-50">
                 <TableRow>
                   <TableHead className="px-6 font-bold py-4">Carrera</TableHead>
+                  <TableHead className="font-bold">ID Carrera</TableHead>
                   <TableHead className="font-bold">Sede</TableHead>
                   <TableHead className="font-bold text-right pr-6">Acciones</TableHead>
                 </TableRow>
@@ -250,6 +272,7 @@ export default function CatalogosPage() {
                 {carreras?.map(c => (
                   <TableRow key={c.id}>
                     <TableCell className="px-6 font-bold">{c.nombre}</TableCell>
+                    <TableCell className="font-mono text-[10px] text-primary select-all">{c.id}</TableCell>
                     <TableCell>{sedes?.find(s => s.id === c.sedeId)?.nombre || 'Sede N/A'}</TableCell>
                     <TableCell className="text-right pr-6"><Button variant="ghost" size="icon" onClick={() => handleDelete('carreras', c.id)} className="text-primary"><Trash2 className="w-4 h-4" /></Button></TableCell>
                   </TableRow>
@@ -265,7 +288,8 @@ export default function CatalogosPage() {
             <h2 className="text-xl font-bold">Malla Curricular</h2>
             <div className="flex gap-2">
               <input type="file" ref={materiaFileInputRef} onChange={handleImportMateriasExcel} accept=".xlsx, .xls" className="hidden" />
-              <Button variant="outline" className="rounded-xl border-slate-300" onClick={() => materiaFileInputRef.current?.click()}><Upload className="w-4 h-4 mr-2" /> Excel</Button>
+              <Button variant="outline" className="rounded-xl border-slate-300" onClick={handleDownloadTemplate}><Download className="w-4 h-4 mr-2" /> Plantilla</Button>
+              <Button variant="outline" className="rounded-xl border-slate-300" onClick={() => materiaFileInputRef.current?.click()}><Upload className="w-4 h-4 mr-2" /> Importar</Button>
               <Dialog open={openDialog === 'materia'} onOpenChange={(o) => setOpenDialog(o ? 'materia' : null)}>
                 <DialogTrigger asChild>
                   <Button className="bg-primary rounded-xl font-bold shadow-lg shadow-primary/20"><Plus className="w-4 h-4 mr-2" /> Nueva Materia</Button>
@@ -275,7 +299,7 @@ export default function CatalogosPage() {
                   <div className="space-y-4 py-4">
                     <div className="space-y-2"><Label>Nombre</Label><Input value={newMateria.nombre} onChange={e => setNewMateria({...newMateria, nombre: e.target.value})} /></div>
                     <div className="grid grid-cols-2 gap-4">
-                      <div className="space-y-2"><Label>Código</Label><Input value={newMateria.codigo} onChange={e => setNewMateria({...newMateria, codigo: e.target.value})} /></div>
+                      <div className="space-y-2"><Label>Código (Opcional)</Label><Input value={newMateria.codigo} onChange={e => setNewMateria({...newMateria, codigo: e.target.value})} placeholder="Auto-generado si vacío" /></div>
                       <div className="space-y-2"><Label>Cuatrimestre</Label><Input value={newMateria.cuatrimestre} onChange={e => setNewMateria({...newMateria, cuatrimestre: e.target.value})} placeholder="1" /></div>
                     </div>
                     <div className="space-y-2">
@@ -320,29 +344,29 @@ export default function CatalogosPage() {
         {/* --- GRUPOS --- */}
         <TabsContent value="grupos" className="mt-6 space-y-4">
           <div className="flex justify-between items-center">
-            <h2 className="text-xl font-bold">Gestión de Grupos</h2>
+            <h2 className="text-xl font-bold">Gestión de Grupos y Secciones</h2>
             <Dialog open={openDialog === 'grupo'} onOpenChange={(o) => setOpenDialog(o ? 'grupo' : null)}>
               <DialogTrigger asChild>
                 <Button className="bg-primary rounded-xl font-bold shadow-lg shadow-primary/20"><Plus className="w-4 h-4 mr-2" /> Nuevo Grupo</Button>
               </DialogTrigger>
               <DialogContent className="rounded-3xl">
-                <DialogHeader><DialogTitle>Crear Nuevo Grupo</DialogTitle><DialogDescription>Configura una sección para una materia específica.</DialogDescription></DialogHeader>
+                <DialogHeader><DialogTitle>Crear Nuevo Grupo</DialogTitle></DialogHeader>
                 <div className="space-y-4 py-4">
                   <div className="space-y-2">
-                    <Label>Seleccionar Carrera</Label>
+                    <Label>Carrera</Label>
                     <Select value={newGrupo.carreraId} onValueChange={v => setNewGrupo({...newGrupo, carreraId: v, materiaId: ''})}>
-                      <SelectTrigger className="rounded-xl"><SelectValue placeholder="Primero elige la carrera" /></SelectTrigger>
+                      <SelectTrigger className="rounded-xl"><SelectValue placeholder="Elegir Carrera" /></SelectTrigger>
                       <SelectContent>{carreras?.map(c => <SelectItem key={c.id} value={c.id}>{c.nombre}</SelectItem>)}</SelectContent>
                     </Select>
                   </div>
                   <div className="space-y-2">
-                    <Label>Seleccionar Materia</Label>
+                    <Label>Materia</Label>
                     <Select disabled={!newGrupo.carreraId} value={newGrupo.materiaId} onValueChange={v => setNewGrupo({...newGrupo, materiaId: v})}>
-                      <SelectTrigger className="rounded-xl"><SelectValue placeholder="Luego elige la materia" /></SelectTrigger>
+                      <SelectTrigger className="rounded-xl"><SelectValue placeholder="Elegir Materia" /></SelectTrigger>
                       <SelectContent>{materiasFiltradas.map(m => <SelectItem key={m.id} value={m.id}>{m.nombre} ({m.codigo})</SelectItem>)}</SelectContent>
                     </Select>
                   </div>
-                  <div className="space-y-2"><Label>Nombre del Grupo / Sección</Label><Input value={newGrupo.nombre} onChange={e => setNewGrupo({...newGrupo, nombre: e.target.value})} placeholder="Ej: G1, Sección A" /></div>
+                  <div className="space-y-2"><Label>Identificador del Grupo</Label><Input value={newGrupo.nombre} onChange={e => setNewGrupo({...newGrupo, nombre: e.target.value})} placeholder="Ej: G1, Sección A" /></div>
                 </div>
                 <DialogFooter><Button onClick={() => handleAdd(gruposRef, {nombre: newGrupo.nombre, materiaId: newGrupo.materiaId}, setNewGrupo, {nombre: '', carreraId: '', materiaId: ''}, "Grupo")} className="w-full bg-primary font-bold">Guardar</Button></DialogFooter>
               </DialogContent>
@@ -364,7 +388,7 @@ export default function CatalogosPage() {
                   const carrera = carreras?.find(c => c.id === materia?.carreraId);
                   return (
                     <TableRow key={g.id}>
-                      <TableCell className="px-6"><span className="bg-slate-900 text-white px-3 py-1 rounded-lg font-black text-xs uppercase">{g.nombre}</span></TableCell>
+                      <TableCell className="px-6"><span className="bg-slate-900 text-white px-3 py-1 rounded-lg font-black text-xs">{g.nombre}</span></TableCell>
                       <TableCell className="font-medium">{materia?.nombre}</TableCell>
                       <TableCell className="text-xs text-muted-foreground">{carrera?.nombre}</TableCell>
                       <TableCell className="text-right pr-6"><Button variant="ghost" size="icon" onClick={() => handleDelete('grupos', g.id)} className="text-primary"><Trash2 className="w-4 h-4" /></Button></TableCell>
@@ -379,7 +403,7 @@ export default function CatalogosPage() {
         {/* --- HORARIOS --- */}
         <TabsContent value="horarios" className="mt-6 space-y-4">
           <div className="flex justify-between items-center">
-            <h2 className="text-xl font-bold">Horarios de Clase</h2>
+            <h2 className="text-xl font-bold">Planificación de Horarios</h2>
             <Dialog open={openDialog === 'horario'} onOpenChange={(o) => setOpenDialog(o ? 'horario' : null)}>
               <DialogTrigger asChild>
                 <Button className="bg-primary rounded-xl font-bold shadow-lg shadow-primary/20"><Plus className="w-4 h-4 mr-2" /> Nuevo Horario</Button>
@@ -388,7 +412,7 @@ export default function CatalogosPage() {
                 <DialogHeader><DialogTitle>Asignar Horario</DialogTitle></DialogHeader>
                 <div className="space-y-4 py-4">
                   <div className="space-y-2">
-                    <Label>Grupo</Label>
+                    <Label>Grupo / Materia</Label>
                     <Select value={newHorario.grupoId} onValueChange={v => setNewHorario({...newHorario, grupoId: v})}>
                       <SelectTrigger className="rounded-xl"><SelectValue placeholder="Seleccionar Grupo" /></SelectTrigger>
                       <SelectContent>
@@ -410,7 +434,7 @@ export default function CatalogosPage() {
                     <div className="space-y-2"><Label>Inicio</Label><Input type="time" value={newHorario.horaInicio} onChange={e => setNewHorario({...newHorario, horaInicio: e.target.value})} /></div>
                     <div className="space-y-2"><Label>Fin</Label><Input type="time" value={newHorario.horaFin} onChange={e => setNewHorario({...newHorario, horaFin: e.target.value})} /></div>
                   </div>
-                  <div className="space-y-2"><Label>Aula</Label><Input value={newHorario.aula} onChange={e => setNewHorario({...newHorario, aula: e.target.value})} placeholder="Ej: Aula 302" /></div>
+                  <div className="space-y-2"><Label>Aula / Salón</Label><Input value={newHorario.aula} onChange={e => setNewHorario({...newHorario, aula: e.target.value})} placeholder="Ej: Aula 302" /></div>
                 </div>
                 <DialogFooter><Button onClick={() => handleAdd(horariosRef, newHorario, setNewHorario, {grupoId: '', dia: '', horaInicio: '', horaFin: '', aula: ''}, "Horario")} className="w-full bg-primary font-bold">Guardar</Button></DialogFooter>
               </DialogContent>
