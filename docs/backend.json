@@ -1,3 +1,4 @@
+
 {
   "entities": {
     "User": {
@@ -14,6 +15,10 @@
           "type": "string",
           "description": "The user's email address, used for authentication (via Firebase Auth) and as a unique identifier for communication. It must be a valid email format.",
           "format": "email"
+        },
+        "password": {
+          "type": "string",
+          "description": "Access password for the system (stored for prototype validation)."
         },
         "firstName": {
           "type": "string",
@@ -41,6 +46,7 @@
       "required": [
         "id",
         "email",
+        "password",
         "firstName",
         "lastName",
         "role",

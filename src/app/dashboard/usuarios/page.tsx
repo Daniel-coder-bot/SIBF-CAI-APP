@@ -11,7 +11,8 @@ import {
   Camera,
   Filter,
   User as UserIcon,
-  Loader2
+  Loader2,
+  Key
 } from 'lucide-react';
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -56,6 +57,7 @@ import {
   useCollection, 
   useMemoFirebase,
   addDocumentNonBlocking,
+  updateDocumentNonBlocking,
   deleteDocumentNonBlocking,
   useUser
 } from '@/firebase';
@@ -68,6 +70,7 @@ interface UserEntity {
   firstName: string;
   lastName: string;
   email: string;
+  password?: string;
   role: UserRole;
   createdAt: any;
   updatedAt: any;
@@ -81,14 +84,17 @@ export default function UsuariosPage() {
   // States
   const [searchTerm, setSearchTerm] = useState('');
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
+  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [newUser, setNewUser] = useState({
     firstName: '',
     lastName: '',
     email: '',
+    password: '',
     role: 'Alumno' as UserRole
   });
+  const [editingUser, setEditingUser] = useState<UserEntity | null>(null);
 
-  // Firestore Real-time Collection - Solo se activa si hay un usuario autenticado
+  // Firestore Real-time Collection
   const usersRef = useMemoFirebase(() => user ? collection(db, 'users') : null, [db, user]);
   const { data: users, isLoading } = useCollection<UserEntity>(usersRef);
 
@@ -105,11 +111,36 @@ export default function UsuariosPage() {
     addDocumentNonBlocking(usersRef, userData);
     
     setIsAddDialogOpen(false);
-    setNewUser({ firstName: '', lastName: '', email: '', role: 'Alumno' });
+    setNewUser({ firstName: '', lastName: '', email: '', password: '', role: 'Alumno' });
     
     toast({
       title: "Usuario registrado",
-      description: `El perfil de ${userData.firstName} ha sido creado en la base de datos.`,
+      description: `El perfil de ${userData.firstName} ha sido creado con éxito.`,
+    });
+  };
+
+  const handleEditUser = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingUser) return;
+    
+    const userDocRef = doc(db, 'users', editingUser.id);
+    const updateData = {
+      firstName: editingUser.firstName,
+      lastName: editingUser.lastName,
+      email: editingUser.email,
+      role: editingUser.role,
+      password: editingUser.password || '',
+      updatedAt: serverTimestamp()
+    };
+
+    updateDocumentNonBlocking(userDocRef, updateData);
+    
+    setIsEditDialogOpen(false);
+    setEditingUser(null);
+    
+    toast({
+      title: "Perfil actualizado",
+      description: "Los cambios han sido guardados en Firestore.",
     });
   };
 
@@ -120,7 +151,7 @@ export default function UsuariosPage() {
     toast({
       variant: "destructive",
       title: "Usuario eliminado",
-      description: "Los datos han sido removidos de Firestore.",
+      description: "Los datos han sido removidos del sistema.",
     });
   };
 
@@ -134,9 +165,10 @@ export default function UsuariosPage() {
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
           <h1 className="text-3xl font-bold tracking-tight text-accent">Gestión de Usuarios</h1>
-          <p className="text-muted-foreground font-medium">Administra los accesos de Docentes, Jefes de Área y Administradores.</p>
+          <p className="text-muted-foreground font-medium">Administra los accesos y roles del personal universitario.</p>
         </div>
         
+        {/* Diálogo para Agregar */}
         <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
           <DialogTrigger asChild>
             <Button className="bg-primary hover:bg-primary/90 text-white rounded-xl h-11 px-6 shadow-md shadow-primary/20">
@@ -146,9 +178,9 @@ export default function UsuariosPage() {
           </DialogTrigger>
           <DialogContent className="sm:max-w-[450px] rounded-3xl">
             <DialogHeader>
-              <DialogTitle className="text-2xl font-bold">Agregar Nuevo Usuario</DialogTitle>
+              <DialogTitle className="text-2xl font-bold text-primary">Agregar Nuevo Usuario</DialogTitle>
               <DialogDescription>
-                Define el rol y los datos básicos para el acceso al sistema UniAttend.
+                Define los datos básicos y la contraseña de acceso.
               </DialogDescription>
             </DialogHeader>
             <form onSubmit={handleAddUser} className="space-y-4 py-4">
@@ -157,7 +189,7 @@ export default function UsuariosPage() {
                   <Label htmlFor="firstName">Nombre(s)</Label>
                   <Input 
                     id="firstName" 
-                    placeholder="Ej. Juan" 
+                    placeholder="Juan" 
                     value={newUser.firstName}
                     onChange={(e) => setNewUser({...newUser, firstName: e.target.value})}
                     required
@@ -168,7 +200,7 @@ export default function UsuariosPage() {
                   <Label htmlFor="lastName">Apellido(s)</Label>
                   <Input 
                     id="lastName" 
-                    placeholder="Ej. Pérez" 
+                    placeholder="Pérez" 
                     value={newUser.lastName}
                     onChange={(e) => setNewUser({...newUser, lastName: e.target.value})}
                     required
@@ -189,6 +221,21 @@ export default function UsuariosPage() {
                 />
               </div>
               <div className="grid gap-2">
+                <Label htmlFor="pass">Contraseña de Acceso</Label>
+                <div className="relative">
+                   <Key className="absolute left-3 top-3 w-4 h-4 text-muted-foreground" />
+                   <Input 
+                    id="pass" 
+                    type="password"
+                    placeholder="Mínimo 4 caracteres" 
+                    value={newUser.password}
+                    onChange={(e) => setNewUser({...newUser, password: e.target.value})}
+                    required
+                    className="rounded-xl pl-10"
+                  />
+                </div>
+              </div>
+              <div className="grid gap-2">
                 <Label htmlFor="role">Rol en el Sistema</Label>
                 <Select 
                   value={newUser.role} 
@@ -205,26 +252,97 @@ export default function UsuariosPage() {
                   </SelectContent>
                 </Select>
               </div>
-
-              <div className="bg-primary/5 p-4 rounded-2xl border border-primary/20 border-dashed">
-                <div className="flex items-center gap-2 text-primary mb-2">
-                  <Camera className="w-4 h-4" />
-                  <span className="text-sm font-bold">Registro Biométrico</span>
-                </div>
-                <p className="text-xs text-muted-foreground mb-3">
-                  Asocia una firma facial para el control de asistencia automatizado.
-                </p>
-                <Button type="button" variant="outline" className="w-full text-xs h-8 border-primary/30 text-primary hover:bg-primary/10" disabled>
-                  Iniciar Escaneo Facial
-                </Button>
-              </div>
-
               <DialogFooter className="pt-4">
                 <Button type="submit" className="w-full bg-primary hover:bg-primary/90 text-white rounded-xl py-6 font-bold shadow-lg shadow-primary/20">
                   Registrar en Firestore
                 </Button>
               </DialogFooter>
             </form>
+          </DialogContent>
+        </Dialog>
+
+        {/* Diálogo para Editar */}
+        <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
+          <DialogContent className="sm:max-w-[450px] rounded-3xl">
+            <DialogHeader>
+              <DialogTitle className="text-2xl font-bold text-primary">Editar Perfil</DialogTitle>
+              <DialogDescription>
+                Modifica los datos del usuario o actualiza su contraseña.
+              </DialogDescription>
+            </DialogHeader>
+            {editingUser && (
+              <form onSubmit={handleEditUser} className="space-y-4 py-4">
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="grid gap-2">
+                    <Label htmlFor="editFirstName">Nombre(s)</Label>
+                    <Input 
+                      id="editFirstName" 
+                      value={editingUser.firstName}
+                      onChange={(e) => setEditingUser({...editingUser, firstName: e.target.value})}
+                      required
+                      className="rounded-xl"
+                    />
+                  </div>
+                  <div className="grid gap-2">
+                    <Label htmlFor="editLastName">Apellido(s)</Label>
+                    <Input 
+                      id="editLastName" 
+                      value={editingUser.lastName}
+                      onChange={(e) => setEditingUser({...editingUser, lastName: e.target.value})}
+                      required
+                      className="rounded-xl"
+                    />
+                  </div>
+                </div>
+                <div className="grid gap-2">
+                  <Label htmlFor="editEmail">Correo Institucional</Label>
+                  <Input 
+                    id="editEmail" 
+                    type="email" 
+                    value={editingUser.email}
+                    onChange={(e) => setEditingUser({...editingUser, email: e.target.value})}
+                    required
+                    className="rounded-xl"
+                  />
+                </div>
+                <div className="grid gap-2">
+                  <Label htmlFor="editPass">Contraseña Nueva (Opcional)</Label>
+                  <div className="relative">
+                    <Key className="absolute left-3 top-3 w-4 h-4 text-muted-foreground" />
+                    <Input 
+                      id="editPass" 
+                      type="password"
+                      placeholder="Dejar vacío para no cambiar" 
+                      value={editingUser.password || ''}
+                      onChange={(e) => setEditingUser({...editingUser, password: e.target.value})}
+                      className="rounded-xl pl-10"
+                    />
+                  </div>
+                </div>
+                <div className="grid gap-2">
+                  <Label htmlFor="editRole">Rol en el Sistema</Label>
+                  <Select 
+                    value={editingUser.role} 
+                    onValueChange={(val: UserRole) => setEditingUser({...editingUser, role: val})}
+                  >
+                    <SelectTrigger className="rounded-xl">
+                      <SelectValue placeholder="Selecciona un rol" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="Administrador">Administrador</SelectItem>
+                      <SelectItem value="Jefe de Carrera">Jefe de Carrera</SelectItem>
+                      <SelectItem value="Docente">Docente</SelectItem>
+                      <SelectItem value="Alumno">Alumno</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <DialogFooter className="pt-4">
+                  <Button type="submit" className="w-full bg-primary hover:bg-primary/90 text-white rounded-xl py-6 font-bold shadow-lg shadow-primary/20">
+                    Guardar Cambios
+                  </Button>
+                </DialogFooter>
+              </form>
+            )}
           </DialogContent>
         </Dialog>
       </div>
@@ -303,7 +421,13 @@ export default function UsuariosPage() {
                         </Button>
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="end" className="rounded-xl p-1 border-border/40">
-                        <DropdownMenuItem className="rounded-lg gap-2 cursor-pointer font-medium">
+                        <DropdownMenuItem 
+                          className="rounded-lg gap-2 cursor-pointer font-medium"
+                          onClick={() => {
+                            setEditingUser(u);
+                            setIsEditDialogOpen(true);
+                          }}
+                        >
                           <Edit2 className="w-4 h-4" />
                           <span>Editar Perfil</span>
                         </DropdownMenuItem>
@@ -322,7 +446,7 @@ export default function UsuariosPage() {
             ) : (
               <TableRow>
                 <TableCell colSpan={4} className="h-32 text-center text-muted-foreground">
-                  No hay usuarios registrados en esta categoría.
+                  No hay usuarios registrados que coincidan con la búsqueda.
                 </TableCell>
               </TableRow>
             )}

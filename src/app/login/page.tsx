@@ -1,3 +1,4 @@
+
 "use client";
 
 import React, { useState, useEffect } from 'react';
@@ -10,7 +11,8 @@ import { Eye, EyeOff, Lock, User, GraduationCap, Loader2 } from 'lucide-react';
 import { useToast } from "@/hooks/use-toast";
 
 // Firebase Imports
-import { useAuth, useUser, initiateAnonymousSignIn } from '@/firebase';
+import { useAuth, useUser, useFirestore, initiateAnonymousSignIn } from '@/firebase';
+import { collection, query, where, getDocs, limit } from 'firebase/firestore';
 
 export default function LoginPage() {
   const [email, setEmail] = useState('');
@@ -21,6 +23,7 @@ export default function LoginPage() {
   const router = useRouter();
   const { toast } = useToast();
   const auth = useAuth();
+  const db = useFirestore();
   const { user, isUserLoading } = useUser();
 
   // Redirigir si ya está logueado
@@ -34,35 +37,50 @@ export default function LoginPage() {
     e.preventDefault();
     setIsVerifying(true);
 
-    // Simulación de validación de credenciales administrativas
-    if (email === "admin" && password === "1234") {
-      try {
-        // Iniciamos sesión real en Firebase (Anónima para este MVP)
-        // Esto otorgará un UID y permitirá que las reglas de Firestore pasen el check isSignedIn()
+    try {
+      // 1. Validar contra Firestore (Estrategia de prototipado)
+      // Buscamos un usuario que coincida con el correo y la contraseña
+      const usersRef = collection(db, 'users');
+      const q = query(
+        usersRef, 
+        where("email", "==", email), 
+        where("password", "==", password), 
+        limit(1)
+      );
+      
+      const querySnapshot = await getDocs(q);
+
+      if (!querySnapshot.empty) {
+        // Usuario encontrado en Firestore
+        const userData = querySnapshot.docs[0].data();
+        
+        // 2. Iniciamos sesión real en Firebase Auth (Anónima) para satisfacer las reglas de seguridad
         initiateAnonymousSignIn(auth);
         
         toast({
-          title: "Acceso concedido",
-          description: "Sincronizando con el servidor de seguridad...",
+          title: `Bienvenido, ${userData.firstName}`,
+          description: "Acceso concedido. Sincronizando con el servidor...",
         });
         
-        // Damos un pequeño margen para que el estado de auth se propague
+        // Margen para propagación de estado
         setTimeout(() => {
           router.push('/dashboard');
         }, 800);
-      } catch (error) {
+      } else {
+        // No hay coincidencia
         toast({
           variant: "destructive",
-          title: "Error de conexión",
-          description: "No se pudo establecer comunicación con Firebase.",
+          title: "Error de acceso",
+          description: "Credenciales incorrectas o usuario no registrado.",
         });
         setIsVerifying(false);
       }
-    } else {
+    } catch (error: any) {
+      console.error("Login Error:", error);
       toast({
         variant: "destructive",
-        title: "Error de acceso",
-        description: "Credenciales incorrectas. Intente con admin / 1234",
+        title: "Error de conexión",
+        description: "No se pudo validar el acceso con Firestore.",
       });
       setIsVerifying(false);
     }
@@ -78,7 +96,7 @@ export default function LoginPage() {
 
   return (
     <div className="min-h-screen flex items-center justify-center p-4 relative overflow-hidden bg-white">
-      {/* Fondo Decorativo Sutil */}
+      {/* Fondo Decorativo */}
       <div className="absolute top-0 right-0 w-1/2 h-full bg-primary/5 hidden lg:block -skew-x-12 transform translate-x-24" />
       
       <div className="w-full max-w-md z-10">
@@ -94,39 +112,38 @@ export default function LoginPage() {
           <CardHeader className="space-y-1 pb-4 border-b border-border/50 bg-slate-50/50">
             <CardTitle className="text-xl text-center font-bold">Iniciar Sesión</CardTitle>
             <CardDescription className="text-center text-xs">
-              Ingrese sus credenciales de administrador
+              Usa tus credenciales registradas por el administrador
             </CardDescription>
           </CardHeader>
           <form onSubmit={handleLogin}>
             <CardContent className="space-y-4 pt-6">
               <div className="space-y-2">
-                <Label htmlFor="email" className="text-xs font-bold uppercase text-muted-foreground">Usuario</Label>
+                <Label htmlFor="email" className="text-xs font-bold uppercase text-muted-foreground">Correo Institucional</Label>
                 <div className="relative">
                   <User className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
                   <Input 
                     id="email" 
-                    placeholder="admin" 
+                    type="email"
+                    placeholder="usuario@uniattend.edu" 
                     className="pl-10 h-11 rounded-xl" 
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
                     required
-                    autoComplete="username"
                   />
                 </div>
               </div>
               <div className="space-y-2">
-                <Label htmlFor="password" title="Pista: 1234" className="text-xs font-bold uppercase text-muted-foreground">Contraseña</Label>
+                <Label htmlFor="password" title="Pista: La que definiste en el panel de Usuarios" className="text-xs font-bold uppercase text-muted-foreground">Contraseña</Label>
                 <div className="relative">
                   <Lock className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
                   <Input 
                     id="password" 
                     type={showPassword ? "text" : "password"} 
                     className="pl-10 pr-10 h-11 rounded-xl"
-                    placeholder="••••"
+                    placeholder="••••••••"
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
                     required
-                    autoComplete="current-password"
                   />
                   <button
                     type="button"
@@ -147,7 +164,7 @@ export default function LoginPage() {
                 {isVerifying ? (
                   <>
                     <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    Autenticando...
+                    Validando Acceso...
                   </>
                 ) : "Acceder al Sistema"}
               </Button>
