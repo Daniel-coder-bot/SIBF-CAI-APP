@@ -45,7 +45,7 @@
         "nombre": { "type": "string" },
         "codigo": { "type": "string" },
         "carreraId": { "type": "string" },
-        "cuatrimestre": { "type": "string", "description": "Número de cuatrimestre al que pertenece la materia" }
+        "cuatrimestre": { "type": "string" }
       },
       "required": ["nombre", "carreraId", "cuatrimestre"]
     },
@@ -55,10 +55,11 @@
       "properties": {
         "id": { "type": "string" },
         "nombre": { "type": "string" },
-        "materiaId": { "type": "string" },
+        "carreraId": { "type": "string" },
+        "cuatrimestre": { "type": "string" },
         "docenteId": { "type": "string" }
       },
-      "required": ["nombre", "materiaId"]
+      "required": ["nombre", "carreraId", "cuatrimestre"]
     },
     "Horario": {
       "title": "Horario",
