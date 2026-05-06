@@ -104,8 +104,8 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
               <Image 
                 src="/logo.png" 
                 alt="SIBF - CAI Logo" 
-                width={160} 
-                height={160} 
+                width={200} 
+                height={200} 
                 className="object-contain hover:scale-105 transition-transform duration-500"
                 priority
               />

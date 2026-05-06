@@ -406,7 +406,7 @@ export default function CatalogosPage() {
                                     {filteredDocentesForSelectedGrupo.map(d => <SelectItem key={d.id} value={d.id}>{d.firstName} {d.lastName}</SelectItem>)}
                                   </SelectContent>
                                 </Select>
-                                <Input placeholder="Aula" className="h-7 text-[9px] font-medium" value={cell?.aula || ''} onChange={(e) => setTempGrid({...tempGrid, [key]: { ...cell, aula: e.target.value }})} />
+                                <Input placeholder="Aula (Opcional)" className="h-7 text-[9px] font-medium" value={cell?.aula || ''} onChange={(e) => setTempGrid({...tempGrid, [key]: { ...cell, aula: e.target.value }})} />
                               </>
                             ) : (
                               cell?.materiaId ? (
@@ -458,7 +458,7 @@ export default function CatalogosPage() {
           <div className="bg-white border rounded-3xl overflow-hidden shadow-sm">
             <Table><TableHeader className="bg-slate-50"><TableRow><TableHead className="px-6 font-bold py-4">Matrícula</TableHead><TableHead className="font-bold">Nombre</TableHead><TableHead className="font-bold">Carrera</TableHead><TableHead className="font-bold">Grupo</TableHead><TableHead className="text-right pr-6 font-bold">Acciones</TableHead></TableRow></TableHeader>
               <TableBody>{filteredAlumnos.map(a => (<TableRow key={a.id} className="hover:bg-slate-50/50"><TableCell className="px-6 font-bold text-primary">{a.matricula}</TableCell><TableCell className="font-medium">{a.firstName} {a.lastName}</TableCell><TableCell className="font-medium text-muted-foreground">{carreras?.find(c => c.id === a.carreraId)?.nombre}</TableCell><TableCell className="font-medium">{grupos?.find(g => g.id === a.grupoId)?.nombre}</TableCell><TableCell className="text-right pr-6 flex justify-end gap-1">
-                <Button variant="outline" size="icon" className="rounded-full" onClick={() => {setFaceTargetUser(a); setFaceMode('enroll'); setOpenDialog('face');}}>
+                <Button variant="outline" size="icon" className="rounded-full" title="Registro Facial" onClick={() => {setFaceTargetUser(a); setFaceMode('enroll'); setOpenDialog('face');}}>
                   <ScanFace className={cn("w-4 h-4", a.faceDescriptor && Array.isArray(a.faceDescriptor) ? "text-green-600" : "text-primary")} />
                 </Button>
                 <Button variant="ghost" size="icon" className="rounded-full" onClick={() => handleDelete('users', a.id)}><Trash2 className="w-4 h-4 text-primary" /></Button>
@@ -542,9 +542,60 @@ export default function CatalogosPage() {
           </Dialog>
         </TabsContent>
 
+        <TabsContent value="materias" className="mt-6 space-y-4">
+          <div className="flex flex-col md:flex-row justify-between items-center gap-4">
+             <div className="flex flex-wrap items-center gap-4 flex-1">
+                <div className="relative w-full max-w-xs">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                  <Input placeholder="Buscar materia..." className="pl-10 rounded-xl" value={searchMateria} onChange={e => setSearchMateria(e.target.value)} />
+                </div>
+                <Select value={filterMateriaCarrera} onValueChange={setFilterMateriaCarrera}>
+                  <SelectTrigger className="w-[200px] rounded-xl"><SelectValue placeholder="Por Carrera" /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">Todas las Carreras</SelectItem>
+                    {carreras?.map(c => <SelectItem key={c.id} value={c.id}>{c.nombre}</SelectItem>)}
+                  </SelectContent>
+                </Select>
+                <Select value={filterMateriaCuatrimestre} onValueChange={setFilterMateriaCuatrimestre}>
+                  <SelectTrigger className="w-[150px] rounded-xl"><SelectValue placeholder="Por Cuatrimestre" /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">Todos</SelectItem>
+                    {["1", "2", "3", "4", "5", "6", "7", "8", "9", "10"].map(n => <SelectItem key={n} value={n}>{n}º Cuatrimestre</SelectItem>)}
+                  </SelectContent>
+                </Select>
+             </div>
+             <Button onClick={() => setOpenDialog('materia')} className="bg-primary rounded-xl font-medium"><Plus className="w-4 h-4 mr-2" /> Nueva Materia</Button>
+          </div>
+          <div className="bg-white border rounded-3xl overflow-hidden shadow-sm">
+            <Table><TableHeader className="bg-slate-50"><TableRow><TableHead className="px-6 font-bold">Código</TableHead><TableHead className="font-bold">Materia</TableHead><TableHead className="font-bold">Carrera</TableHead><TableHead className="font-bold">Cuatrimestre</TableHead><TableHead className="text-right pr-6 font-bold">Acciones</TableHead></TableRow></TableHeader>
+              <TableBody>{filteredMaterias.map(m => (<TableRow key={m.id} className="hover:bg-slate-50/50"><TableCell className="px-6 font-bold text-primary">{m.codigo}</TableCell><TableCell className="font-medium">{m.nombre}</TableCell><TableCell className="text-xs">{carreras?.find(c => c.id === m.carreraId)?.nombre}</TableCell><TableCell className="font-medium">{m.cuatrimestre}º</TableCell><TableCell className="text-right pr-6"><Button variant="ghost" size="icon" className="rounded-full" onClick={() => handleDelete('materias', m.id)}><Trash2 className="w-4 h-4 text-primary" /></Button></TableCell></TableRow>))}</TableBody>
+            </Table>
+          </div>
+          <Dialog open={openDialog === 'materia'} onOpenChange={(o) => setOpenDialog(o ? 'materia' : null)}>
+            <DialogContent className="rounded-3xl">
+              <DialogHeader><DialogTitle className="font-bold">Agregar Materia</DialogTitle></DialogHeader>
+              <div className="space-y-4 py-4">
+                <div className="space-y-2"><Label className="font-bold text-xs uppercase text-muted-foreground">Nombre</Label><Input value={newMateria.nombre} onChange={e => setNewMateria({...newMateria, nombre: e.target.value})} className="rounded-xl" /></div>
+                <div className="space-y-2"><Label className="font-bold text-xs uppercase text-muted-foreground">Código</Label><Input value={newMateria.codigo} onChange={e => setNewMateria({...newMateria, codigo: e.target.value})} className="rounded-xl" /></div>
+                <div className="space-y-2"><Label className="font-bold text-xs uppercase text-muted-foreground">Carrera</Label>
+                  <Select value={newMateria.carreraId} onValueChange={v => setNewMateria({...newMateria, carreraId: v})}>
+                    <SelectTrigger className="rounded-xl"><SelectValue placeholder="Elegir..." /></SelectTrigger>
+                    <SelectContent>{carreras?.map(c => <SelectItem key={c.id} value={c.id}>{c.nombre}</SelectItem>)}</SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-2"><Label className="font-bold text-xs uppercase text-muted-foreground">Cuatrimestre</Label><Input value={newMateria.cuatrimestre} onChange={e => setNewMateria({...newMateria, cuatrimestre: e.target.value})} className="rounded-xl" /></div>
+              </div>
+              <DialogFooter><Button onClick={() => handleAdd(materiasRef, newMateria, setNewMateria, {nombre: '', codigo: '', carreraId: '', cuatrimestre: ''}, "Materia")} className="w-full bg-primary font-bold rounded-xl h-12">Guardar</Button></DialogFooter>
+            </DialogContent>
+          </Dialog>
+        </TabsContent>
+
         <TabsContent value="sedes" className="mt-6 space-y-4">
-          <div className="flex justify-between items-center">
-            <h2 className="text-xl font-bold">Sedes</h2>
+          <div className="flex justify-between items-center gap-4">
+            <div className="relative flex-1 max-w-xs">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <Input placeholder="Buscar sede..." className="pl-10 rounded-xl" value={searchSede} onChange={e => setSearchSede(e.target.value)} />
+            </div>
             <Button onClick={() => setOpenDialog('sede')} className="bg-primary rounded-xl font-medium"><Plus className="w-4 h-4 mr-2" /> Nueva Sede</Button>
           </div>
           <div className="bg-white border rounded-3xl overflow-hidden shadow-sm">
@@ -552,16 +603,45 @@ export default function CatalogosPage() {
               <TableBody>{filteredSedes?.map(s => (<TableRow key={s.id} className="hover:bg-slate-50/50"><TableCell className="px-6 font-medium">{s.nombre}</TableCell><TableCell className="font-medium text-muted-foreground">{s.ubicacion}</TableCell><TableCell className="text-right pr-6"><Button variant="ghost" size="icon" className="rounded-full" onClick={() => handleDelete('sedes', s.id)}><Trash2 className="w-4 h-4 text-primary" /></Button></TableCell></TableRow>))}</TableBody>
             </Table>
           </div>
-          <Dialog open={openDialog === 'sede'} onOpenChange={(o) => setOpenDialog(o ? 'sede' : null)}>
-            <DialogContent className="rounded-3xl">
-              <DialogHeader><DialogTitle className="font-bold">Agregar Sede</DialogTitle></DialogHeader>
-              <div className="space-y-4 py-4">
-                <div className="space-y-2"><Label className="font-bold text-xs uppercase text-muted-foreground">Nombre</Label><Input value={newSede.nombre} onChange={e => setNewSede({...newSede, nombre: e.target.value})} className="rounded-xl font-medium" /></div>
-                <div className="space-y-2"><Label className="font-bold text-xs uppercase text-muted-foreground">Ubicación</Label><Input value={newSede.ubicacion} onChange={e => setNewSede({...newSede, ubicacion: e.target.value})} className="rounded-xl font-medium" /></div>
+        </TabsContent>
+
+        <TabsContent value="carreras" className="mt-6 space-y-4">
+          <div className="flex justify-between items-center gap-4">
+            <div className="relative flex-1 max-w-xs">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <Input placeholder="Buscar carrera..." className="pl-10 rounded-xl" value={searchCarrera} onChange={e => setSearchCarrera(e.target.value)} />
+            </div>
+            <Button onClick={() => setOpenDialog('carrera')} className="bg-primary rounded-xl font-medium"><Plus className="w-4 h-4 mr-2" /> Nueva Carrera</Button>
+          </div>
+          <div className="bg-white border rounded-3xl overflow-hidden shadow-sm">
+            <Table><TableHeader className="bg-slate-50"><TableRow><TableHead className="px-6 font-bold py-4">Carrera</TableHead><TableHead className="font-bold">Sede</TableHead><TableHead className="text-right pr-6 font-bold">Acciones</TableHead></TableRow></TableHeader>
+              <TableBody>{filteredCarreras?.map(c => (<TableRow key={c.id} className="hover:bg-slate-50/50"><TableCell className="px-6 font-medium">{c.nombre}</TableCell><TableCell className="font-medium text-muted-foreground">{sedes?.find(s => s.id === c.sedeId)?.nombre}</TableCell><TableCell className="text-right pr-6"><Button variant="ghost" size="icon" className="rounded-full" onClick={() => handleDelete('carreras', c.id)}><Trash2 className="w-4 h-4 text-primary" /></Button></TableCell></TableRow>))}</TableBody>
+            </Table>
+          </div>
+        </TabsContent>
+
+        <TabsContent value="grupos" className="mt-6 space-y-4">
+          <div className="flex justify-between items-center gap-4">
+            <div className="flex items-center gap-4 flex-1">
+              <div className="relative flex-1 max-w-xs">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                <Input placeholder="Buscar grupo..." className="pl-10 rounded-xl" value={searchGrupo} onChange={e => setSearchGrupo(e.target.value)} />
               </div>
-              <DialogFooter><Button onClick={() => handleAdd(sedesRef, newSede, setNewSede, {nombre: '', ubicacion: ''}, "Sede")} className="w-full bg-primary font-bold rounded-xl h-12">Guardar</Button></DialogFooter>
-            </DialogContent>
-          </Dialog>
+              <Select value={filterGrupoCarrera} onValueChange={setFilterGrupoCarrera}>
+                <SelectTrigger className="w-[200px] rounded-xl"><SelectValue placeholder="Filtrar Carrera" /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Todas las Carreras</SelectItem>
+                  {carreras?.map(c => <SelectItem key={c.id} value={c.id}>{c.nombre}</SelectItem>)}
+                </SelectContent>
+              </Select>
+            </div>
+            <Button onClick={() => setOpenDialog('grupo')} className="bg-primary rounded-xl font-medium"><Plus className="w-4 h-4 mr-2" /> Nuevo Grupo</Button>
+          </div>
+          <div className="bg-white border rounded-3xl overflow-hidden shadow-sm">
+            <Table><TableHeader className="bg-slate-50"><TableRow><TableHead className="px-6 font-bold">Nombre</TableHead><TableHead className="font-bold">Carrera</TableHead><TableHead className="font-bold">Cuatrimestre</TableHead><TableHead className="text-right pr-6 font-bold">Acciones</TableHead></TableRow></TableHeader>
+              <TableBody>{filteredGrupos.map(g => (<TableRow key={g.id} className="hover:bg-slate-50/50"><TableCell className="px-6 font-bold text-primary">{g.nombre}</TableCell><TableCell className="font-medium">{carreras?.find(c => c.id === g.carreraId)?.nombre}</TableCell><TableCell className="font-medium">{g.cuatrimestre}º</TableCell><TableCell className="text-right pr-6"><Button variant="ghost" size="icon" className="rounded-full" onClick={() => handleDelete('grupos', g.id)}><Trash2 className="w-4 h-4 text-primary" /></Button></TableCell></TableRow>))}</TableBody>
+            </Table>
+          </div>
         </TabsContent>
       </Tabs>
 
