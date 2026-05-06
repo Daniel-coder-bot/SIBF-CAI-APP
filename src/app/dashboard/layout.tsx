@@ -15,7 +15,8 @@ import {
   FileBarChart,
   Settings,
   Loader2,
-  CalendarCheck
+  CalendarCheck,
+  BookUser
 } from 'lucide-react';
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -35,9 +36,10 @@ import { signOut } from 'firebase/auth';
 
 const navItems = [
   { name: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
-  { name: 'Usuarios', href: '/dashboard/usuarios', icon: Users },
+  { name: 'Personal', href: '/dashboard/usuarios', icon: Users },
   { name: 'Catálogos', href: '/dashboard/catalogos', icon: FolderTree },
-  { name: 'Asistencia', href: '/dashboard/asistencia', icon: CalendarCheck },
+  { name: 'Panel Docente', href: '/dashboard/docente', icon: BookUser },
+  { name: 'Asistencia Gral', href: '/dashboard/asistencia', icon: CalendarCheck },
   { name: 'Reportes', href: '/dashboard/reportes', icon: FileBarChart },
   { name: 'Configuración', href: '/dashboard/configuracion', icon: Settings },
 ];

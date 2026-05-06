@@ -89,6 +89,21 @@
         "aula": { "type": "string" }
       },
       "required": ["grupoId", "dia", "horaInicio", "horaFin", "materiaId", "docenteId"]
+    },
+    "Asistencia": {
+      "title": "Asistencia",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "alumnoId": { "type": "string" },
+        "docenteId": { "type": "string" },
+        "grupoId": { "type": "string" },
+        "materiaId": { "type": "string" },
+        "fecha": { "type": "string", "format": "date" },
+        "estado": { "type": "string", "enum": ["Presente", "Retraso", "Falta"] },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["alumnoId", "docenteId", "grupoId", "fecha", "estado"]
     }
   },
   "auth": {
@@ -100,6 +115,7 @@
     "/carreras/{carreraId}": { "schema": { "$ref": "#/backend/entities/Carrera" }, "description": "Academic programs" },
     "/materias/{materiaId}": { "schema": { "$ref": "#/backend/entities/Materia" }, "description": "Subjects" },
     "/grupos/{grupoId}": { "schema": { "$ref": "#/backend/entities/Grupo" }, "description": "Class groups" },
-    "/horarios/{horarioId}": { "schema": { "$ref": "#/backend/entities/Horario" }, "description": "Schedules" }
+    "/horarios/{horarioId}": { "schema": { "$ref": "#/backend/entities/Horario" }, "description": "Schedules" },
+    "/asistencias/{asistenciaId}": { "schema": { "$ref": "#/backend/entities/Asistencia" }, "description": "Attendance records" }
   }
 }
