@@ -1,12 +1,12 @@
+
 "use client";
 
 import React, { useEffect } from 'react';
 import Link from 'next/link';
+import Image from 'next/image';
 import { usePathname, useRouter } from 'next/navigation';
 import { 
   Users, 
-  GraduationCap, 
-  CalendarCheck, 
   LayoutDashboard, 
   LogOut, 
   Menu,
@@ -14,7 +14,8 @@ import {
   FolderTree,
   FileBarChart,
   Settings,
-  Loader2
+  Loader2,
+  CalendarCheck
 } from 'lucide-react';
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -77,13 +78,19 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     <SidebarProvider defaultOpen={true}>
       <div className="flex h-screen w-full bg-background overflow-hidden">
         <Sidebar className="border-r border-border/50">
-          <SidebarHeader className="p-6 flex items-center gap-3">
-            <div className="bg-primary p-2 rounded-lg">
-              <GraduationCap className="w-6 h-6 text-white" />
+          <SidebarHeader className="p-4 flex flex-col items-center gap-2 border-b">
+            <div className="w-full flex justify-center py-2">
+              <Image 
+                src="/logo.png" 
+                alt="SIBF - CAI Logo" 
+                width={80} 
+                height={80} 
+                className="object-contain"
+              />
             </div>
-            <span className="text-xl font-bold text-primary tracking-tighter uppercase">SIBF - CAI</span>
+            <span className="text-lg font-black text-primary tracking-tighter uppercase text-center">SIBF - CAI</span>
           </SidebarHeader>
-          <SidebarContent className="px-3">
+          <SidebarContent className="px-3 mt-4">
             <SidebarMenu>
               {navItems.map((item) => {
                 const isActive = pathname === item.href;
@@ -125,7 +132,10 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
              <SidebarTrigger>
                <Menu className="w-6 h-6" />
              </SidebarTrigger>
-             <h1 className="text-xl font-bold text-primary uppercase">SIBF - CAI</h1>
+             <div className="flex items-center gap-2">
+               <Image src="/logo.png" alt="Logo" width={30} height={30} />
+               <h1 className="text-xl font-bold text-primary uppercase">SIBF - CAI</h1>
+             </div>
              <div className="w-6 h-6" />
           </header>
           <div className="max-w-7xl mx-auto">

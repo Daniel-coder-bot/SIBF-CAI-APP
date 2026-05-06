@@ -1,12 +1,14 @@
+
 "use client";
 
 import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
+import Image from 'next/image';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from "@/components/ui/card";
-import { Eye, EyeOff, Lock, User, GraduationCap, Loader2 } from 'lucide-react';
+import { Eye, EyeOff, Lock, User, Loader2 } from 'lucide-react';
 import { useToast } from "@/hooks/use-toast";
 
 import { useAuth, useUser, useFirestore, initiateAnonymousSignIn } from '@/firebase';
@@ -97,8 +99,15 @@ export default function LoginPage() {
       
       <div className="w-full max-w-md z-10">
         <div className="flex flex-col items-center mb-8">
-          <div className="bg-primary p-3 rounded-2xl shadow-lg shadow-primary/20 mb-4">
-            <GraduationCap className="w-12 h-12 text-white" />
+          <div className="mb-4">
+            <Image 
+              src="/logo.png" 
+              alt="SIBF - CAI Logo" 
+              width={140} 
+              height={140} 
+              className="object-contain"
+              priority
+            />
           </div>
           <h1 className="text-4xl font-bold text-foreground mb-1 tracking-tight">SIBF - CAI</h1>
           <p className="text-muted-foreground font-medium uppercase tracking-widest text-[10px]">Gestión Universitaria</p>
