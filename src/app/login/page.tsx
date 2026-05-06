@@ -36,7 +36,7 @@ export default function LoginPage() {
     e.preventDefault();
     setIsVerifying(true);
 
-    // Hardcoded bypass for admin request
+    // Bypass para acceso de administrador (demo)
     if (email === 'admin' && password === '1234') {
         initiateAnonymousSignIn(auth);
         toast({
@@ -95,42 +95,44 @@ export default function LoginPage() {
 
   return (
     <div className="min-h-screen flex items-center justify-center p-4 relative overflow-hidden bg-white">
-      {/* Dynamic background element from the reference image style */}
+      {/* Elemento decorativo de fondo */}
       <div className="absolute top-0 right-0 w-1/2 h-full bg-primary/5 hidden lg:block -skew-x-12 transform translate-x-24" />
       
-      <div className="w-full max-w-md z-10">
-        <div className="flex flex-col items-center mb-8">
-          <div className="mb-4">
+      <div className="w-full max-w-md z-10 flex flex-col items-center">
+        <div className="flex flex-col items-center mb-10 w-full">
+          <div className="mb-6 transform hover:scale-105 transition-transform duration-500">
             <Image 
               src="/logo.png" 
               alt="SIBF - CAI Logo" 
-              width={140} 
-              height={140} 
-              className="object-contain"
+              width={380} 
+              height={380} 
+              className="object-contain drop-shadow-xl"
               priority
             />
           </div>
-          <h1 className="text-4xl font-bold text-foreground mb-1 tracking-tight">SIBF - CAI</h1>
-          <p className="text-muted-foreground font-medium uppercase tracking-widest text-[10px]">Gestión Universitaria</p>
+          <div className="text-center">
+            <h1 className="text-4xl font-black text-foreground mb-1 tracking-tighter uppercase">SIBF - CAI</h1>
+            <p className="text-muted-foreground font-black uppercase tracking-[0.3em] text-[10px] bg-slate-100 px-3 py-1 rounded-full">Gestión Universitaria</p>
+          </div>
         </div>
 
-        <Card className="border border-border/50 shadow-2xl bg-white/80 backdrop-blur-sm rounded-3xl overflow-hidden">
-          <CardHeader className="space-y-1 pb-4 border-b border-border/50 bg-slate-50/50">
-            <CardTitle className="text-xl text-center font-bold">Iniciar Sesión</CardTitle>
-            <CardDescription className="text-center text-xs">
-              Ingresa tus credenciales de acceso
+        <Card className="w-full border border-border/50 shadow-2xl bg-white/90 backdrop-blur-md rounded-[2.5rem] overflow-hidden">
+          <CardHeader className="space-y-1 pb-6 pt-8 border-b border-border/50 bg-slate-50/50">
+            <CardTitle className="text-2xl text-center font-black tracking-tight text-slate-900 uppercase">Iniciar Sesión</CardTitle>
+            <CardDescription className="text-center text-[11px] font-bold uppercase tracking-widest text-muted-foreground">
+              Credenciales de acceso
             </CardDescription>
           </CardHeader>
           <form onSubmit={handleLogin}>
-            <CardContent className="space-y-4 pt-6">
+            <CardContent className="space-y-6 pt-8 px-8">
               <div className="space-y-2">
-                <Label htmlFor="email" className="text-xs font-bold uppercase text-muted-foreground">Usuario / Correo</Label>
-                <div className="relative">
-                  <User className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                <Label htmlFor="email" className="text-[10px] font-black uppercase text-muted-foreground tracking-widest ml-1">Usuario / Correo</Label>
+                <div className="relative group">
+                  <User className="absolute left-4 top-3.5 h-5 w-5 text-muted-foreground group-focus-within:text-primary transition-colors" />
                   <Input 
                     id="email" 
                     placeholder="admin" 
-                    className="pl-10 h-11 rounded-xl" 
+                    className="pl-12 h-12 rounded-2xl border-slate-200 bg-slate-50/50 focus:bg-white transition-all text-sm font-medium" 
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
                     required
@@ -138,13 +140,13 @@ export default function LoginPage() {
                 </div>
               </div>
               <div className="space-y-2">
-                <Label htmlFor="password" title="Pista: 1234 para admin" className="text-xs font-bold uppercase text-muted-foreground">Contraseña</Label>
-                <div className="relative">
-                  <Lock className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                <Label htmlFor="password" title="Pista: 1234 para admin" className="text-[10px] font-black uppercase text-muted-foreground tracking-widest ml-1">Contraseña</Label>
+                <div className="relative group">
+                  <Lock className="absolute left-4 top-3.5 h-5 w-5 text-muted-foreground group-focus-within:text-primary transition-colors" />
                   <Input 
                     id="password" 
                     type={showPassword ? "text" : "password"} 
-                    className="pl-10 pr-10 h-11 rounded-xl"
+                    className="pl-12 pr-12 h-12 rounded-2xl border-slate-200 bg-slate-50/50 focus:bg-white transition-all text-sm font-medium"
                     placeholder="••••••••"
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
@@ -153,22 +155,22 @@ export default function LoginPage() {
                   <button
                     type="button"
                     onClick={() => setShowPassword(!showPassword)}
-                    className="absolute right-3 top-3 text-muted-foreground hover:text-primary transition-colors"
+                    className="absolute right-4 top-3.5 text-muted-foreground hover:text-primary transition-colors"
                   >
-                    {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                    {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
                   </button>
                 </div>
               </div>
             </CardContent>
-            <CardFooter className="pb-8">
+            <CardFooter className="pb-10 pt-4 px-8">
               <Button 
                 type="submit"
-                className="w-full bg-primary hover:bg-accent text-white font-bold h-12 rounded-xl transition-all shadow-lg shadow-primary/25" 
+                className="w-full bg-primary hover:bg-accent text-white font-black text-xs uppercase tracking-widest h-14 rounded-2xl transition-all shadow-xl shadow-primary/25 active:scale-[0.98]" 
                 disabled={isVerifying}
               >
                 {isVerifying ? (
                   <>
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    <Loader2 className="mr-2 h-5 w-5 animate-spin" />
                     Validando...
                   </>
                 ) : "Acceder al Sistema"}
@@ -177,8 +179,8 @@ export default function LoginPage() {
           </form>
         </Card>
         
-        <p className="mt-8 text-center text-[10px] text-muted-foreground font-medium uppercase tracking-tighter">
-          &copy; {new Date().getFullYear()} SIBF - CAI Network.
+        <p className="mt-10 text-center text-[10px] text-muted-foreground font-black uppercase tracking-[0.2em] opacity-60">
+          &copy; {new Date().getFullYear()} SIBF - CAI Network
         </p>
       </div>
     </div>
