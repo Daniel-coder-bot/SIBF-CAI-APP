@@ -36,51 +36,28 @@ export default function LoginPage() {
     e.preventDefault();
     setIsVerifying(true);
 
-    // Bypass para acceso de administrador (demo)
     if (email === 'admin' && password === '1234') {
         initiateAnonymousSignIn(auth);
-        toast({
-          title: `Bienvenido, Administrador`,
-          description: "Acceso maestro concedido.",
-        });
+        toast({ title: `Bienvenido`, description: "Acceso administrativo." });
         setTimeout(() => { router.push('/dashboard'); }, 800);
         return;
     }
 
     try {
       const usersRef = collection(db, 'users');
-      const q = query(
-        usersRef, 
-        where("email", "==", email), 
-        where("password", "==", password), 
-        limit(1)
-      );
-      
+      const q = query(usersRef, where("email", "==", email), where("password", "==", password), limit(1));
       const querySnapshot = await getDocs(q);
 
       if (!querySnapshot.empty) {
-        const userData = querySnapshot.docs[0].data();
         initiateAnonymousSignIn(auth);
-        toast({
-          title: `Bienvenido, ${userData.firstName}`,
-          description: "Acceso concedido.",
-        });
+        toast({ title: "Acceso concedido" });
         setTimeout(() => { router.push('/dashboard'); }, 800);
       } else {
-        toast({
-          variant: "destructive",
-          title: "Error de acceso",
-          description: "Credenciales incorrectas.",
-        });
+        toast({ variant: "destructive", title: "Error", description: "Credenciales inválidas." });
         setIsVerifying(false);
       }
     } catch (error: any) {
-      console.error("Login Error:", error);
-      toast({
-        variant: "destructive",
-        title: "Error de conexión",
-        description: "No se pudo validar el acceso.",
-      });
+      toast({ variant: "destructive", title: "Error", description: "No se pudo conectar." });
       setIsVerifying(false);
     }
   };
@@ -88,100 +65,53 @@ export default function LoginPage() {
   if (isUserLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-white">
-        <Loader2 className="w-12 h-12 animate-spin text-primary" />
+        <Loader2 className="w-10 h-10 animate-spin text-primary" />
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center p-4 relative overflow-hidden bg-white">
-      {/* Elemento decorativo de fondo */}
-      <div className="absolute top-0 right-0 w-1/2 h-full bg-primary/5 hidden lg:block -skew-x-12 transform translate-x-24" />
+    <div className="min-h-screen flex items-center justify-center p-4 bg-white relative overflow-hidden">
+      <div className="absolute top-0 right-0 w-1/2 h-full bg-primary/[0.02] hidden lg:block -skew-x-12 transform translate-x-24" />
       
       <div className="w-full max-w-md z-10 flex flex-col items-center">
-        <div className="flex flex-col items-center mb-10 w-full">
-          <div className="mb-6 transform hover:scale-105 transition-transform duration-500">
-            <Image 
-              src="/logo.png" 
-              alt="SIBF - CAI Logo" 
-              width={380} 
-              height={380} 
-              className="object-contain drop-shadow-xl"
-              priority
-            />
-          </div>
+        <div className="flex flex-col items-center mb-8">
+          <Image src="/logo.png" alt="SIBF - CAI Logo" width={280} height={280} className="object-contain mb-4" priority />
           <div className="text-center">
-            <h1 className="text-4xl font-black text-foreground mb-1 tracking-tighter uppercase">SIBF - CAI</h1>
-            <p className="text-muted-foreground font-black uppercase tracking-[0.3em] text-[10px] bg-slate-100 px-3 py-1 rounded-full">Gestión Universitaria</p>
+            <h1 className="text-3xl font-bold text-foreground tracking-tight uppercase">SIBF - CAI</h1>
+            <p className="text-muted-foreground font-semibold uppercase tracking-[0.2em] text-[10px] bg-slate-50 px-3 py-1 rounded-full mt-2">Gestión Universitaria</p>
           </div>
         </div>
 
-        <Card className="w-full border border-border/50 shadow-2xl bg-white/90 backdrop-blur-md rounded-[2.5rem] overflow-hidden">
-          <CardHeader className="space-y-1 pb-6 pt-8 border-b border-border/50 bg-slate-50/50">
-            <CardTitle className="text-2xl text-center font-black tracking-tight text-slate-900 uppercase">Iniciar Sesión</CardTitle>
-            <CardDescription className="text-center text-[11px] font-bold uppercase tracking-widest text-muted-foreground">
-              Credenciales de acceso
-            </CardDescription>
+        <Card className="w-full border shadow-xl bg-white/80 backdrop-blur-sm rounded-[2rem] overflow-hidden">
+          <CardHeader className="space-y-1 pb-6 pt-8 text-center border-b bg-slate-50/30">
+            <CardTitle className="text-xl font-bold tracking-tight uppercase">Iniciar Sesión</CardTitle>
+            <CardDescription className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Credenciales de acceso</CardDescription>
           </CardHeader>
           <form onSubmit={handleLogin}>
-            <CardContent className="space-y-6 pt-8 px-8">
+            <CardContent className="space-y-5 pt-8 px-8">
               <div className="space-y-2">
-                <Label htmlFor="email" className="text-[10px] font-black uppercase text-muted-foreground tracking-widest ml-1">Usuario / Correo</Label>
-                <div className="relative group">
-                  <User className="absolute left-4 top-3.5 h-5 w-5 text-muted-foreground group-focus-within:text-primary transition-colors" />
-                  <Input 
-                    id="email" 
-                    placeholder="admin" 
-                    className="pl-12 h-12 rounded-2xl border-slate-200 bg-slate-50/50 focus:bg-white transition-all text-sm font-medium" 
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    required
-                  />
+                <Label className="text-[10px] font-bold uppercase text-muted-foreground tracking-widest ml-1">Usuario</Label>
+                <div className="relative">
+                  <User className="absolute left-4 top-3.5 h-4 w-4 text-muted-foreground" />
+                  <Input placeholder="admin" className="pl-12 h-11 rounded-xl font-medium" value={email} onChange={(e) => setEmail(e.target.value)} required />
                 </div>
               </div>
               <div className="space-y-2">
-                <Label htmlFor="password" title="Pista: 1234 para admin" className="text-[10px] font-black uppercase text-muted-foreground tracking-widest ml-1">Contraseña</Label>
-                <div className="relative group">
-                  <Lock className="absolute left-4 top-3.5 h-5 w-5 text-muted-foreground group-focus-within:text-primary transition-colors" />
-                  <Input 
-                    id="password" 
-                    type={showPassword ? "text" : "password"} 
-                    className="pl-12 pr-12 h-12 rounded-2xl border-slate-200 bg-slate-50/50 focus:bg-white transition-all text-sm font-medium"
-                    placeholder="••••••••"
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    required
-                  />
-                  <button
-                    type="button"
-                    onClick={() => setShowPassword(!showPassword)}
-                    className="absolute right-4 top-3.5 text-muted-foreground hover:text-primary transition-colors"
-                  >
-                    {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
-                  </button>
+                <Label className="text-[10px] font-bold uppercase text-muted-foreground tracking-widest ml-1">Contraseña</Label>
+                <div className="relative">
+                  <Lock className="absolute left-4 top-3.5 h-4 w-4 text-muted-foreground" />
+                  <Input type={showPassword ? "text" : "password"} placeholder="••••••••" className="pl-12 pr-12 h-11 rounded-xl font-medium" value={password} onChange={(e) => setPassword(e.target.value)} required />
                 </div>
               </div>
             </CardContent>
             <CardFooter className="pb-10 pt-4 px-8">
-              <Button 
-                type="submit"
-                className="w-full bg-primary hover:bg-accent text-white font-black text-xs uppercase tracking-widest h-14 rounded-2xl transition-all shadow-xl shadow-primary/25 active:scale-[0.98]" 
-                disabled={isVerifying}
-              >
-                {isVerifying ? (
-                  <>
-                    <Loader2 className="mr-2 h-5 w-5 animate-spin" />
-                    Validando...
-                  </>
-                ) : "Acceder al Sistema"}
+              <Button type="submit" className="w-full bg-primary hover:bg-accent text-white font-bold text-xs uppercase tracking-widest h-12 rounded-xl shadow-lg" disabled={isVerifying}>
+                {isVerifying ? <Loader2 className="h-4 w-4 animate-spin" /> : "Acceder"}
               </Button>
             </CardFooter>
           </form>
         </Card>
-        
-        <p className="mt-10 text-center text-[10px] text-muted-foreground font-black uppercase tracking-[0.2em] opacity-60">
-          &copy; {new Date().getFullYear()} SIBF - CAI Network
-        </p>
       </div>
     </div>
   );

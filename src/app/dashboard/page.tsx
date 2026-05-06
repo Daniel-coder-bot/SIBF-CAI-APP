@@ -48,15 +48,15 @@ export default function DashboardPage() {
         <div>
           <div className="flex items-center gap-2 mb-2">
             <div className="w-2 h-8 bg-primary rounded-full" />
-            <h1 className="text-3xl font-black tracking-tight text-foreground uppercase">Panel de Control</h1>
+            <h1 className="text-3xl font-bold tracking-tight text-foreground uppercase">Panel de Control</h1>
           </div>
           <p className="text-muted-foreground font-medium">
-            Sistema de Gestión SIBF - CAI | <span className="text-primary font-bold">Administrador</span>
+            Sistema de Gestión SIBF - CAI | <span className="text-primary font-semibold">Administrador</span>
           </p>
         </div>
         <div className="flex items-center gap-3 bg-white p-3 rounded-2xl shadow-sm border border-border/60 px-5">
           <Clock className="w-5 h-5 text-primary" />
-          <span className="text-sm font-bold uppercase tracking-tighter">
+          <span className="text-sm font-semibold uppercase tracking-tight">
             {new Date().toLocaleDateString('es-ES', { weekday: 'long', day: 'numeric', month: 'long' })}
           </span>
         </div>
@@ -68,10 +68,10 @@ export default function DashboardPage() {
             <CardContent className="p-6">
               <div className="flex items-start justify-between">
                 <div className="space-y-1">
-                  <p className="text-[10px] font-black text-muted-foreground uppercase tracking-widest">{stat.title}</p>
-                  <h3 className="text-3xl font-black tracking-tighter">{stat.value}</h3>
+                  <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">{stat.title}</p>
+                  <h3 className="text-3xl font-bold tracking-tight">{stat.value}</h3>
                   <div className="flex items-center pt-2">
-                    <span className="text-[10px] font-bold text-primary bg-primary/5 px-2 py-0.5 rounded-full border border-primary/10 flex items-center">
+                    <span className="text-[10px] font-semibold text-primary bg-primary/5 px-2 py-0.5 rounded-full border border-primary/10 flex items-center">
                       <TrendingUp className="w-3 h-3 mr-1" />
                       {stat.trend}
                     </span>
@@ -100,17 +100,17 @@ export default function DashboardPage() {
                   dataKey="day" 
                   axisLine={false} 
                   tickLine={false} 
-                  tick={{fill: '#8A8A8A', fontSize: 11, fontWeight: 700}}
+                  tick={{fill: '#8A8A8A', fontSize: 11, fontWeight: 600}}
                 />
                 <YAxis 
                   axisLine={false} 
                   tickLine={false} 
-                  tick={{fill: '#8A8A8A', fontSize: 11, fontWeight: 700}}
+                  tick={{fill: '#8A8A8A', fontSize: 11, fontWeight: 600}}
                   domain={[0, 100]}
                 />
                 <Tooltip 
                   cursor={{fill: 'rgba(0,0,0,0.02)', radius: 8}}
-                  contentStyle={{borderRadius: '16px', border: '1px solid #e2e8f0', boxShadow: '0 20px 25px -5px rgba(0,0,0,0.1)', fontWeight: 'bold'}}
+                  contentStyle={{borderRadius: '16px', border: '1px solid #e2e8f0', boxShadow: '0 20px 25px -5px rgba(0,0,0,0.1)', fontWeight: '600'}}
                 />
                 <Bar dataKey="value" radius={[10, 10, 0, 0]} barSize={45}>
                   {attendanceData.map((entry, index) => (
@@ -145,7 +145,7 @@ export default function DashboardPage() {
                 <div className="flex-1 space-y-1">
                   <p className="text-sm font-bold tracking-tight">{item.title}</p>
                   <p className="text-xs text-muted-foreground leading-snug">{item.desc}</p>
-                  <p className="text-[9px] text-muted-foreground font-black uppercase tracking-widest pt-1">{item.time}</p>
+                  <p className="text-[9px] text-muted-foreground font-bold uppercase tracking-widest pt-1">{item.time}</p>
                 </div>
               </div>
             ))}

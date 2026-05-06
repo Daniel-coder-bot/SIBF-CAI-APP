@@ -48,7 +48,6 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   const { user, isUserLoading } = useUser();
   const auth = useAuth();
 
-  // Protección de ruta: Redirigir si no hay usuario
   useEffect(() => {
     if (!isUserLoading && !user) {
       router.push('/login');
@@ -83,15 +82,15 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
               <Image 
                 src="/logo.png" 
                 alt="SIBF - CAI Logo" 
-                width={160} 
-                height={160} 
-                className="object-contain drop-shadow-md hover:scale-105 transition-transform duration-300"
+                width={120} 
+                height={120} 
+                className="object-contain hover:scale-105 transition-transform duration-300"
                 priority
               />
             </div>
             <div className="text-center space-y-1">
-              <span className="block text-xl font-black text-primary tracking-tighter uppercase leading-none">SIBF - CAI</span>
-              <span className="block text-[9px] font-bold text-muted-foreground uppercase tracking-widest opacity-60">Centro de Estudios</span>
+              <span className="block text-xl font-bold text-primary tracking-tight uppercase leading-none">SIBF - CAI</span>
+              <span className="block text-[9px] font-semibold text-muted-foreground uppercase tracking-widest opacity-70">Gestión Universitaria</span>
             </div>
           </SidebarHeader>
           <SidebarContent className="px-3 mt-4">
@@ -105,7 +104,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                       isActive={isActive}
                       className={cn(
                         "group transition-all duration-200 py-6 px-4 rounded-xl mb-1",
-                        isActive ? "bg-primary text-white hover:bg-primary/90 shadow-md shadow-primary/10" : "hover:bg-primary/5 hover:text-primary"
+                        isActive ? "bg-primary text-white hover:bg-primary/90 shadow-sm" : "hover:bg-primary/5 hover:text-primary"
                       )}
                     >
                       <Link href={item.href}>
@@ -122,11 +121,11 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           <SidebarFooter className="p-4 mt-auto border-t bg-slate-50/30">
             <Button 
               variant="ghost" 
-              className="w-full justify-start text-muted-foreground hover:text-destructive hover:bg-destructive/10 rounded-xl py-6" 
+              className="w-full justify-start text-muted-foreground hover:text-destructive hover:bg-destructive/10 rounded-xl py-6 font-medium" 
               onClick={handleLogout}
             >
               <LogOut className="mr-2 h-5 w-5" />
-              <span className="font-medium text-base">Cerrar Sesión</span>
+              <span className="text-base">Cerrar Sesión</span>
             </Button>
           </SidebarFooter>
         </Sidebar>
