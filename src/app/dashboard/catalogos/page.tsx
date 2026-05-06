@@ -65,16 +65,6 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from "@/components/ui/alert-dialog";
 import { Checkbox } from "@/components/ui/checkbox";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { 
@@ -102,9 +92,9 @@ const SLOTS = [
 export default function CatalogosPage() {
   const db = useFirestore();
   const { toast } = useToast();
-  const materiaFileInputRef = useRef<HTMLInputElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // Queries para datos
+  // Queries
   const sedesRef = useMemoFirebase(() => collection(db, 'sedes'), [db]);
   const carrerasRef = useMemoFirebase(() => collection(db, 'carreras'), [db]);
   const materiasRef = useMemoFirebase(() => collection(db, 'materias'), [db]);
@@ -122,11 +112,8 @@ export default function CatalogosPage() {
   const docentes = useMemo(() => allUsers?.filter(u => u.role === 'Docente') || [], [allUsers]);
   const alumnos = useMemo(() => allUsers?.filter(u => u.role === 'Alumno') || [], [allUsers]);
 
-  // Estados para diálogos y navegación
+  // States
   const [openDialog, setOpenDialog] = useState<string | null>(null);
-  const [copiedId, setCopiedId] = useState<string | null>(null);
-
-  // Estados para nuevos registros
   const [newSede, setNewSede] = useState({ nombre: '', ubicacion: '' });
   const [newCarrera, setNewCarrera] = useState({ nombre: '', sedeId: '' });
   const [newMateria, setNewMateria] = useState({ nombre: '', codigo: '', carreraId: '', cuatrimestre: '' });
@@ -144,7 +131,7 @@ export default function CatalogosPage() {
     grupoIds: [] as string[]
   });
 
-  // Horarios Masivos
+  // Schedule States
   const [selectedGrupoScheduleId, setSelectedGrupoScheduleId] = useState<string>("");
   const [isEditingSchedule, setIsEditingSchedule] = useState(false);
   const [tempGrid, setTempGrid] = useState<Record<string, { materiaId: string, docenteId: string, aula: string }>>({});
@@ -172,12 +159,8 @@ export default function CatalogosPage() {
 
   const handleSaveBulkSchedule = () => {
     if (!selectedGrupoScheduleId) return;
-
-    // Eliminar horarios anteriores de este grupo para reemplazarlos
     const currentHorarios = horarios?.filter(h => h.grupoId === selectedGrupoScheduleId) || [];
     currentHorarios.forEach(h => deleteDocumentNonBlocking(doc(db, 'horarios', h.id)));
-
-    // Guardar los 20 bloques (si tienen materia asignada)
     Object.entries(tempGrid).forEach(([key, val]) => {
       if (val.materiaId) {
         const [dia, slotId] = key.split('-');
@@ -195,7 +178,6 @@ export default function CatalogosPage() {
         }
       }
     });
-
     setIsEditingSchedule(false);
     toast({ title: "Horario Actualizado", description: "Se han guardado todos los cambios del grupo." });
     setTimeout(() => window.location.reload(), 1500);
@@ -205,25 +187,17 @@ export default function CatalogosPage() {
     addDocumentNonBlocking(ref, { ...data, createdAt: serverTimestamp() });
     setter(emptyData);
     setOpenDialog(null);
-    toast({ title: `${title} guardado`, description: "Sincronizando..." });
+    toast({ title: `${title} guardado` });
     setTimeout(() => window.location.reload(), 1000);
   };
 
   const handleDelete = (collectionName: string, id: string) => {
-    const docRef = doc(db, collectionName, id);
-    deleteDocumentNonBlocking(docRef);
+    deleteDocumentNonBlocking(doc(db, collectionName, id));
     toast({ variant: "destructive", title: "Eliminado" });
     setTimeout(() => window.location.reload(), 1000);
   };
 
-  const copyToClipboard = (text: string) => {
-    navigator.clipboard.writeText(text);
-    setCopiedId(text);
-    setTimeout(() => setCopiedId(null), 2000);
-    toast({ title: "ID Copiado" });
-  };
-
-  // Reconocimiento Facial
+  // Facial Recognition
   const [faceTargetUser, setFaceTargetUser] = useState<any>(null);
   const handleSaveFaceDescriptor = (descriptor: number[]) => {
     if (!faceTargetUser) return;
@@ -237,14 +211,11 @@ export default function CatalogosPage() {
     setTimeout(() => window.location.reload(), 1500);
   };
 
-  const [selectedMateriaIds, setSelectedMateriaIds] = useState<string[]>([]);
-  const toggleSelectMateria = (id: string) => setSelectedMateriaIds(prev => prev.includes(id) ? prev.filter(mid => mid !== id) : [...prev, id]);
-
   return (
     <div className="space-y-6 animate-in fade-in duration-500 pb-20">
       <div className="flex justify-between items-end pb-4 border-b">
         <div>
-          <h1 className="text-3xl font-black tracking-tighter text-foreground uppercase">Catálogos Institucionales</h1>
+          <h1 className="text-3xl font-black tracking-tighter text-foreground uppercase">Catálogos SIBF - CAI</h1>
           <p className="text-muted-foreground font-medium text-sm">Administración centralizada de la estructura académica.</p>
         </div>
       </div>
@@ -271,15 +242,11 @@ export default function CatalogosPage() {
               <Select value={selectedGrupoScheduleId} onValueChange={setSelectedGrupoScheduleId}>
                 <SelectTrigger className="w-full md:w-[300px] h-11 rounded-xl font-bold"><SelectValue placeholder="Seleccionar Grupo..." /></SelectTrigger>
                 <SelectContent>
-                  {grupos?.map(g => <SelectItem key={g.id} value={g.id}>{g.nombre} - {carreras?.find(c => c.id === g.carreraId)?.nombre} ({g.cuatrimestre}°)</SelectItem>)}
+                  {grupos?.map(g => <SelectItem key={g.id} value={g.id}>{g.nombre} - {carreras?.find(c => c.id === g.carreraId)?.nombre}</SelectItem>)}
                 </SelectContent>
               </Select>
               {selectedGrupoScheduleId && (
-                <Button 
-                  onClick={() => setIsEditingSchedule(!isEditingSchedule)} 
-                  variant={isEditingSchedule ? "destructive" : "outline"}
-                  className="rounded-xl h-11 font-bold"
-                >
+                <Button onClick={() => setIsEditingSchedule(!isEditingSchedule)} variant={isEditingSchedule ? "destructive" : "outline"} className="rounded-xl h-11 font-bold">
                   {isEditingSchedule ? "Cancelar Edición" : "Editar Horario"}
                 </Button>
               )}
@@ -293,83 +260,51 @@ export default function CatalogosPage() {
             </div>
           ) : (
             <div className="space-y-4 animate-in fade-in duration-500">
-               <div className="bg-white border p-8 rounded-t-3xl border-b-0 space-y-2 text-center relative overflow-hidden">
+               <div className="bg-white border p-8 rounded-t-3xl border-b-0 text-center relative overflow-hidden">
                   <div className="absolute top-0 left-0 w-full h-1 bg-primary" />
-                  <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground">2026-2 Escolar Cuatrimestral 7:00 a 11:00</p>
+                  <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Horario Escolar 7:00 a 11:00</p>
                   <h1 className="text-5xl font-black tracking-tighter uppercase text-slate-900">{selectedGrupoForSchedule?.nombre}</h1>
                   <p className="text-xs font-medium text-slate-500 uppercase">{carreras?.find(c => c.id === selectedGrupoForSchedule?.carreraId)?.nombre}</p>
                </div>
-
                <div className="bg-white border border-slate-900 overflow-hidden shadow-2xl">
-                 <div className="grid grid-cols-[80px_repeat(4,1fr)] border-b border-slate-900 bg-slate-100/50">
-                    <div className="border-r border-slate-900 flex items-center justify-center"></div>
-                    {SLOTS.map(s => (
-                      <div key={s.id} className="border-r border-slate-900 last:border-r-0 p-2 text-center flex flex-col items-center justify-center">
-                        <span className="text-[10px] font-black">{s.id}.</span>
-                        <span className="text-[9px] font-bold text-muted-foreground">{s.range}</span>
-                      </div>
-                    ))}
+                 <div className="grid grid-cols-[80px_repeat(4,1fr)] border-b border-slate-900 bg-slate-100/50 font-bold text-[10px] uppercase">
+                    <div className="border-r border-slate-900 flex items-center justify-center">Día / Hora</div>
+                    {SLOTS.map(s => <div key={s.id} className="border-r border-slate-900 p-2 text-center flex flex-col items-center justify-center"><span>Bloque {s.id}</span><span className="text-[8px] opacity-60">{s.range}</span></div>)}
                  </div>
-
                  {DAYS.map(day => (
                     <div key={day} className="grid grid-cols-[80px_repeat(4,1fr)] border-b border-slate-900 last:border-b-0 min-h-[140px]">
-                      <div className="border-r border-slate-900 flex items-center justify-center bg-slate-50">
-                        <span className="text-3xl font-black uppercase text-slate-900">{day.substring(0, 2)}</span>
-                      </div>
-                      
+                      <div className="border-r border-slate-900 flex items-center justify-center bg-slate-50 font-black text-2xl uppercase">{day.substring(0, 2)}</div>
                       {SLOTS.map(slot => {
-                        const cellKey = `${day}-${slot.id}`;
-                        const cellData = tempGrid[cellKey];
-                        const materia = materias?.find(m => m.id === cellData?.materiaId);
-                        const docente = docentes.find(d => d.id === cellData?.docenteId);
-
+                        const key = `${day}-${slot.id}`;
+                        const cell = tempGrid[key];
                         return (
-                          <div key={cellKey} className="border-r border-slate-900 last:border-r-0 p-3 flex flex-col relative group">
+                          <div key={key} className="border-r border-slate-900 p-3 flex flex-col justify-center gap-2">
                             {isEditingSchedule ? (
-                              <div className="space-y-2 py-1">
-                                <Select 
-                                  value={cellData?.materiaId || "none"} 
-                                  onValueChange={(v) => setTempGrid({...tempGrid, [cellKey]: { ...cellData, materiaId: v === "none" ? "" : v }})}
-                                >
-                                  <SelectTrigger className="h-7 text-[9px] font-bold border-slate-200"><SelectValue placeholder="Materia" /></SelectTrigger>
+                              <>
+                                <Select value={cell?.materiaId || "none"} onValueChange={(v) => setTempGrid({...tempGrid, [key]: { ...cell, materiaId: v === "none" ? "" : v }})}>
+                                  <SelectTrigger className="h-7 text-[9px] font-bold"><SelectValue placeholder="Materia" /></SelectTrigger>
                                   <SelectContent>
                                     <SelectItem value="none">-- Vacío --</SelectItem>
                                     {filteredMateriasForSelectedGrupo.map(m => <SelectItem key={m.id} value={m.id}>{m.nombre}</SelectItem>)}
                                   </SelectContent>
                                 </Select>
-                                <Select 
-                                  value={cellData?.docenteId || "none"} 
-                                  onValueChange={(v) => setTempGrid({...tempGrid, [cellKey]: { ...cellData, docenteId: v === "none" ? "" : v }})}
-                                >
-                                  <SelectTrigger className="h-7 text-[9px] font-bold border-slate-200"><SelectValue placeholder="Docente" /></SelectTrigger>
+                                <Select value={cell?.docenteId || "none"} onValueChange={(v) => setTempGrid({...tempGrid, [key]: { ...cell, docenteId: v === "none" ? "" : v }})}>
+                                  <SelectTrigger className="h-7 text-[9px] font-bold"><SelectValue placeholder="Docente" /></SelectTrigger>
                                   <SelectContent>
                                     <SelectItem value="none">-- Vacío --</SelectItem>
                                     {filteredDocentesForSelectedGrupo.map(d => <SelectItem key={d.id} value={d.id}>{d.firstName} {d.lastName}</SelectItem>)}
                                   </SelectContent>
                                 </Select>
-                                <Input 
-                                  placeholder="Aula" 
-                                  className="h-7 text-[9px] font-bold" 
-                                  value={cellData?.aula || ''} 
-                                  onChange={(e) => setTempGrid({...tempGrid, [cellKey]: { ...cellData, aula: e.target.value }})}
-                                />
-                              </div>
-                            ) : (
-                              <>
-                                {materia ? (
-                                  <>
-                                    <span className="text-[10px] font-black uppercase leading-tight h-10 overflow-hidden line-clamp-3">{materia.nombre}</span>
-                                    <div className="mt-auto pt-4 flex flex-col">
-                                      <span className="text-[9px] font-medium text-slate-600 line-clamp-1 italic">{docente ? `${docente.firstName} ${docente.lastName}` : "Sin docente"}</span>
-                                      {cellData?.aula && <span className="text-[8px] font-bold text-primary mt-1 uppercase">Aula: {cellData.aula}</span>}
-                                    </div>
-                                  </>
-                                ) : (
-                                  <div className="m-auto opacity-10">
-                                    <XCircle className="w-8 h-8" />
-                                  </div>
-                                )}
+                                <Input placeholder="Aula" className="h-7 text-[9px] font-bold" value={cell?.aula || ''} onChange={(e) => setTempGrid({...tempGrid, [key]: { ...cell, aula: e.target.value }})} />
                               </>
+                            ) : (
+                              cell?.materiaId ? (
+                                <>
+                                  <span className="text-[10px] font-black uppercase">{materias?.find(m => m.id === cell.materiaId)?.nombre}</span>
+                                  <span className="text-[8px] italic text-muted-foreground">{docentes.find(d => d.id === cell.docenteId)?.firstName} {docentes.find(d => d.id === cell.docenteId)?.lastName}</span>
+                                  {cell.aula && <span className="text-[8px] font-bold text-primary">AULA: {cell.aula}</span>}
+                                </>
+                              ) : <span className="m-auto opacity-10 font-bold text-xs">Libre</span>
                             )}
                           </div>
                         );
@@ -377,58 +312,201 @@ export default function CatalogosPage() {
                     </div>
                  ))}
                </div>
-
                {isEditingSchedule && (
-                 <div className="flex justify-center pt-6">
-                    <Button onClick={handleSaveBulkSchedule} className="bg-primary hover:bg-accent text-white px-12 py-7 rounded-2xl font-black text-xl shadow-2xl shadow-primary/30 uppercase tracking-tighter">
-                      <Save className="w-6 h-6 mr-2" /> Guardar Horario Completo
-                    </Button>
-                 </div>
+                 <div className="flex justify-center pt-6"><Button onClick={handleSaveBulkSchedule} className="bg-primary px-12 py-7 rounded-2xl font-black text-xl shadow-xl uppercase"><Save className="w-6 h-6 mr-2" /> Guardar Todo</Button></div>
                )}
-
-               <div className="flex justify-between items-center bg-slate-900 text-white p-4 rounded-b-3xl mt-[-1px]">
-                  <span className="text-[9px] font-bold opacity-60">Horario generado: {new Date().toLocaleDateString()}</span>
-                  <span className="text-[9px] font-black uppercase tracking-widest">aSc Horarios en línea | SIBF - CAI System</span>
-               </div>
             </div>
           )}
         </TabsContent>
 
         {/* --- SEDES --- */}
         <TabsContent value="sedes" className="mt-6 space-y-4">
-          <div className="flex justify-between items-center">
-            <h2 className="text-xl font-bold">Sedes</h2>
-            <Dialog open={openDialog === 'sede'} onOpenChange={(o) => setOpenDialog(o ? 'sede' : null)}>
-              <DialogTrigger asChild><Button className="bg-primary rounded-xl font-bold"><Plus className="w-4 h-4 mr-2" /> Nueva Sede</Button></DialogTrigger>
-              <DialogContent className="rounded-3xl">
-                <DialogHeader><DialogTitle>Agregar Sede</DialogTitle></DialogHeader>
-                <div className="space-y-4 py-4">
-                  <div className="space-y-2"><Label>Nombre</Label><Input value={newSede.nombre} onChange={e => setNewSede({...newSede, nombre: e.target.value})} /></div>
-                  <div className="space-y-2"><Label>Ubicación</Label><Input value={newSede.ubicacion} onChange={e => setNewSede({...newSede, ubicacion: e.target.value})} /></div>
-                </div>
-                <DialogFooter><Button onClick={() => handleAdd(sedesRef, newSede, setNewSede, {nombre: '', ubicacion: ''}, "Sede")} className="w-full bg-primary font-bold">Guardar</Button></DialogFooter>
-              </DialogContent>
-            </Dialog>
-          </div>
+          <div className="flex justify-between items-center"><h2 className="text-xl font-bold">Gestión de Sedes</h2><Button onClick={() => setOpenDialog('sede')} className="bg-primary rounded-xl font-bold"><Plus className="w-4 h-4 mr-2" /> Nueva Sede</Button></div>
           <div className="bg-white border rounded-3xl overflow-hidden shadow-sm">
-            <Table>
-              <TableHeader className="bg-slate-50"><TableRow><TableHead className="px-6 font-bold py-4">Nombre</TableHead><TableHead className="font-bold">Ubicación</TableHead><TableHead className="font-bold text-right pr-6">Acciones</TableHead></TableRow></TableHeader>
-              <TableBody>
-                {sedes?.map(s => (
-                  <TableRow key={s.id}>
-                    <TableCell className="px-6 font-medium">{s.nombre}</TableCell><TableCell className="text-muted-foreground">{s.ubicacion}</TableCell>
-                    <TableCell className="text-right pr-6">
-                      <Button variant="ghost" size="icon" onClick={() => handleDelete('sedes', s.id)}><Trash2 className="w-4 h-4 text-primary" /></Button>
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
+            <Table><TableHeader className="bg-slate-50"><TableRow><TableHead className="px-6 font-bold py-4">Nombre</TableHead><TableHead className="font-bold">Ubicación</TableHead><TableHead className="text-right pr-6 font-bold">Acciones</TableHead></TableRow></TableHeader>
+              <TableBody>{sedes?.map(s => (<TableRow key={s.id}><TableCell className="px-6 font-medium">{s.nombre}</TableCell><TableCell>{s.ubicacion}</TableCell><TableCell className="text-right pr-6"><Button variant="ghost" size="icon" onClick={() => handleDelete('sedes', s.id)}><Trash2 className="w-4 h-4 text-primary" /></Button></TableCell></TableRow>))}</TableBody>
             </Table>
           </div>
+          <Dialog open={openDialog === 'sede'} onOpenChange={(o) => setOpenDialog(o ? 'sede' : null)}>
+            <DialogContent className="rounded-3xl">
+              <DialogHeader><DialogTitle>Agregar Sede</DialogTitle></DialogHeader>
+              <div className="space-y-4 py-4">
+                <div className="space-y-2"><Label>Nombre</Label><Input value={newSede.nombre} onChange={e => setNewSede({...newSede, nombre: e.target.value})} /></div>
+                <div className="space-y-2"><Label>Ubicación</Label><Input value={newSede.ubicacion} onChange={e => setNewSede({...newSede, ubicacion: e.target.value})} /></div>
+              </div>
+              <DialogFooter><Button onClick={() => handleAdd(sedesRef, newSede, setNewSede, {nombre: '', ubicacion: ''}, "Sede")} className="w-full bg-primary font-bold">Guardar Sede</Button></DialogFooter>
+            </DialogContent>
+          </Dialog>
         </TabsContent>
 
-        {/* ... Rest of the tabs content ... */}
+        {/* --- CARRERAS --- */}
+        <TabsContent value="carreras" className="mt-6 space-y-4">
+          <div className="flex justify-between items-center"><h2 className="text-xl font-bold">Programas Académicos</h2><Button onClick={() => setOpenDialog('carrera')} className="bg-primary rounded-xl font-bold"><Plus className="w-4 h-4 mr-2" /> Nueva Carrera</Button></div>
+          <div className="bg-white border rounded-3xl overflow-hidden shadow-sm">
+            <Table><TableHeader className="bg-slate-50"><TableRow><TableHead className="px-6 font-bold py-4">Carrera</TableHead><TableHead className="font-bold">Sede</TableHead><TableHead className="text-right pr-6 font-bold">Acciones</TableHead></TableRow></TableHeader>
+              <TableBody>{carreras?.map(c => (<TableRow key={c.id}><TableCell className="px-6 font-medium">{c.nombre}</TableCell><TableCell>{sedes?.find(s => s.id === c.sedeId)?.nombre}</TableCell><TableCell className="text-right pr-6"><Button variant="ghost" size="icon" onClick={() => handleDelete('carreras', c.id)}><Trash2 className="w-4 h-4 text-primary" /></Button></TableCell></TableRow>))}</TableBody>
+            </Table>
+          </div>
+          <Dialog open={openDialog === 'carrera'} onOpenChange={(o) => setOpenDialog(o ? 'carrera' : null)}>
+            <DialogContent className="rounded-3xl">
+              <DialogHeader><DialogTitle>Agregar Carrera</DialogTitle></DialogHeader>
+              <div className="space-y-4 py-4">
+                <div className="space-y-2"><Label>Nombre</Label><Input value={newCarrera.nombre} onChange={e => setNewCarrera({...newCarrera, nombre: e.target.value})} /></div>
+                <div className="space-y-2"><Label>Sede</Label>
+                  <Select value={newCarrera.sedeId} onValueChange={v => setNewCarrera({...newCarrera, sedeId: v})}>
+                    <SelectTrigger className="rounded-xl"><SelectValue placeholder="Seleccionar Sede" /></SelectTrigger>
+                    <SelectContent>{sedes?.map(s => <SelectItem key={s.id} value={s.id}>{s.nombre}</SelectItem>)}</SelectContent>
+                  </Select>
+                </div>
+              </div>
+              <DialogFooter><Button onClick={() => handleAdd(carrerasRef, newCarrera, setNewCarrera, {nombre: '', sedeId: ''}, "Carrera")} className="w-full bg-primary font-bold">Guardar Carrera</Button></DialogFooter>
+            </DialogContent>
+          </Dialog>
+        </TabsContent>
+
+        {/* --- MATERIAS --- */}
+        <TabsContent value="materias" className="mt-6 space-y-4">
+          <div className="flex justify-between items-center"><h2 className="text-xl font-bold">Plan de Estudios</h2><Button onClick={() => setOpenDialog('materia')} className="bg-primary rounded-xl font-bold"><Plus className="w-4 h-4 mr-2" /> Nueva Materia</Button></div>
+          <div className="bg-white border rounded-3xl overflow-hidden shadow-sm">
+            <Table><TableHeader className="bg-slate-50"><TableRow><TableHead className="px-6 font-bold py-4">Materia</TableHead><TableHead className="font-bold">Carrera</TableHead><TableHead className="font-bold">Cuatrimestre</TableHead><TableHead className="text-right pr-6 font-bold">Acciones</TableHead></TableRow></TableHeader>
+              <TableBody>{materias?.map(m => (<TableRow key={m.id}><TableCell className="px-6 font-medium">{m.nombre}</TableCell><TableCell>{carreras?.find(c => c.id === m.carreraId)?.nombre}</TableCell><TableCell>{m.cuatrimestre}°</TableCell><TableCell className="text-right pr-6"><Button variant="ghost" size="icon" onClick={() => handleDelete('materias', m.id)}><Trash2 className="w-4 h-4 text-primary" /></Button></TableCell></TableRow>))}</TableBody>
+            </Table>
+          </div>
+          <Dialog open={openDialog === 'materia'} onOpenChange={(o) => setOpenDialog(o ? 'materia' : null)}>
+            <DialogContent className="rounded-3xl">
+              <DialogHeader><DialogTitle>Agregar Materia</DialogTitle></DialogHeader>
+              <div className="space-y-4 py-4">
+                <div className="space-y-2"><Label>Nombre</Label><Input value={newMateria.nombre} onChange={e => setNewMateria({...newMateria, nombre: e.target.value})} /></div>
+                <div className="space-y-2"><Label>Carrera</Label>
+                  <Select value={newMateria.carreraId} onValueChange={v => setNewMateria({...newMateria, carreraId: v})}>
+                    <SelectTrigger className="rounded-xl"><SelectValue placeholder="Seleccionar Carrera" /></SelectTrigger>
+                    <SelectContent>{carreras?.map(c => <SelectItem key={c.id} value={c.id}>{c.nombre}</SelectItem>)}</SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-2"><Label>Cuatrimestre</Label><Input type="number" value={newMateria.cuatrimestre} onChange={e => setNewMateria({...newMateria, cuatrimestre: e.target.value})} /></div>
+              </div>
+              <DialogFooter><Button onClick={() => handleAdd(materiasRef, newMateria, setNewMateria, {nombre: '', codigo: '', carreraId: '', cuatrimestre: ''}, "Materia")} className="w-full bg-primary font-bold">Guardar Materia</Button></DialogFooter>
+            </DialogContent>
+          </Dialog>
+        </TabsContent>
+
+        {/* --- GRUPOS --- */}
+        <TabsContent value="grupos" className="mt-6 space-y-4">
+          <div className="flex justify-between items-center"><h2 className="text-xl font-bold">Grupos Escolares</h2><Button onClick={() => setOpenDialog('grupo')} className="bg-primary rounded-xl font-bold"><Plus className="w-4 h-4 mr-2" /> Nuevo Grupo</Button></div>
+          <div className="bg-white border rounded-3xl overflow-hidden shadow-sm">
+            <Table><TableHeader className="bg-slate-50"><TableRow><TableHead className="px-6 font-bold py-4">Grupo</TableHead><TableHead className="font-bold">Carrera</TableHead><TableHead className="font-bold">Cuatrimestre</TableHead><TableHead className="text-right pr-6 font-bold">Acciones</TableHead></TableRow></TableHeader>
+              <TableBody>{grupos?.map(g => (<TableRow key={g.id}><TableCell className="px-6 font-medium">{g.nombre}</TableCell><TableCell>{carreras?.find(c => c.id === g.carreraId)?.nombre}</TableCell><TableCell>{g.cuatrimestre}°</TableCell><TableCell className="text-right pr-6"><Button variant="ghost" size="icon" onClick={() => handleDelete('grupos', g.id)}><Trash2 className="w-4 h-4 text-primary" /></Button></TableCell></TableRow>))}</TableBody>
+            </Table>
+          </div>
+          <Dialog open={openDialog === 'grupo'} onOpenChange={(o) => setOpenDialog(o ? 'grupo' : null)}>
+            <DialogContent className="rounded-3xl">
+              <DialogHeader><DialogTitle>Agregar Grupo</DialogTitle></DialogHeader>
+              <div className="space-y-4 py-4">
+                <div className="space-y-2"><Label>Nombre</Label><Input value={newGrupo.nombre} onChange={e => setNewGrupo({...newGrupo, nombre: e.target.value})} /></div>
+                <div className="space-y-2"><Label>Carrera</Label>
+                  <Select value={newGrupo.carreraId} onValueChange={v => setNewGrupo({...newGrupo, carreraId: v})}>
+                    <SelectTrigger className="rounded-xl"><SelectValue placeholder="Seleccionar Carrera" /></SelectTrigger>
+                    <SelectContent>{carreras?.map(c => <SelectItem key={c.id} value={c.id}>{c.nombre}</SelectItem>)}</SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-2"><Label>Cuatrimestre</Label><Input type="number" value={newGrupo.cuatrimestre} onChange={e => setNewGrupo({...newGrupo, cuatrimestre: e.target.value})} /></div>
+              </div>
+              <DialogFooter><Button onClick={() => handleAdd(gruposRef, newGrupo, setNewGrupo, {nombre: '', carreraId: '', cuatrimestre: ''}, "Grupo")} className="w-full bg-primary font-bold">Guardar Grupo</Button></DialogFooter>
+            </DialogContent>
+          </Dialog>
+        </TabsContent>
+
+        {/* --- DOCENTES --- */}
+        <TabsContent value="docentes" className="mt-6 space-y-4">
+          <div className="flex justify-between items-center"><h2 className="text-xl font-bold">Cuerpo Docente</h2><Button onClick={() => setOpenDialog('docente')} className="bg-primary rounded-xl font-bold"><Plus className="w-4 h-4 mr-2" /> Nuevo Docente</Button></div>
+          <div className="bg-white border rounded-3xl overflow-hidden shadow-sm">
+            <Table><TableHeader className="bg-slate-50"><TableRow><TableHead className="px-6 font-bold py-4">Nombre</TableHead><TableHead className="font-bold">Correo</TableHead><TableHead className="font-bold">Grupos Asignados</TableHead><TableHead className="text-right pr-6 font-bold">Acciones</TableHead></TableRow></TableHeader>
+              <TableBody>{docentes.map(d => (<TableRow key={d.id}><TableCell className="px-6 font-medium">{d.firstName} {d.lastName}</TableCell><TableCell>{d.email}</TableCell><TableCell className="flex gap-1 flex-wrap">{d.grupoIds?.map(gid => <span key={gid} className="bg-slate-100 text-[10px] px-2 py-0.5 rounded-full font-bold">{grupos?.find(g => g.id === gid)?.nombre}</span>)}</TableCell><TableCell className="text-right pr-6"><Button variant="ghost" size="icon" onClick={() => handleDelete('users', d.id)}><Trash2 className="w-4 h-4 text-primary" /></Button></TableCell></TableRow>))}</TableBody>
+            </Table>
+          </div>
+          <Dialog open={openDialog === 'docente'} onOpenChange={(o) => setOpenDialog(o ? 'docente' : null)}>
+            <DialogContent className="rounded-3xl max-w-2xl">
+              <DialogHeader><DialogTitle>Registro de Docente</DialogTitle></DialogHeader>
+              <div className="grid grid-cols-2 gap-4 py-4">
+                <div className="space-y-2"><Label>Nombre(s)</Label><Input value={newUser.firstName} onChange={e => setNewUser({...newUser, firstName: e.target.value})} /></div>
+                <div className="space-y-2"><Label>Apellido(s)</Label><Input value={newUser.lastName} onChange={e => setNewUser({...newUser, lastName: e.target.value})} /></div>
+                <div className="space-y-2"><Label>Correo</Label><Input value={newUser.email} onChange={e => setNewUser({...newUser, email: e.target.value})} /></div>
+                <div className="space-y-2"><Label>Contraseña</Label><Input type="password" value={newUser.password} onChange={e => setNewUser({...newUser, password: e.target.value})} /></div>
+                <div className="col-span-2 space-y-2"><Label>Grupos Responsables</Label>
+                  <ScrollArea className="h-32 border rounded-xl p-3">
+                    <div className="grid grid-cols-2 gap-2">
+                      {grupos?.map(g => (
+                        <div key={g.id} className="flex items-center space-x-2">
+                          <Checkbox checked={newUser.grupoIds.includes(g.id)} onCheckedChange={(c) => setNewUser({...newUser, grupoIds: c ? [...newUser.grupoIds, g.id] : newUser.grupoIds.filter(id => id !== g.id)})} />
+                          <label className="text-xs font-bold leading-none">{g.nombre} - {carreras?.find(c => c.id === g.carreraId)?.nombre}</label>
+                        </div>
+                      ))}
+                    </div>
+                  </ScrollArea>
+                </div>
+              </div>
+              <DialogFooter><Button onClick={() => handleAdd(usersRef, {...newUser, role: 'Docente'}, setNewUser, {firstName: '', lastName: '', email: '', password: '', role: 'Alumno', carreraId: '', sedeId: '', matricula: '', grupoId: '', grupoIds: []}, "Docente")} className="w-full bg-primary font-bold">Registrar Docente</Button></DialogFooter>
+            </DialogContent>
+          </Dialog>
+        </TabsContent>
+
+        {/* --- ALUMNOS --- */}
+        <TabsContent value="alumnos" className="mt-6 space-y-4">
+          <div className="flex justify-between items-center"><h2 className="text-xl font-bold">Matrícula Estudiantil</h2><Button onClick={() => setOpenDialog('alumno')} className="bg-primary rounded-xl font-bold"><Plus className="w-4 h-4 mr-2" /> Nuevo Alumno</Button></div>
+          <div className="bg-white border rounded-3xl overflow-hidden shadow-sm">
+            <Table><TableHeader className="bg-slate-50"><TableRow><TableHead className="px-6 font-bold py-4">Matrícula</TableHead><TableHead className="font-bold">Nombre</TableHead><TableHead className="font-bold">Carrera</TableHead><TableHead className="font-bold">Grupo</TableHead><TableHead className="text-right pr-6 font-bold">Acciones</TableHead></TableRow></TableHeader>
+              <TableBody>{alumnos.map(a => (<TableRow key={a.id}><TableCell className="px-6 font-black text-primary">{a.matricula}</TableCell><TableCell className="font-medium">{a.firstName} {a.lastName}</TableCell><TableCell>{carreras?.find(c => c.id === a.carreraId)?.nombre}</TableCell><TableCell>{grupos?.find(g => g.id === a.grupoId)?.nombre}</TableCell><TableCell className="text-right pr-6 flex justify-end gap-1">
+                <Button variant="outline" size="icon" onClick={() => {setFaceTargetUser(a); setOpenDialog('face');}}><ScanFace className="w-4 h-4 text-primary" /></Button>
+                <Button variant="ghost" size="icon" onClick={() => handleDelete('users', a.id)}><Trash2 className="w-4 h-4 text-primary" /></Button>
+              </TableCell></TableRow>))}</TableBody>
+            </Table>
+          </div>
+          <Dialog open={openDialog === 'alumno'} onOpenChange={(o) => setOpenDialog(o ? 'alumno' : null)}>
+            <DialogContent className="rounded-3xl max-w-xl">
+              <DialogHeader><DialogTitle>Inscripción de Alumno</DialogTitle></DialogHeader>
+              <div className="grid grid-cols-2 gap-4 py-4">
+                <div className="space-y-2"><Label>Matrícula</Label><Input value={newUser.matricula} onChange={e => setNewUser({...newUser, matricula: e.target.value})} /></div>
+                <div className="space-y-2"><Label>Carrera</Label>
+                   <Select value={newUser.carreraId} onValueChange={v => setNewUser({...newUser, carreraId: v})}>
+                    <SelectTrigger className="rounded-xl"><SelectValue placeholder="Carrera" /></SelectTrigger>
+                    <SelectContent>{carreras?.map(c => <SelectItem key={c.id} value={c.id}>{c.nombre}</SelectItem>)}</SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-2"><Label>Nombre(s)</Label><Input value={newUser.firstName} onChange={e => setNewUser({...newUser, firstName: e.target.value})} /></div>
+                <div className="space-y-2"><Label>Apellido(s)</Label><Input value={newUser.lastName} onChange={e => setNewUser({...newUser, lastName: e.target.value})} /></div>
+                <div className="space-y-2"><Label>Correo Institucional</Label><Input value={newUser.email} onChange={e => setNewUser({...newUser, email: e.target.value})} /></div>
+                <div className="space-y-2"><Label>Grupo</Label>
+                   <Select value={newUser.grupoId} onValueChange={v => setNewUser({...newUser, grupoId: v})}>
+                    <SelectTrigger className="rounded-xl"><SelectValue placeholder="Grupo" /></SelectTrigger>
+                    <SelectContent>{grupos?.filter(g => g.carreraId === newUser.carreraId).map(g => <SelectItem key={g.id} value={g.id}>{g.nombre}</SelectItem>)}</SelectContent>
+                  </Select>
+                </div>
+              </div>
+              <DialogFooter><Button onClick={() => handleAdd(usersRef, {...newUser, role: 'Alumno', password: '123'}, setNewUser, {firstName: '', lastName: '', email: '', password: '', role: 'Alumno', carreraId: '', sedeId: '', matricula: '', grupoId: '', grupoIds: []}, "Alumno")} className="w-full bg-primary font-bold">Inscribir Alumno</Button></DialogFooter>
+            </DialogContent>
+          </Dialog>
+        </TabsContent>
       </Tabs>
+
+      {/* DIALOG RECONOCIMIENTO FACIAL */}
+      <Dialog open={openDialog === 'face'} onOpenChange={(o) => setOpenDialog(o ? 'face' : null)}>
+        <DialogContent className="max-w-3xl rounded-[2.5rem] p-8 border-none shadow-2xl overflow-hidden">
+          <div className="absolute top-0 left-0 w-full h-2 bg-primary" />
+          <DialogHeader className="mb-6">
+             <div className="flex items-center gap-3 mb-2">
+                <div className="bg-primary/10 p-2 rounded-2xl"><Camera className="w-6 h-6 text-primary" /></div>
+                <DialogTitle className="text-3xl font-black uppercase tracking-tighter">Enrolamiento Facial</DialogTitle>
+             </div>
+             <DialogDescription className="text-sm font-bold text-muted-foreground uppercase tracking-widest">
+               Registrando biometría para: <span className="text-primary">{faceTargetUser?.firstName} {faceTargetUser?.lastName}</span>
+             </DialogDescription>
+          </DialogHeader>
+          <FacialRecognitionComponent mode="enroll" onCapture={handleSaveFaceDescriptor} />
+          <div className="mt-8 flex justify-end">
+            <Button variant="outline" className="rounded-xl px-8 h-12 font-bold uppercase tracking-widest text-xs" onClick={() => setOpenDialog(null)}>Cancelar Proceso</Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
