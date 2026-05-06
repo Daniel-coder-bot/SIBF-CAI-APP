@@ -195,6 +195,50 @@ export default function CatalogosPage() {
     toast({ variant: "destructive", title: "Eliminado" });
   };
 
+  // Excel Integration
+  const handleExportExcel = (data: any[], fileName: string) => {
+    if (!data || data.length === 0) {
+      toast({ variant: "destructive", title: "Sin datos", description: "No hay información para exportar." });
+      return;
+    }
+    const worksheet = XLSX.utils.json_to_sheet(data.map(({ id, createdAt, updatedAt, faceDescriptor, ...rest }) => rest));
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, worksheet, "Datos");
+    XLSX.writeFile(workbook, `${fileName}.xlsx`);
+    toast({ title: "Exportación completa" });
+  };
+
+  const handleImportExcel = (e: React.ChangeEvent<HTMLInputElement>, role: string) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = (evt) => {
+      try {
+        const bstr = evt.target?.result;
+        const workbook = XLSX.read(bstr, { type: 'binary' });
+        const ws = workbook.Sheets[workbook.SheetNames[0]];
+        const data = XLSX.utils.sheet_to_json(ws) as any[];
+
+        data.forEach((row) => {
+          const userData = {
+            ...row,
+            role,
+            createdAt: serverTimestamp(),
+            updatedAt: serverTimestamp()
+          };
+          addDocumentNonBlocking(usersRef, userData);
+        });
+
+        toast({ title: "Importación masiva", description: `${data.length} registros procesados.` });
+        if (fileInputRef.current) fileInputRef.current.value = '';
+      } catch (error) {
+        toast({ variant: "destructive", title: "Error en importación" });
+      }
+    };
+    reader.readAsBinaryString(file);
+  };
+
   // Facial Recognition
   const [faceTargetUser, setFaceTargetUser] = useState<any>(null);
   const handleSaveFaceDescriptor = (descriptor: number[]) => {
@@ -415,7 +459,15 @@ export default function CatalogosPage() {
 
         {/* --- DOCENTES --- */}
         <TabsContent value="docentes" className="mt-6 space-y-4">
-          <div className="flex justify-between items-center"><h2 className="text-xl font-bold">Cuerpo Docente</h2><Button onClick={() => setOpenDialog('docente')} className="bg-primary rounded-xl font-bold"><Plus className="w-4 h-4 mr-2" /> Nuevo Docente</Button></div>
+          <div className="flex flex-col md:flex-row justify-between items-center gap-4">
+            <h2 className="text-xl font-bold">Cuerpo Docente</h2>
+            <div className="flex gap-2">
+              <input type="file" ref={fileInputRef} className="hidden" onChange={(e) => handleImportExcel(e, 'Docente')} accept=".xlsx, .xls" />
+              <Button variant="outline" onClick={() => fileInputRef.current?.click()} className="rounded-xl font-bold"><Upload className="w-4 h-4 mr-2" /> Importar</Button>
+              <Button variant="outline" onClick={() => handleExportExcel(docentes, "Docentes_SIBF")} className="rounded-xl font-bold"><Download className="w-4 h-4 mr-2" /> Exportar</Button>
+              <Button onClick={() => setOpenDialog('docente')} className="bg-primary rounded-xl font-bold"><Plus className="w-4 h-4 mr-2" /> Nuevo Docente</Button>
+            </div>
+          </div>
           <div className="bg-white border rounded-3xl overflow-hidden shadow-sm">
             <Table><TableHeader className="bg-slate-50"><TableRow><TableHead className="px-6 font-bold py-4">Nombre</TableHead><TableHead className="font-bold">Correo</TableHead><TableHead className="font-bold">Grupos Asignados</TableHead><TableHead className="text-right pr-6 font-bold">Acciones</TableHead></TableRow></TableHeader>
               <TableBody>{docentes.map(d => (<TableRow key={d.id}><TableCell className="px-6 font-medium">{d.firstName} {d.lastName}</TableCell><TableCell>{d.email}</TableCell><TableCell className="flex gap-1 flex-wrap">{d.grupoIds?.map(gid => <span key={gid} className="bg-slate-100 text-[10px] px-2 py-0.5 rounded-full font-bold">{grupos?.find(g => g.id === gid)?.nombre}</span>)}</TableCell><TableCell className="text-right pr-6"><Button variant="ghost" size="icon" onClick={() => handleDelete('users', d.id)}><Trash2 className="w-4 h-4 text-primary" /></Button></TableCell></TableRow>))}</TableBody>
@@ -449,7 +501,15 @@ export default function CatalogosPage() {
 
         {/* --- ALUMNOS --- */}
         <TabsContent value="alumnos" className="mt-6 space-y-4">
-          <div className="flex justify-between items-center"><h2 className="text-xl font-bold">Matrícula Estudiantil</h2><Button onClick={() => setOpenDialog('alumno')} className="bg-primary rounded-xl font-bold"><Plus className="w-4 h-4 mr-2" /> Nuevo Alumno</Button></div>
+          <div className="flex flex-col md:flex-row justify-between items-center gap-4">
+            <h2 className="text-xl font-bold">Matrícula Estudiantil</h2>
+            <div className="flex gap-2">
+              <input type="file" ref={fileInputRef} className="hidden" onChange={(e) => handleImportExcel(e, 'Alumno')} accept=".xlsx, .xls" />
+              <Button variant="outline" onClick={() => fileInputRef.current?.click()} className="rounded-xl font-bold"><Upload className="w-4 h-4 mr-2" /> Importar</Button>
+              <Button variant="outline" onClick={() => handleExportExcel(alumnos, "Alumnos_SIBF")} className="rounded-xl font-bold"><Download className="w-4 h-4 mr-2" /> Exportar</Button>
+              <Button onClick={() => setOpenDialog('alumno')} className="bg-primary rounded-xl font-bold"><Plus className="w-4 h-4 mr-2" /> Nuevo Alumno</Button>
+            </div>
+          </div>
           <div className="bg-white border rounded-3xl overflow-hidden shadow-sm">
             <Table><TableHeader className="bg-slate-50"><TableRow><TableHead className="px-6 font-bold py-4">Matrícula</TableHead><TableHead className="font-bold">Nombre</TableHead><TableHead className="font-bold">Carrera</TableHead><TableHead className="font-bold">Grupo</TableHead><TableHead className="text-right pr-6 font-bold">Acciones</TableHead></TableRow></TableHeader>
               <TableBody>{alumnos.map(a => (<TableRow key={a.id}><TableCell className="px-6 font-black text-primary">{a.matricula}</TableCell><TableCell className="font-medium">{a.firstName} {a.lastName}</TableCell><TableCell>{carreras?.find(c => c.id === a.carreraId)?.nombre}</TableCell><TableCell>{grupos?.find(g => g.id === a.grupoId)?.nombre}</TableCell><TableCell className="text-right pr-6 flex justify-end gap-1">
