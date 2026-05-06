@@ -81,12 +81,14 @@
       "properties": {
         "id": { "type": "string" },
         "grupoId": { "type": "string" },
+        "materiaId": { "type": "string" },
+        "docenteId": { "type": "string" },
         "dia": { "type": "string", "enum": ["Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado"] },
         "horaInicio": { "type": "string" },
         "horaFin": { "type": "string" },
         "aula": { "type": "string" }
       },
-      "required": ["grupoId", "dia", "horaInicio", "horaFin"]
+      "required": ["grupoId", "dia", "horaInicio", "horaFin", "materiaId", "docenteId"]
     }
   },
   "auth": {
