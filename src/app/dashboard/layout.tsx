@@ -78,17 +78,21 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     <SidebarProvider defaultOpen={true}>
       <div className="flex h-screen w-full bg-background overflow-hidden">
         <Sidebar className="border-r border-border/50">
-          <SidebarHeader className="p-4 flex flex-col items-center gap-2 border-b">
-            <div className="w-full flex justify-center py-2">
+          <SidebarHeader className="p-6 flex flex-col items-center gap-4 border-b bg-slate-50/30">
+            <div className="w-full flex justify-center py-4">
               <Image 
                 src="/logo.png" 
                 alt="SIBF - CAI Logo" 
-                width={80} 
-                height={80} 
-                className="object-contain"
+                width={160} 
+                height={160} 
+                className="object-contain drop-shadow-md hover:scale-105 transition-transform duration-300"
+                priority
               />
             </div>
-            <span className="text-lg font-black text-primary tracking-tighter uppercase text-center">SIBF - CAI</span>
+            <div className="text-center space-y-1">
+              <span className="block text-xl font-black text-primary tracking-tighter uppercase leading-none">SIBF - CAI</span>
+              <span className="block text-[9px] font-bold text-muted-foreground uppercase tracking-widest opacity-60">Centro de Estudios</span>
+            </div>
           </SidebarHeader>
           <SidebarContent className="px-3 mt-4">
             <SidebarMenu>
@@ -100,7 +104,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                       asChild 
                       isActive={isActive}
                       className={cn(
-                        "group transition-all duration-200 py-6 px-4 rounded-xl",
+                        "group transition-all duration-200 py-6 px-4 rounded-xl mb-1",
                         isActive ? "bg-primary text-white hover:bg-primary/90 shadow-md shadow-primary/10" : "hover:bg-primary/5 hover:text-primary"
                       )}
                     >
@@ -115,7 +119,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
               })}
             </SidebarMenu>
           </SidebarContent>
-          <SidebarFooter className="p-4 mt-auto">
+          <SidebarFooter className="p-4 mt-auto border-t bg-slate-50/30">
             <Button 
               variant="ghost" 
               className="w-full justify-start text-muted-foreground hover:text-destructive hover:bg-destructive/10 rounded-xl py-6" 
@@ -133,7 +137,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                <Menu className="w-6 h-6" />
              </SidebarTrigger>
              <div className="flex items-center gap-2">
-               <Image src="/logo.png" alt="Logo" width={30} height={30} />
+               <Image src="/logo.png" alt="Logo" width={40} height={40} />
                <h1 className="text-xl font-bold text-primary uppercase">SIBF - CAI</h1>
              </div>
              <div className="w-6 h-6" />
