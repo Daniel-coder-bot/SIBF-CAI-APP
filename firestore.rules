@@ -16,5 +16,6 @@ service cloud.firestore {
     match /materias/{id} { allow read, write: if isSignedIn(); }
     match /grupos/{id} { allow read, write: if isSignedIn(); }
     match /horarios/{id} { allow read, write: if isSignedIn(); }
+    match /asistencias/{id} { allow read, write: if isSignedIn(); }
   }
 }
