@@ -1,4 +1,3 @@
-
 "use client";
 
 import React, { useEffect } from 'react';
@@ -82,7 +81,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
             <div className="bg-primary p-2 rounded-lg">
               <GraduationCap className="w-6 h-6 text-white" />
             </div>
-            <span className="text-xl font-bold text-primary tracking-tighter">UniAttend</span>
+            <span className="text-xl font-bold text-primary tracking-tighter uppercase">SIBF - CAI</span>
           </SidebarHeader>
           <SidebarContent className="px-3">
             <SidebarMenu>
@@ -126,7 +125,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
              <SidebarTrigger>
                <Menu className="w-6 h-6" />
              </SidebarTrigger>
-             <h1 className="text-xl font-bold text-primary">UniAttend</h1>
+             <h1 className="text-xl font-bold text-primary uppercase">SIBF - CAI</h1>
              <div className="w-6 h-6" />
           </header>
           <div className="max-w-7xl mx-auto">

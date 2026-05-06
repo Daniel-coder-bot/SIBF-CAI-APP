@@ -1,4 +1,3 @@
-
 "use client";
 
 import React, { useState, useEffect } from 'react';
@@ -101,7 +100,7 @@ export default function LoginPage() {
           <div className="bg-primary p-3 rounded-2xl shadow-lg shadow-primary/20 mb-4">
             <GraduationCap className="w-12 h-12 text-white" />
           </div>
-          <h1 className="text-4xl font-bold text-foreground mb-1 tracking-tight">UniAttend</h1>
+          <h1 className="text-4xl font-bold text-foreground mb-1 tracking-tight">SIBF - CAI</h1>
           <p className="text-muted-foreground font-medium uppercase tracking-widest text-[10px]">Gestión Universitaria</p>
         </div>
 
@@ -169,7 +168,7 @@ export default function LoginPage() {
         </Card>
         
         <p className="mt-8 text-center text-[10px] text-muted-foreground font-medium uppercase tracking-tighter">
-          &copy; {new Date().getFullYear()} UniAttend Network.
+          &copy; {new Date().getFullYear()} SIBF - CAI Network.
         </p>
       </div>
     </div>

@@ -1,4 +1,3 @@
-
 "use client";
 
 import React from 'react';
@@ -51,7 +50,7 @@ export default function DashboardPage() {
             <h1 className="text-3xl font-black tracking-tight text-foreground uppercase">Panel de Control</h1>
           </div>
           <p className="text-muted-foreground font-medium">
-            Sistema de Gestión UniAttend | <span className="text-primary font-bold">Administrador</span>
+            Sistema de Gestión SIBF - CAI | <span className="text-primary font-bold">Administrador</span>
           </p>
         </div>
         <div className="flex items-center gap-3 bg-white p-3 rounded-2xl shadow-sm border border-border/60 px-5">

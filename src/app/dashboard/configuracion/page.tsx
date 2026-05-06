@@ -1,4 +1,3 @@
-
 "use client";
 
 import React from 'react';
@@ -13,7 +12,7 @@ export default function ConfiguracionPage() {
     <div className="space-y-6 animate-in fade-in duration-500">
       <div>
         <h1 className="text-3xl font-bold tracking-tight text-accent">Configuración</h1>
-        <p className="text-muted-foreground font-medium">Ajustes globales del sistema UniAttend.</p>
+        <p className="text-muted-foreground font-medium">Ajustes globales del sistema SIBF - CAI.</p>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
