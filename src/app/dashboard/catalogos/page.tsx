@@ -128,6 +128,56 @@ export default function CatalogosPage() {
     grupoIds: [] as string[]
   });
 
+  // Search States
+  const [searchSede, setSearchSede] = useState('');
+  const [searchCarrera, setSearchCarrera] = useState('');
+  const [searchMateria, setSearchMateria] = useState('');
+  const [searchGrupo, setSearchGrupo] = useState('');
+  const [searchDocente, setSearchDocente] = useState('');
+  const [searchAlumno, setSearchAlumno] = useState('');
+
+  // Filtered Data
+  const filteredSedes = useMemo(() => {
+    return sedes?.filter(s => 
+      s.nombre.toLowerCase().includes(searchSede.toLowerCase()) || 
+      s.ubicacion.toLowerCase().includes(searchSede.toLowerCase())
+    ) || [];
+  }, [sedes, searchSede]);
+
+  const filteredCarreras = useMemo(() => {
+    return carreras?.filter(c => 
+      c.nombre.toLowerCase().includes(searchCarrera.toLowerCase())
+    ) || [];
+  }, [carreras, searchCarrera]);
+
+  const filteredMaterias = useMemo(() => {
+    return materias?.filter(m => 
+      m.nombre.toLowerCase().includes(searchMateria.toLowerCase()) ||
+      m.codigo?.toLowerCase().includes(searchMateria.toLowerCase())
+    ) || [];
+  }, [materias, searchMateria]);
+
+  const filteredGrupos = useMemo(() => {
+    return grupos?.filter(g => 
+      g.nombre.toLowerCase().includes(searchGrupo.toLowerCase())
+    ) || [];
+  }, [grupos, searchGrupo]);
+
+  const filteredDocentes = useMemo(() => {
+    return docentes.filter(d => 
+      `${d.firstName} ${d.lastName}`.toLowerCase().includes(searchDocente.toLowerCase()) ||
+      d.email.toLowerCase().includes(searchDocente.toLowerCase())
+    );
+  }, [docentes, searchDocente]);
+
+  const filteredAlumnos = useMemo(() => {
+    return alumnos.filter(a => 
+      `${a.firstName} ${a.lastName}`.toLowerCase().includes(searchAlumno.toLowerCase()) ||
+      a.email.toLowerCase().includes(searchAlumno.toLowerCase()) ||
+      a.matricula?.toLowerCase().includes(searchAlumno.toLowerCase())
+    );
+  }, [alumnos, searchAlumno]);
+
   // Schedule States
   const [selectedGrupoScheduleId, setSelectedGrupoScheduleId] = useState<string>("");
   const [isEditingSchedule, setIsEditingSchedule] = useState(false);
@@ -372,7 +422,18 @@ export default function CatalogosPage() {
         {/* --- ALUMNOS --- */}
         <TabsContent value="alumnos" className="mt-6 space-y-4">
           <div className="flex flex-col md:flex-row justify-between items-center gap-4">
-            <h2 className="text-xl font-bold">Matrícula Estudiantil</h2>
+            <div className="flex items-center gap-4 flex-1">
+              <h2 className="text-xl font-bold whitespace-nowrap">Matrícula Estudiantil</h2>
+              <div className="relative flex-1 max-w-sm">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                <Input 
+                  placeholder="Buscar por nombre, correo o matrícula..." 
+                  className="pl-10 h-10 rounded-xl bg-white" 
+                  value={searchAlumno}
+                  onChange={(e) => setSearchAlumno(e.target.value)}
+                />
+              </div>
+            </div>
             <div className="flex gap-2">
               <input type="file" ref={fileInputRef} className="hidden" onChange={(e) => handleImportExcel(e, 'Alumno')} accept=".xlsx, .xls" />
               <Button variant="outline" onClick={() => fileInputRef.current?.click()} className="rounded-xl font-bold"><Upload className="w-4 h-4 mr-2" /> Importar</Button>
@@ -383,7 +444,7 @@ export default function CatalogosPage() {
           </div>
           <div className="bg-white border rounded-3xl overflow-hidden shadow-sm">
             <Table><TableHeader className="bg-slate-50"><TableRow><TableHead className="px-6 font-bold py-4">Matrícula</TableHead><TableHead className="font-bold">Nombre</TableHead><TableHead className="font-bold">Carrera</TableHead><TableHead className="font-bold">Grupo</TableHead><TableHead className="text-right pr-6 font-bold">Acciones</TableHead></TableRow></TableHeader>
-              <TableBody>{alumnos.map(a => (<TableRow key={a.id}><TableCell className="px-6 font-black text-primary">{a.matricula}</TableCell><TableCell className="font-medium">{a.firstName} {a.lastName}</TableCell><TableCell>{carreras?.find(c => c.id === a.carreraId)?.nombre}</TableCell><TableCell>{grupos?.find(g => g.id === a.grupoId)?.nombre}</TableCell><TableCell className="text-right pr-6 flex justify-end gap-1">
+              <TableBody>{filteredAlumnos.map(a => (<TableRow key={a.id}><TableCell className="px-6 font-black text-primary">{a.matricula}</TableCell><TableCell className="font-medium">{a.firstName} {a.lastName}</TableCell><TableCell>{carreras?.find(c => c.id === a.carreraId)?.nombre}</TableCell><TableCell>{grupos?.find(g => g.id === a.grupoId)?.nombre}</TableCell><TableCell className="text-right pr-6 flex justify-end gap-1">
                 <Button variant="outline" size="icon" onClick={() => {setFaceTargetUser(a); setFaceMode('enroll'); setOpenDialog('face');}}>
                   <ScanFace className={cn("w-4 h-4", a.faceDescriptor && Array.isArray(a.faceDescriptor) ? "text-green-600" : "text-primary")} />
                 </Button>
@@ -420,7 +481,18 @@ export default function CatalogosPage() {
         {/* --- DOCENTES --- */}
         <TabsContent value="docentes" className="mt-6 space-y-4">
           <div className="flex flex-col md:flex-row justify-between items-center gap-4">
-            <h2 className="text-xl font-bold">Cuerpo Docente</h2>
+            <div className="flex items-center gap-4 flex-1">
+              <h2 className="text-xl font-bold whitespace-nowrap">Cuerpo Docente</h2>
+              <div className="relative flex-1 max-w-sm">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                <Input 
+                  placeholder="Buscar por nombre o correo..." 
+                  className="pl-10 h-10 rounded-xl bg-white" 
+                  value={searchDocente}
+                  onChange={(e) => setSearchDocente(e.target.value)}
+                />
+              </div>
+            </div>
             <div className="flex gap-2">
               <input type="file" ref={docentFileInputRef} className="hidden" onChange={(e) => handleImportExcel(e, 'Docente')} accept=".xlsx, .xls" />
               <Button variant="outline" onClick={() => docentFileInputRef.current?.click()} className="rounded-xl font-bold"><Upload className="w-4 h-4 mr-2" /> Importar</Button>
@@ -430,7 +502,7 @@ export default function CatalogosPage() {
           </div>
           <div className="bg-white border rounded-3xl overflow-hidden shadow-sm">
             <Table><TableHeader className="bg-slate-50"><TableRow><TableHead className="px-6 font-bold py-4">Nombre</TableHead><TableHead className="font-bold">Correo</TableHead><TableHead className="font-bold">Grupos Asignados</TableHead><TableHead className="text-right pr-6 font-bold">Acciones</TableHead></TableRow></TableHeader>
-              <TableBody>{docentes.map(d => (<TableRow key={d.id}><TableCell className="px-6 font-medium">{d.firstName} {d.lastName}</TableCell><TableCell>{d.email}</TableCell><TableCell className="flex gap-1 flex-wrap">{d.grupoIds?.map(gid => <span key={gid} className="bg-slate-100 text-[10px] px-2 py-0.5 rounded-full font-bold">{grupos?.find(g => g.id === gid)?.nombre}</span>)}</TableCell><TableCell className="text-right pr-6"><Button variant="ghost" size="icon" onClick={() => handleDelete('users', d.id)}><Trash2 className="w-4 h-4 text-primary" /></Button></TableCell></TableRow>))}</TableBody>
+              <TableBody>{filteredDocentes.map(d => (<TableRow key={d.id}><TableCell className="px-6 font-medium">{d.firstName} {d.lastName}</TableCell><TableCell>{d.email}</TableCell><TableCell className="flex gap-1 flex-wrap">{d.grupoIds?.map(gid => <span key={gid} className="bg-slate-100 text-[10px] px-2 py-0.5 rounded-full font-bold">{grupos?.find(g => g.id === gid)?.nombre}</span>)}</TableCell><TableCell className="text-right pr-6"><Button variant="ghost" size="icon" onClick={() => handleDelete('users', d.id)}><Trash2 className="w-4 h-4 text-primary" /></Button></TableCell></TableRow>))}</TableBody>
             </Table>
           </div>
           <Dialog open={openDialog === 'docente'} onOpenChange={(o) => setOpenDialog(o ? 'docente' : null)}>
@@ -461,10 +533,24 @@ export default function CatalogosPage() {
 
         {/* --- OTROS CATALOGOS --- */}
         <TabsContent value="sedes" className="mt-6 space-y-4">
-          <div className="flex justify-between items-center"><h2 className="text-xl font-bold">Gestión de Sedes</h2><Button onClick={() => setOpenDialog('sede')} className="bg-primary rounded-xl font-bold"><Plus className="w-4 h-4 mr-2" /> Nueva Sede</Button></div>
+          <div className="flex justify-between items-center">
+            <div className="flex items-center gap-4 flex-1">
+              <h2 className="text-xl font-bold whitespace-nowrap">Gestión de Sedes</h2>
+              <div className="relative flex-1 max-w-sm">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                <Input 
+                  placeholder="Buscar por nombre o ubicación..." 
+                  className="pl-10 h-10 rounded-xl bg-white" 
+                  value={searchSede}
+                  onChange={(e) => setSearchSede(e.target.value)}
+                />
+              </div>
+            </div>
+            <Button onClick={() => setOpenDialog('sede')} className="bg-primary rounded-xl font-bold"><Plus className="w-4 h-4 mr-2" /> Nueva Sede</Button>
+          </div>
           <div className="bg-white border rounded-3xl overflow-hidden shadow-sm">
             <Table><TableHeader className="bg-slate-50"><TableRow><TableHead className="px-6 font-bold py-4">Nombre</TableHead><TableHead className="font-bold">Ubicación</TableHead><TableHead className="text-right pr-6 font-bold">Acciones</TableHead></TableRow></TableHeader>
-              <TableBody>{sedes?.map(s => (<TableRow key={s.id}><TableCell className="px-6 font-medium">{s.nombre}</TableCell><TableCell>{s.ubicacion}</TableCell><TableCell className="text-right pr-6"><Button variant="ghost" size="icon" onClick={() => handleDelete('sedes', s.id)}><Trash2 className="w-4 h-4 text-primary" /></Button></TableCell></TableRow>))}</TableBody>
+              <TableBody>{filteredSedes?.map(s => (<TableRow key={s.id}><TableCell className="px-6 font-medium">{s.nombre}</TableCell><TableCell>{s.ubicacion}</TableCell><TableCell className="text-right pr-6"><Button variant="ghost" size="icon" onClick={() => handleDelete('sedes', s.id)}><Trash2 className="w-4 h-4 text-primary" /></Button></TableCell></TableRow>))}</TableBody>
             </Table>
           </div>
           <Dialog open={openDialog === 'sede'} onOpenChange={(o) => setOpenDialog(o ? 'sede' : null)}>
@@ -480,10 +566,24 @@ export default function CatalogosPage() {
         </TabsContent>
 
         <TabsContent value="carreras" className="mt-6 space-y-4">
-          <div className="flex justify-between items-center"><h2 className="text-xl font-bold">Programas Académicos</h2><Button onClick={() => setOpenDialog('carrera')} className="bg-primary rounded-xl font-bold"><Plus className="w-4 h-4 mr-2" /> Nueva Carrera</Button></div>
+          <div className="flex justify-between items-center">
+            <div className="flex items-center gap-4 flex-1">
+              <h2 className="text-xl font-bold whitespace-nowrap">Programas Académicos</h2>
+              <div className="relative flex-1 max-w-sm">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                <Input 
+                  placeholder="Buscar carrera..." 
+                  className="pl-10 h-10 rounded-xl bg-white" 
+                  value={searchCarrera}
+                  onChange={(e) => setSearchCarrera(e.target.value)}
+                />
+              </div>
+            </div>
+            <Button onClick={() => setOpenDialog('carrera')} className="bg-primary rounded-xl font-bold"><Plus className="w-4 h-4 mr-2" /> Nueva Carrera</Button>
+          </div>
           <div className="bg-white border rounded-3xl overflow-hidden shadow-sm">
             <Table><TableHeader className="bg-slate-50"><TableRow><TableHead className="px-6 font-bold py-4">Carrera</TableHead><TableHead className="font-bold">Sede</TableHead><TableHead className="text-right pr-6 font-bold">Acciones</TableHead></TableRow></TableHeader>
-              <TableBody>{carreras?.map(c => (<TableRow key={c.id}><TableCell className="px-6 font-medium">{c.nombre}</TableCell><TableCell>{sedes?.find(s => s.id === c.sedeId)?.nombre}</TableCell><TableCell className="text-right pr-6"><Button variant="ghost" size="icon" onClick={() => handleDelete('carreras', c.id)}><Trash2 className="w-4 h-4 text-primary" /></Button></TableCell></TableRow>))}</TableBody>
+              <TableBody>{filteredCarreras?.map(c => (<TableRow key={c.id}><TableCell className="px-6 font-medium">{c.nombre}</TableCell><TableCell>{sedes?.find(s => s.id === c.sedeId)?.nombre}</TableCell><TableCell className="text-right pr-6"><Button variant="ghost" size="icon" onClick={() => handleDelete('carreras', c.id)}><Trash2 className="w-4 h-4 text-primary" /></Button></TableCell></TableRow>))}</TableBody>
             </Table>
           </div>
           <Dialog open={openDialog === 'carrera'} onOpenChange={(o) => setOpenDialog(o ? 'carrera' : null)}>
@@ -504,10 +604,24 @@ export default function CatalogosPage() {
         </TabsContent>
 
         <TabsContent value="materias" className="mt-6 space-y-4">
-          <div className="flex justify-between items-center"><h2 className="text-xl font-bold">Plan de Estudios</h2><Button onClick={() => setOpenDialog('materia')} className="bg-primary rounded-xl font-bold"><Plus className="w-4 h-4 mr-2" /> Nueva Materia</Button></div>
+          <div className="flex justify-between items-center">
+            <div className="flex items-center gap-4 flex-1">
+              <h2 className="text-xl font-bold whitespace-nowrap">Plan de Estudios</h2>
+              <div className="relative flex-1 max-w-sm">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                <Input 
+                  placeholder="Buscar por nombre o código..." 
+                  className="pl-10 h-10 rounded-xl bg-white" 
+                  value={searchMateria}
+                  onChange={(e) => setSearchMateria(e.target.value)}
+                />
+              </div>
+            </div>
+            <Button onClick={() => setOpenDialog('materia')} className="bg-primary rounded-xl font-bold"><Plus className="w-4 h-4 mr-2" /> Nueva Materia</Button>
+          </div>
           <div className="bg-white border rounded-3xl overflow-hidden shadow-sm">
             <Table><TableHeader className="bg-slate-50"><TableRow><TableHead className="px-6 font-bold py-4">Materia</TableHead><TableHead className="font-bold">Carrera</TableHead><TableHead className="font-bold">Cuatrimestre</TableHead><TableHead className="text-right pr-6 font-bold">Acciones</TableHead></TableRow></TableHeader>
-              <TableBody>{materias?.map(m => (<TableRow key={m.id}><TableCell className="px-6 font-medium">{m.nombre}</TableCell><TableCell>{carreras?.find(c => c.id === m.carreraId)?.nombre}</TableCell><TableCell>{m.cuatrimestre}°</TableCell><TableCell className="text-right pr-6"><Button variant="ghost" size="icon" onClick={() => handleDelete('materias', m.id)}><Trash2 className="w-4 h-4 text-primary" /></Button></TableCell></TableRow>))}</TableBody>
+              <TableBody>{filteredMaterias?.map(m => (<TableRow key={m.id}><TableCell className="px-6 font-medium">{m.nombre}</TableCell><TableCell>{carreras?.find(c => c.id === m.carreraId)?.nombre}</TableCell><TableCell>{m.cuatrimestre}°</TableCell><TableCell className="text-right pr-6"><Button variant="ghost" size="icon" onClick={() => handleDelete('materias', m.id)}><Trash2 className="w-4 h-4 text-primary" /></Button></TableCell></TableRow>))}</TableBody>
             </Table>
           </div>
           <Dialog open={openDialog === 'materia'} onOpenChange={(o) => setOpenDialog(o ? 'materia' : null)}>
@@ -529,10 +643,24 @@ export default function CatalogosPage() {
         </TabsContent>
 
         <TabsContent value="grupos" className="mt-6 space-y-4">
-          <div className="flex justify-between items-center"><h2 className="text-xl font-bold">Grupos Escolares</h2><Button onClick={() => setOpenDialog('grupo')} className="bg-primary rounded-xl font-bold"><Plus className="w-4 h-4 mr-2" /> Nuevo Grupo</Button></div>
+          <div className="flex justify-between items-center">
+            <div className="flex items-center gap-4 flex-1">
+              <h2 className="text-xl font-bold whitespace-nowrap">Grupos Escolares</h2>
+              <div className="relative flex-1 max-w-sm">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                <Input 
+                  placeholder="Buscar por nombre de grupo..." 
+                  className="pl-10 h-10 rounded-xl bg-white" 
+                  value={searchGrupo}
+                  onChange={(e) => setSearchGrupo(e.target.value)}
+                />
+              </div>
+            </div>
+            <Button onClick={() => setOpenDialog('grupo')} className="bg-primary rounded-xl font-bold"><Plus className="w-4 h-4 mr-2" /> Nuevo Grupo</Button>
+          </div>
           <div className="bg-white border rounded-3xl overflow-hidden shadow-sm">
             <Table><TableHeader className="bg-slate-50"><TableRow><TableHead className="px-6 font-bold py-4">Grupo</TableHead><TableHead className="font-bold">Carrera</TableHead><TableHead className="font-bold">Cuatrimestre</TableHead><TableHead className="text-right pr-6 font-bold">Acciones</TableHead></TableRow></TableHeader>
-              <TableBody>{grupos?.map(g => (<TableRow key={g.id}><TableCell className="px-6 font-medium">{g.nombre}</TableCell><TableCell>{carreras?.find(c => c.id === g.carreraId)?.nombre}</TableCell><TableCell>{g.cuatrimestre}°</TableCell><TableCell className="text-right pr-6"><Button variant="ghost" size="icon" onClick={() => handleDelete('grupos', g.id)}><Trash2 className="w-4 h-4 text-primary" /></Button></TableCell></TableRow>))}</TableBody>
+              <TableBody>{filteredGrupos?.map(g => (<TableRow key={g.id}><TableCell className="px-6 font-medium">{g.nombre}</TableCell><TableCell>{carreras?.find(c => c.id === g.carreraId)?.nombre}</TableCell><TableCell>{g.cuatrimestre}°</TableCell><TableCell className="text-right pr-6"><Button variant="ghost" size="icon" onClick={() => handleDelete('grupos', g.id)}><Trash2 className="w-4 h-4 text-primary" /></Button></TableCell></TableRow>))}</TableBody>
             </Table>
           </div>
           <Dialog open={openDialog === 'grupo'} onOpenChange={(o) => setOpenDialog(o ? 'grupo' : null)}>
