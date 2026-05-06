@@ -31,9 +31,9 @@ import {
   SidebarTrigger,
   SidebarFooter
 } from "@/components/ui/sidebar";
-import { useUser, useAuth, useDoc, useMemoFirebase } from '@/firebase';
+import { useUser, useAuth, useDoc, useMemoFirebase, useFirestore } from '@/firebase';
 import { signOut } from 'firebase/auth';
-import { doc } from 'firebase/firestore';
+import { doc, collection } from 'firebase/firestore';
 
 const adminItems = [
   { name: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
@@ -54,18 +54,21 @@ const docenteItems = [
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const router = useRouter();
+  const db = useFirestore();
   const { user, isUserLoading } = useUser();
   const auth = useAuth();
   
-  // Obtenemos el perfil del usuario para conocer su rol
-  const userDocRef = useMemoFirebase(() => user ? doc(collection(useFirestore(), 'users'), user.uid) : null, [user]);
-  // En este MVP, usamos el usuario del login simulado o el rol guardado.
-  // Por simplicidad, mostramos un menú híbrido si no hay rol definido.
+  // Obtenemos el perfil del usuario para conocer su rol real en Firestore
+  const userDocRef = useMemoFirebase(() => user ? doc(collection(db, 'users'), user.uid) : null, [user, db]);
+  const { data: userProfile, isLoading: isProfileLoading } = useDoc(userDocRef);
   
   const navItems = useMemo(() => {
-    // Aquí podrías filtrar por context.userProfile.role
+    if (userProfile?.role === 'Docente') {
+      return docenteItems;
+    }
+    // Por defecto mostramos el de admin para administradores o si no se ha cargado el perfil aún
     return adminItems; 
-  }, []);
+  }, [userProfile]);
 
   useEffect(() => {
     if (!isUserLoading && !user) {
@@ -82,7 +85,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     }
   };
 
-  if (isUserLoading) {
+  if (isUserLoading || (user && isProfileLoading)) {
     return (
       <div className="h-screen w-full flex items-center justify-center bg-white">
         <Loader2 className="w-10 h-10 animate-spin text-primary" />
@@ -138,6 +141,11 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
             </SidebarMenu>
           </SidebarContent>
           <SidebarFooter className="p-6 mt-auto border-t bg-slate-50/30">
+            <div className="px-4 py-2 mb-4 bg-white rounded-xl border border-border shadow-sm">
+              <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest mb-1">Usuario Activo</p>
+              <p className="text-xs font-bold text-slate-900 truncate">{userProfile?.firstName} {userProfile?.lastName}</p>
+              <p className="text-[9px] font-medium text-primary uppercase">{userProfile?.role}</p>
+            </div>
             <Button 
               variant="ghost" 
               className="w-full justify-start text-muted-foreground hover:text-destructive hover:bg-destructive/5 rounded-2xl py-7 font-bold transition-all" 
