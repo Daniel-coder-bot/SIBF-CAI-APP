@@ -89,6 +89,7 @@ export default function CatalogosPage() {
   const db = useFirestore();
   const { toast } = useToast();
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const docentFileInputRef = useRef<HTMLInputElement>(null);
 
   // Queries
   const sedesRef = useMemoFirebase(() => collection(db, 'sedes'), [db]);
@@ -227,6 +228,7 @@ export default function CatalogosPage() {
 
         toast({ title: "Importación masiva", description: `${data.length} registros procesados.` });
         if (fileInputRef.current) fileInputRef.current.value = '';
+        if (docentFileInputRef.current) docentFileInputRef.current.value = '';
       } catch (error) {
         toast({ variant: "destructive", title: "Error en importación" });
       }
@@ -382,7 +384,9 @@ export default function CatalogosPage() {
           <div className="bg-white border rounded-3xl overflow-hidden shadow-sm">
             <Table><TableHeader className="bg-slate-50"><TableRow><TableHead className="px-6 font-bold py-4">Matrícula</TableHead><TableHead className="font-bold">Nombre</TableHead><TableHead className="font-bold">Carrera</TableHead><TableHead className="font-bold">Grupo</TableHead><TableHead className="text-right pr-6 font-bold">Acciones</TableHead></TableRow></TableHeader>
               <TableBody>{alumnos.map(a => (<TableRow key={a.id}><TableCell className="px-6 font-black text-primary">{a.matricula}</TableCell><TableCell className="font-medium">{a.firstName} {a.lastName}</TableCell><TableCell>{carreras?.find(c => c.id === a.carreraId)?.nombre}</TableCell><TableCell>{grupos?.find(g => g.id === a.grupoId)?.nombre}</TableCell><TableCell className="text-right pr-6 flex justify-end gap-1">
-                <Button variant="outline" size="icon" onClick={() => {setFaceTargetUser(a); setFaceMode('enroll'); setOpenDialog('face');}}><ScanFace className="w-4 h-4 text-primary" /></Button>
+                <Button variant="outline" size="icon" onClick={() => {setFaceTargetUser(a); setFaceMode('enroll'); setOpenDialog('face');}}>
+                  <ScanFace className={cn("w-4 h-4", a.faceDescriptor && Array.isArray(a.faceDescriptor) ? "text-green-600" : "text-primary")} />
+                </Button>
                 <Button variant="ghost" size="icon" onClick={() => handleDelete('users', a.id)}><Trash2 className="w-4 h-4 text-primary" /></Button>
               </TableCell></TableRow>))}</TableBody>
             </Table>
@@ -418,8 +422,8 @@ export default function CatalogosPage() {
           <div className="flex flex-col md:flex-row justify-between items-center gap-4">
             <h2 className="text-xl font-bold">Cuerpo Docente</h2>
             <div className="flex gap-2">
-              <input type="file" ref={fileInputRef} className="hidden" onChange={(e) => handleImportExcel(e, 'Docente')} accept=".xlsx, .xls" />
-              <Button variant="outline" onClick={() => fileInputRef.current?.click()} className="rounded-xl font-bold"><Upload className="w-4 h-4 mr-2" /> Importar</Button>
+              <input type="file" ref={docentFileInputRef} className="hidden" onChange={(e) => handleImportExcel(e, 'Docente')} accept=".xlsx, .xls" />
+              <Button variant="outline" onClick={() => docentFileInputRef.current?.click()} className="rounded-xl font-bold"><Upload className="w-4 h-4 mr-2" /> Importar</Button>
               <Button variant="outline" onClick={() => handleExportExcel(docentes, "Docentes_SIBF")} className="rounded-xl font-bold"><Download className="w-4 h-4 mr-2" /> Exportar</Button>
               <Button onClick={() => setOpenDialog('docente')} className="bg-primary rounded-xl font-bold"><Plus className="w-4 h-4 mr-2" /> Nuevo Docente</Button>
             </div>
@@ -455,9 +459,8 @@ export default function CatalogosPage() {
           </Dialog>
         </TabsContent>
 
-        {/* --- OTROS CATALOGOS (SEDES, CARRERAS, MATERIAS, GRUPOS) --- */}
+        {/* --- OTROS CATALOGOS --- */}
         <TabsContent value="sedes" className="mt-6 space-y-4">
-           {/* ... Mismo contenido que antes ... */}
           <div className="flex justify-between items-center"><h2 className="text-xl font-bold">Gestión de Sedes</h2><Button onClick={() => setOpenDialog('sede')} className="bg-primary rounded-xl font-bold"><Plus className="w-4 h-4 mr-2" /> Nueva Sede</Button></div>
           <div className="bg-white border rounded-3xl overflow-hidden shadow-sm">
             <Table><TableHeader className="bg-slate-50"><TableRow><TableHead className="px-6 font-bold py-4">Nombre</TableHead><TableHead className="font-bold">Ubicación</TableHead><TableHead className="text-right pr-6 font-bold">Acciones</TableHead></TableRow></TableHeader>
