@@ -95,6 +95,7 @@ export default function LoginPage() {
 
   return (
     <div className="min-h-screen flex items-center justify-center p-4 relative overflow-hidden bg-white">
+      {/* Dynamic background element from the reference image style */}
       <div className="absolute top-0 right-0 w-1/2 h-full bg-primary/5 hidden lg:block -skew-x-12 transform translate-x-24" />
       
       <div className="w-full max-w-md z-10">
