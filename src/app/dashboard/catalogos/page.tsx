@@ -1,3 +1,4 @@
+
 "use client";
 
 import React, { useState, useRef, useMemo, useEffect } from 'react';
@@ -180,7 +181,6 @@ export default function CatalogosPage() {
     });
     setIsEditingSchedule(false);
     toast({ title: "Horario Actualizado", description: "Se han guardado todos los cambios del grupo." });
-    setTimeout(() => window.location.reload(), 1500);
   };
 
   const handleAdd = (ref: any, data: any, setter: any, emptyData: any, title: string) => {
@@ -188,13 +188,11 @@ export default function CatalogosPage() {
     setter(emptyData);
     setOpenDialog(null);
     toast({ title: `${title} guardado` });
-    setTimeout(() => window.location.reload(), 1000);
   };
 
   const handleDelete = (collectionName: string, id: string) => {
     deleteDocumentNonBlocking(doc(db, collectionName, id));
     toast({ variant: "destructive", title: "Eliminado" });
-    setTimeout(() => window.location.reload(), 1000);
   };
 
   // Facial Recognition
@@ -208,7 +206,6 @@ export default function CatalogosPage() {
     setOpenDialog(null);
     setFaceTargetUser(null);
     toast({ title: "Biometría Guardada" });
-    setTimeout(() => window.location.reload(), 1500);
   };
 
   return (
@@ -236,7 +233,7 @@ export default function CatalogosPage() {
           <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 bg-white p-6 rounded-3xl border shadow-sm">
             <div className="space-y-1">
               <h2 className="text-xl font-bold flex items-center gap-2"><Grid className="w-5 h-5 text-primary" /> Generador de Horarios por Grupo</h2>
-              <p className="text-xs text-muted-foreground">Selecciona un grupo para gestionar sus 20 bloques de clase (7:00 AM - 11:00 AM).</p>
+              <p className="text-xs text-muted-foreground">Selecciona un grupo para gestionar sus bloques de clase (7:00 AM - 11:00 AM).</p>
             </div>
             <div className="flex gap-2 w-full md:w-auto">
               <Select value={selectedGrupoScheduleId} onValueChange={setSelectedGrupoScheduleId}>
@@ -295,7 +292,7 @@ export default function CatalogosPage() {
                                     {filteredDocentesForSelectedGrupo.map(d => <SelectItem key={d.id} value={d.id}>{d.firstName} {d.lastName}</SelectItem>)}
                                   </SelectContent>
                                 </Select>
-                                <Input placeholder="Aula" className="h-7 text-[9px] font-bold" value={cell?.aula || ''} onChange={(e) => setTempGrid({...tempGrid, [key]: { ...cell, aula: e.target.value }})} />
+                                <Input placeholder="Aula (Opcional)" className="h-7 text-[9px] font-bold" value={cell?.aula || ''} onChange={(e) => setTempGrid({...tempGrid, [key]: { ...cell, aula: e.target.value }})} />
                               </>
                             ) : (
                               cell?.materiaId ? (
