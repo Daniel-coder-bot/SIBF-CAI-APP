@@ -32,7 +32,8 @@ import {
   ScanFace,
   Save,
   Grid,
-  UserCheck
+  UserCheck,
+  Filter
 } from 'lucide-react';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -136,6 +137,11 @@ export default function CatalogosPage() {
   const [searchDocente, setSearchDocente] = useState('');
   const [searchAlumno, setSearchAlumno] = useState('');
 
+  // Advanced Filters
+  const [filterMateriaCarrera, setFilterMateriaCarrera] = useState<string>('all');
+  const [filterMateriaCuatrimestre, setFilterMateriaCuatrimestre] = useState<string>('all');
+  const [filterGrupoCarrera, setFilterGrupoCarrera] = useState<string>('all');
+
   // Filtered Data
   const filteredSedes = useMemo(() => {
     return sedes?.filter(s => 
@@ -151,17 +157,23 @@ export default function CatalogosPage() {
   }, [carreras, searchCarrera]);
 
   const filteredMaterias = useMemo(() => {
-    return materias?.filter(m => 
-      m.nombre.toLowerCase().includes(searchMateria.toLowerCase()) ||
-      m.codigo?.toLowerCase().includes(searchMateria.toLowerCase())
-    ) || [];
-  }, [materias, searchMateria]);
+    return materias?.filter(m => {
+      const matchesSearch = m.nombre.toLowerCase().includes(searchMateria.toLowerCase()) ||
+                            m.codigo?.toLowerCase().includes(searchMateria.toLowerCase());
+      const matchesCarrera = filterMateriaCarrera === 'all' || m.carreraId === filterMateriaCarrera;
+      const matchesCuatrimestre = filterMateriaCuatrimestre === 'all' || m.cuatrimestre === filterMateriaCuatrimestre;
+      
+      return matchesSearch && matchesCarrera && matchesCuatrimestre;
+    }) || [];
+  }, [materias, searchMateria, filterMateriaCarrera, filterMateriaCuatrimestre]);
 
   const filteredGrupos = useMemo(() => {
-    return grupos?.filter(g => 
-      g.nombre.toLowerCase().includes(searchGrupo.toLowerCase())
-    ) || [];
-  }, [grupos, searchGrupo]);
+    return grupos?.filter(g => {
+      const matchesSearch = g.nombre.toLowerCase().includes(searchGrupo.toLowerCase());
+      const matchesCarrera = filterGrupoCarrera === 'all' || g.carreraId === filterGrupoCarrera;
+      return matchesSearch && matchesCarrera;
+    }) || [];
+  }, [grupos, searchGrupo, filterGrupoCarrera]);
 
   const filteredDocentes = useMemo(() => {
     return docentes.filter(d => 
@@ -427,7 +439,7 @@ export default function CatalogosPage() {
               <div className="relative flex-1 max-w-sm">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                 <Input 
-                  placeholder="Buscar por nombre, correo o matrícula..." 
+                  placeholder="Buscar alumno..." 
                   className="pl-10 h-10 rounded-xl bg-white" 
                   value={searchAlumno}
                   onChange={(e) => setSearchAlumno(e.target.value)}
@@ -486,7 +498,7 @@ export default function CatalogosPage() {
               <div className="relative flex-1 max-w-sm">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                 <Input 
-                  placeholder="Buscar por nombre o correo..." 
+                  placeholder="Buscar docente..." 
                   className="pl-10 h-10 rounded-xl bg-white" 
                   value={searchDocente}
                   onChange={(e) => setSearchDocente(e.target.value)}
@@ -539,7 +551,7 @@ export default function CatalogosPage() {
               <div className="relative flex-1 max-w-sm">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                 <Input 
-                  placeholder="Buscar por nombre o ubicación..." 
+                  placeholder="Buscar sede..." 
                   className="pl-10 h-10 rounded-xl bg-white" 
                   value={searchSede}
                   onChange={(e) => setSearchSede(e.target.value)}
@@ -604,20 +616,37 @@ export default function CatalogosPage() {
         </TabsContent>
 
         <TabsContent value="materias" className="mt-6 space-y-4">
-          <div className="flex justify-between items-center">
-            <div className="flex items-center gap-4 flex-1">
-              <h2 className="text-xl font-bold whitespace-nowrap">Plan de Estudios</h2>
-              <div className="relative flex-1 max-w-sm">
+          <div className="flex flex-col gap-4">
+            <div className="flex justify-between items-center">
+              <h2 className="text-xl font-bold">Plan de Estudios</h2>
+              <Button onClick={() => setOpenDialog('materia')} className="bg-primary rounded-xl font-bold"><Plus className="w-4 h-4 mr-2" /> Nueva Materia</Button>
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-4 bg-slate-50 p-4 rounded-2xl border">
+              <div className="relative">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                 <Input 
-                  placeholder="Buscar por nombre o código..." 
+                  placeholder="Buscar por nombre..." 
                   className="pl-10 h-10 rounded-xl bg-white" 
                   value={searchMateria}
                   onChange={(e) => setSearchMateria(e.target.value)}
                 />
               </div>
+              <Select value={filterMateriaCarrera} onValueChange={setFilterMateriaCarrera}>
+                <SelectTrigger className="h-10 rounded-xl bg-white"><SelectValue placeholder="Filtrar por Carrera" /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Todas las Carreras</SelectItem>
+                  {carreras?.map(c => <SelectItem key={c.id} value={c.id}>{c.nombre}</SelectItem>)}
+                </SelectContent>
+              </Select>
+              <Select value={filterMateriaCuatrimestre} onValueChange={setFilterMateriaCuatrimestre}>
+                <SelectTrigger className="h-10 rounded-xl bg-white"><SelectValue placeholder="Filtrar por Cuatrimestre" /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Todos los Cuatrimestres</SelectItem>
+                  {[1,2,3,4,5,6,7,8,9,10,11,12].map(n => <SelectItem key={n} value={n.toString()}>{n}° Cuatrimestre</SelectItem>)}
+                </SelectContent>
+              </Select>
+              <Button variant="ghost" onClick={() => { setFilterMateriaCarrera('all'); setFilterMateriaCuatrimestre('all'); setSearchMateria(''); }} className="h-10 rounded-xl text-xs font-bold text-primary">Limpiar Filtros</Button>
             </div>
-            <Button onClick={() => setOpenDialog('materia')} className="bg-primary rounded-xl font-bold"><Plus className="w-4 h-4 mr-2" /> Nueva Materia</Button>
           </div>
           <div className="bg-white border rounded-3xl overflow-hidden shadow-sm">
             <Table><TableHeader className="bg-slate-50"><TableRow><TableHead className="px-6 font-bold py-4">Materia</TableHead><TableHead className="font-bold">Carrera</TableHead><TableHead className="font-bold">Cuatrimestre</TableHead><TableHead className="text-right pr-6 font-bold">Acciones</TableHead></TableRow></TableHeader>
@@ -635,7 +664,12 @@ export default function CatalogosPage() {
                     <SelectContent>{carreras?.map(c => <SelectItem key={c.id} value={c.id}>{c.nombre}</SelectItem>)}</SelectContent>
                   </Select>
                 </div>
-                <div className="space-y-2"><Label>Cuatrimestre</Label><Input type="number" value={newMateria.cuatrimestre} onChange={e => setNewMateria({...newMateria, cuatrimestre: e.target.value})} /></div>
+                <div className="space-y-2"><Label>Cuatrimestre</Label>
+                  <Select value={newMateria.cuatrimestre} onValueChange={v => setNewMateria({...newMateria, cuatrimestre: v})}>
+                    <SelectTrigger className="rounded-xl"><SelectValue placeholder="Seleccionar Cuatrimestre" /></SelectTrigger>
+                    <SelectContent>{[1,2,3,4,5,6,7,8,9,10,11,12].map(n => <SelectItem key={n} value={n.toString()}>{n}° Cuatrimestre</SelectItem>)}</SelectContent>
+                  </Select>
+                </div>
               </div>
               <DialogFooter><Button onClick={() => handleAdd(materiasRef, newMateria, setNewMateria, {nombre: '', codigo: '', carreraId: '', cuatrimestre: ''}, "Materia")} className="w-full bg-primary font-bold">Guardar Materia</Button></DialogFooter>
             </DialogContent>
@@ -643,20 +677,30 @@ export default function CatalogosPage() {
         </TabsContent>
 
         <TabsContent value="grupos" className="mt-6 space-y-4">
-          <div className="flex justify-between items-center">
-            <div className="flex items-center gap-4 flex-1">
-              <h2 className="text-xl font-bold whitespace-nowrap">Grupos Escolares</h2>
-              <div className="relative flex-1 max-w-sm">
+          <div className="flex flex-col gap-4">
+            <div className="flex justify-between items-center">
+              <h2 className="text-xl font-bold">Grupos Escolares</h2>
+              <Button onClick={() => setOpenDialog('grupo')} className="bg-primary rounded-xl font-bold"><Plus className="w-4 h-4 mr-2" /> Nuevo Grupo</Button>
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 bg-slate-50 p-4 rounded-2xl border">
+              <div className="relative">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                 <Input 
-                  placeholder="Buscar por nombre de grupo..." 
+                  placeholder="Buscar grupo..." 
                   className="pl-10 h-10 rounded-xl bg-white" 
                   value={searchGrupo}
                   onChange={(e) => setSearchGrupo(e.target.value)}
                 />
               </div>
+              <Select value={filterGrupoCarrera} onValueChange={setFilterGrupoCarrera}>
+                <SelectTrigger className="h-10 rounded-xl bg-white"><SelectValue placeholder="Filtrar por Carrera" /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Todas las Carreras</SelectItem>
+                  {carreras?.map(c => <SelectItem key={c.id} value={c.id}>{c.nombre}</SelectItem>)}
+                </SelectContent>
+              </Select>
+              <Button variant="ghost" onClick={() => { setFilterGrupoCarrera('all'); setSearchGrupo(''); }} className="h-10 rounded-xl text-xs font-bold text-primary">Limpiar Filtros</Button>
             </div>
-            <Button onClick={() => setOpenDialog('grupo')} className="bg-primary rounded-xl font-bold"><Plus className="w-4 h-4 mr-2" /> Nuevo Grupo</Button>
           </div>
           <div className="bg-white border rounded-3xl overflow-hidden shadow-sm">
             <Table><TableHeader className="bg-slate-50"><TableRow><TableHead className="px-6 font-bold py-4">Grupo</TableHead><TableHead className="font-bold">Carrera</TableHead><TableHead className="font-bold">Cuatrimestre</TableHead><TableHead className="text-right pr-6 font-bold">Acciones</TableHead></TableRow></TableHeader>
@@ -674,7 +718,12 @@ export default function CatalogosPage() {
                     <SelectContent>{carreras?.map(c => <SelectItem key={c.id} value={c.id}>{c.nombre}</SelectItem>)}</SelectContent>
                   </Select>
                 </div>
-                <div className="space-y-2"><Label>Cuatrimestre</Label><Input type="number" value={newGrupo.cuatrimestre} onChange={e => setNewGrupo({...newGrupo, cuatrimestre: e.target.value})} /></div>
+                <div className="space-y-2"><Label>Cuatrimestre</Label>
+                  <Select value={newGrupo.cuatrimestre} onValueChange={v => setNewGrupo({...newGrupo, cuatrimestre: v})}>
+                    <SelectTrigger className="rounded-xl"><SelectValue placeholder="Seleccionar Cuatrimestre" /></SelectTrigger>
+                    <SelectContent>{[1,2,3,4,5,6,7,8,9,10,11,12].map(n => <SelectItem key={n} value={n.toString()}>{n}° Cuatrimestre</SelectItem>)}</SelectContent>
+                  </Select>
+                </div>
               </div>
               <DialogFooter><Button onClick={() => handleAdd(gruposRef, newGrupo, setNewGrupo, {nombre: '', carreraId: '', cuatrimestre: ''}, "Grupo")} className="w-full bg-primary font-bold">Guardar Grupo</Button></DialogFooter>
             </DialogContent>
