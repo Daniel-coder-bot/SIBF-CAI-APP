@@ -21,7 +21,7 @@ export default function RootLayout({
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
         <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800;900&family=Montserrat:wght@300;400;500;600;700;800&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
         
-        {/* Google tag (gtag.js) */}
+        {/* Google tag (gtag.js) - Integración global */}
         <Script
           src="https://www.googletagmanager.com/gtag/js?id=G-74KCH38L32"
           strategy="afterInteractive"
