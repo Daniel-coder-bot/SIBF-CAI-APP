@@ -47,7 +47,7 @@ export default function MiAsistenciaPage() {
   // Buscar asistencias del alumno
   const asistenciasRef = useMemoFirebase(() => collection(db, 'asistencias'), [db]);
   const myAsistenciasQuery = useMemoFirebase(() => 
-    student ? query(asistenciasRef, where("alumnoId", "==", student.id), orderBy("fecha", "desc")) : null,
+    student ? query(asistenciasRef, where("alumnoId", "==", student.id), orderBy("createdAt", "desc")) : null,
   [asistenciasRef, student]);
   const { data: asistencias, isLoading } = useCollection(myAsistenciasQuery);
 
@@ -124,12 +124,12 @@ export default function MiAsistenciaPage() {
             {isLoading ? (
               <TableRow><TableCell colSpan={3} className="py-10 text-center"><Loader2 className="w-6 h-6 animate-spin text-primary mx-auto" /></TableCell></TableRow>
             ) : !asistencias || asistencias.length === 0 ? (
-              <TableRow><TableCell colSpan={3} className="py-20 text-center text-muted-foreground italic">Aún no tienes registros de asistencia en el sistema.</TableCell></TableRow>
+              <TableRow><TableCell colSpan={3} className="py-20 text-center text-muted-foreground italic font-medium">Aún no tienes registros de asistencia en el sistema.</TableCell></TableRow>
             ) : asistencias.map(asist => (
               <TableRow key={asist.id} className="hover:bg-slate-50/30">
                 <TableCell className="px-8 font-medium">{asist.fecha}</TableCell>
                 <TableCell className="font-bold text-slate-900">
-                  {materias?.find(m => m.id === asist.materiaId)?.nombre || 'Materia desconocida'}
+                  {materias?.find(m => m.id === asist.materiaId)?.nombre || 'Materia Demo'}
                 </TableCell>
                 <TableCell className="text-center">
                   <Badge 

@@ -24,7 +24,7 @@
     --border: 0 0% 89.8%;
     --input: 0 0% 89.8%;
     --ring: 356 100% 56%;
-    --radius: 1rem;
+    --radius: 1.25rem;
     --sidebar-background: 0 0% 100%;
     --sidebar-foreground: 240 5.3% 26.1%;
     --sidebar-primary: 356 100% 56%;
@@ -48,8 +48,18 @@
   }
 }
 
-/* Fix para asegurar que el menú móvil no sea transparente */
+/* Fix para asegurar que el menú móvil no sea transparente y tenga fondo sólido */
 [data-sidebar="sidebar"] {
   background-color: white !important;
   opacity: 1 !important;
+  box-shadow: 10px 0 15px -3px rgba(0, 0, 0, 0.05);
+}
+
+/* Suavizado global de fuentes */
+.font-black, .font-extrabold {
+  font-weight: 700 !important;
+}
+
+.font-bold {
+  font-weight: 600 !important;
 }

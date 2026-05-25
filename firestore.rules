@@ -2,29 +2,14 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
-    // Función para verificar si el usuario está autenticado
-    function isSignedIn() {
-      return request.auth != null;
+    // Permitir todo a usuarios autenticados para la demo SIBF - CAI
+    match /{document=**} {
+      allow read, write: if request.auth != null;
     }
-
-    // Reglas para usuarios (lectura pública para búsquedas de matrícula, escritura protegida)
+    
+    // Permitir lectura de perfiles de usuario por matrícula para el login
     match /users/{userId} {
       allow read: if true;
-      allow write: if isSignedIn();
     }
-
-    // Reglas generales para el sistema SIBF - CAI
-    // Se permite lectura y escritura a cualquier usuario autenticado para facilitar la demo
-    match /sedes/{id} { allow read, write: if isSignedIn(); }
-    match /carreras/{id} { allow read, write: if isSignedIn(); }
-    match /materias/{id} { allow read, write: if isSignedIn(); }
-    match /grupos/{id} { allow read, write: if isSignedIn(); }
-    match /horarios/{id} { allow read, write: if isSignedIn(); }
-    match /asistencias/{id} { allow read, write: if isSignedIn(); }
-    match /justificaciones/{id} { allow read, write: if isSignedIn(); }
-    
-    // Permitir listado de colecciones (necesario para queries)
-    match /{path=**}/asistencias/{doc} { allow read: if isSignedIn(); }
-    match /{path=**}/justificaciones/{doc} { allow read: if isSignedIn(); }
   }
 }
