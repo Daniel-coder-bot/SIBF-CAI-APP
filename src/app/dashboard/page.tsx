@@ -43,6 +43,7 @@ export default function DashboardPage() {
     }
   }, [user, isUserLoading, router, activeMatricula, studentProfile, isStudentLoading]);
 
+  // Si no es un usuario limitado, mostramos el dashboard admin
   if (isUserLoading || (activeMatricula && isStudentLoading) || user?.isAnonymous || activeMatricula || studentProfile) {
     return (
       <div className="h-[60vh] flex items-center justify-center">

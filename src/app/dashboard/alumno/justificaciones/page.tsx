@@ -1,7 +1,7 @@
 
 "use client";
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { 
   FileText, 
   Plus, 
@@ -17,7 +17,7 @@ import {
   useMemoFirebase,
   addDocumentNonBlocking
 } from '@/firebase';
-import { collection, query, where, orderBy, serverTimestamp, limit } from 'firebase/firestore';
+import { collection, query, where, serverTimestamp, limit } from 'firebase/firestore';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -55,10 +55,20 @@ export default function MisJustificacionesPage() {
   const student = studentData?.[0];
 
   const justificacionesRef = useMemoFirebase(() => collection(db, 'justificaciones'), [db]);
+  // Quitamos orderBy para evitar errores de índice compuesto
   const myJustificacionesQuery = useMemoFirebase(() => 
-    student ? query(justificacionesRef, where("alumnoId", "==", student.id), orderBy("createdAt", "desc")) : null,
+    student ? query(justificacionesRef, where("alumnoId", "==", student.id)) : null,
   [justificacionesRef, student]);
-  const { data: justificaciones, isLoading } = useCollection(myJustificacionesQuery);
+  const { data: rawJustificaciones, isLoading } = useCollection(myJustificacionesQuery);
+
+  const justificaciones = useMemo(() => {
+    if (!rawJustificaciones) return [];
+    return [...rawJustificaciones].sort((a, b) => {
+      const dateA = a.createdAt?.toDate?.() || new Date(0);
+      const dateB = b.createdAt?.toDate?.() || new Date(0);
+      return dateB.getTime() - dateA.getTime();
+    });
+  }, [rawJustificaciones]);
 
   const [newJustificacion, setNewJustificacion] = useState({
     fecha: new Date().toISOString().split('T')[0],
@@ -137,7 +147,7 @@ export default function MisJustificacionesPage() {
       <div className="grid grid-cols-1 gap-4">
         {isLoading ? (
           <div className="py-20 text-center"><Loader2 className="w-8 h-8 animate-spin text-primary mx-auto" /></div>
-        ) : !justificaciones || justificaciones.length === 0 ? (
+        ) : justificaciones.length === 0 ? (
           <div className="bg-slate-50 border-2 border-dashed rounded-[2.5rem] py-24 text-center">
             <FileText className="w-16 h-16 text-slate-200 mx-auto mb-4" />
             <p className="text-slate-400 font-bold uppercase text-[10px] tracking-[0.2em]">No tienes solicitudes registradas</p>

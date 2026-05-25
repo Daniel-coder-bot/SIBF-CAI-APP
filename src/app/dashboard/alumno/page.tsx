@@ -15,7 +15,7 @@ import {
   useCollection, 
   useMemoFirebase 
 } from '@/firebase';
-import { collection, query, where, orderBy, limit } from 'firebase/firestore';
+import { collection, query, where, limit } from 'firebase/firestore';
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { 
@@ -33,10 +33,11 @@ export default function MiAsistenciaPage() {
   const [activeMatricula, setActiveMatricula] = useState<string | null>(null);
 
   useEffect(() => {
-    setActiveMatricula(sessionStorage.getItem('active_matricula'));
+    if (typeof window !== 'undefined') {
+      setActiveMatricula(sessionStorage.getItem('active_matricula'));
+    }
   }, []);
 
-  // Buscar perfil del alumno
   const usersRef = useMemoFirebase(() => collection(db, 'users'), [db]);
   const studentQuery = useMemoFirebase(() => 
     activeMatricula ? query(usersRef, where("matricula", "==", activeMatricula), limit(1)) : null,
@@ -44,14 +45,23 @@ export default function MiAsistenciaPage() {
   const { data: studentData } = useCollection(studentQuery);
   const student = studentData?.[0];
 
-  // Buscar asistencias del alumno
   const asistenciasRef = useMemoFirebase(() => collection(db, 'asistencias'), [db]);
+  // Quitamos orderBy para evitar errores de índice compuesto en la demo
   const myAsistenciasQuery = useMemoFirebase(() => 
-    student ? query(asistenciasRef, where("alumnoId", "==", student.id), orderBy("createdAt", "desc")) : null,
+    student ? query(asistenciasRef, where("alumnoId", "==", student.id)) : null,
   [asistenciasRef, student]);
-  const { data: asistencias, isLoading } = useCollection(myAsistenciasQuery);
+  const { data: rawAsistencias, isLoading } = useCollection(myAsistenciasQuery);
 
-  // Buscar materias para nombres
+  // Ordenamos en el cliente para evitar el error de índice de Firestore
+  const asistencias = useMemo(() => {
+    if (!rawAsistencias) return [];
+    return [...rawAsistencias].sort((a, b) => {
+      const dateA = a.createdAt?.toDate?.() || new Date(0);
+      const dateB = b.createdAt?.toDate?.() || new Date(0);
+      return dateB.getTime() - dateA.getTime();
+    });
+  }, [rawAsistencias]);
+
   const materiasRef = useMemoFirebase(() => collection(db, 'materias'), [db]);
   const { data: materias } = useCollection(materiasRef);
 
@@ -123,13 +133,13 @@ export default function MiAsistenciaPage() {
           <TableBody>
             {isLoading ? (
               <TableRow><TableCell colSpan={3} className="py-10 text-center"><Loader2 className="w-6 h-6 animate-spin text-primary mx-auto" /></TableCell></TableRow>
-            ) : !asistencias || asistencias.length === 0 ? (
+            ) : asistencias.length === 0 ? (
               <TableRow><TableCell colSpan={3} className="py-20 text-center text-muted-foreground italic font-medium">Aún no tienes registros de asistencia en el sistema.</TableCell></TableRow>
             ) : asistencias.map(asist => (
               <TableRow key={asist.id} className="hover:bg-slate-50/30">
                 <TableCell className="px-8 font-medium">{asist.fecha}</TableCell>
                 <TableCell className="font-bold text-slate-900">
-                  {materias?.find(m => m.id === asist.materiaId)?.nombre || 'Materia Demo'}
+                  {materias?.find(m => m.id === asist.materiaId)?.nombre || 'Materia'}
                 </TableCell>
                 <TableCell className="text-center">
                   <Badge 
