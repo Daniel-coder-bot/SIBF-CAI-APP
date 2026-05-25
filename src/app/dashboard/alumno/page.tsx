@@ -9,7 +9,8 @@ import {
   XCircle, 
   Clock, 
   AlertCircle,
-  GraduationCap
+  GraduationCap,
+  Loader2
 } from 'lucide-react';
 import { 
   useFirestore, 
@@ -27,6 +28,7 @@ import {
   TableHeader, 
   TableRow 
 } from "@/components/ui/table";
+import { cn } from "@/lib/utils";
 
 export default function MiAsistenciaPage() {
   const db = useFirestore();

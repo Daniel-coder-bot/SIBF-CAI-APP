@@ -8,8 +8,9 @@ import {
   Send, 
   Clock, 
   CheckCircle2, 
-  XCircle,
-  AlertCircle
+  XCircle, 
+  AlertCircle,
+  Loader2
 } from 'lucide-react';
 import { 
   useFirestore, 
@@ -17,7 +18,7 @@ import {
   useMemoFirebase,
   addDocumentNonBlocking
 } from '@/firebase';
-import { collection, query, where, orderBy, serverTimestamp } from 'firebase/firestore';
+import { collection, query, where, orderBy, serverTimestamp, limit } from 'firebase/firestore';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -33,6 +34,7 @@ import {
 } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
+import { cn } from "@/lib/utils";
 
 export default function MisJustificacionesPage() {
   const db = useFirestore();
@@ -116,7 +118,7 @@ export default function MisJustificacionesPage() {
               <div className="space-y-2">
                 <Label className="text-[10px] font-bold uppercase tracking-widest ml-1">Motivo / Descripción</Label>
                 <Textarea 
-                  placeholder="Explica brevemente el motivo de tu falta (ej. Cita médica, Problema familiar...)" 
+                  placeholder="Explica brevemente el motivo de tu falta..." 
                   value={newJustificacion.motivo}
                   onChange={e => setNewJustificacion({...newJustificacion, motivo: e.target.value})}
                   required
