@@ -19,7 +19,9 @@ import {
   ShieldAlert,
   ClipboardCheck,
   History,
-  FileText
+  FileText,
+  GraduationCap,
+  User
 } from 'lucide-react';
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -83,12 +85,14 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   const { data: studentProfiles, isLoading: isStudentLoading } = useCollection(studentQuery);
   const studentProfile = studentProfiles?.[0];
 
+  const isStudent = !!(activeMatricula || studentProfile);
+
   const navItems = useMemo(() => {
-    if (activeMatricula || studentProfile) return alumnoItems;
+    if (isStudent) return alumnoItems;
     if (user?.isAnonymous) return docenteItems;
     if (user && !user.isAnonymous) return adminItems;
     return [];
-  }, [studentProfile, activeMatricula, user]);
+  }, [isStudent, user]);
 
   useEffect(() => {
     if (isUserLoading) return;
@@ -98,15 +102,14 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       return;
     }
 
-    // Redirección forzada por seguridad en la raíz del dashboard
     if (pathname === '/dashboard') {
-      if (activeMatricula || studentProfile) {
+      if (isStudent) {
         router.push('/dashboard/alumno');
       } else if (user?.isAnonymous) {
         router.push('/dashboard/docente/asistencia');
       }
     }
-  }, [pathname, studentProfile, activeMatricula, user, router, isUserLoading]);
+  }, [pathname, isStudent, user, router, isUserLoading]);
 
   const handleLogout = async () => {
     try {
@@ -148,15 +151,27 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         <Sidebar className="border-r border-border/50 bg-white shadow-none">
           <SidebarHeader className="p-8 flex flex-col items-center gap-4 border-b bg-white">
             <div className="w-full flex justify-center py-2">
-              <Image 
-                src="https://picsum.photos/seed/sibf/200/200" 
-                alt="SIBF - CAI Logo" 
-                width={80} 
-                height={80} 
-                className="object-contain rounded-2xl"
-                priority
-                data-ai-hint="university logo"
-              />
+              {isStudent ? (
+                <div className="w-20 h-20 bg-primary/10 rounded-3xl flex items-center justify-center transition-transform hover:scale-105">
+                  <GraduationCap className="w-10 h-10 text-primary" />
+                </div>
+              ) : user?.isAnonymous ? (
+                <div className="w-20 h-20 bg-slate-900 rounded-3xl flex items-center justify-center transition-transform hover:scale-105">
+                  <User className="w-10 h-10 text-white" />
+                </div>
+              ) : (
+                <div className="w-20 h-20 bg-slate-50 rounded-3xl flex items-center justify-center p-2 border border-slate-100">
+                  <Image 
+                    src="https://picsum.photos/seed/sibf/200/200" 
+                    alt="SIBF - CAI Logo" 
+                    width={80} 
+                    height={80} 
+                    className="object-contain rounded-2xl"
+                    priority
+                    data-ai-hint="university logo"
+                  />
+                </div>
+              )}
             </div>
             <div className="text-center">
               <span className="block text-lg font-bold text-slate-900 tracking-tight uppercase leading-none">SIBF - CAI</span>
@@ -175,7 +190,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                       className={cn(
                         "group transition-all duration-200 py-5 px-5 rounded-xl mb-1 h-auto",
                         isActive 
-                          ? "bg-slate-900 text-white hover:bg-slate-800" 
+                          ? "bg-slate-900 text-white hover:bg-slate-800 shadow-md" 
                           : "hover:bg-slate-50 text-slate-600 hover:text-slate-900"
                       )}
                     >
@@ -213,7 +228,9 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                <Menu className="w-6 h-6" />
              </SidebarTrigger>
              <div className="flex items-center gap-2">
-               <div className="w-8 h-8 bg-primary rounded-lg" />
+               <div className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center">
+                 <GraduationCap className="w-4 h-4 text-white" />
+               </div>
                <h1 className="text-lg font-bold text-slate-900 uppercase tracking-tighter">SIBF - CAI</h1>
              </div>
              <div className="w-6 h-6" />
