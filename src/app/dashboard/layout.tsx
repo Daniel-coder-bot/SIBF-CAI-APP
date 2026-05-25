@@ -1,7 +1,7 @@
 
 "use client";
 
-import React, { useEffect, useMemo } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { usePathname, useRouter } from 'next/navigation';
@@ -17,7 +17,10 @@ import {
   Loader2,
   CalendarCheck,
   ShieldAlert,
-  ClipboardCheck
+  ClipboardCheck,
+  UserCheck,
+  History,
+  FileText
 } from 'lucide-react';
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -32,9 +35,9 @@ import {
   SidebarTrigger,
   SidebarFooter
 } from "@/components/ui/sidebar";
-import { useUser, useAuth, useDoc, useMemoFirebase, useFirestore } from '@/firebase';
+import { useUser, useAuth, useCollection, useMemoFirebase, useFirestore } from '@/firebase';
 import { signOut } from 'firebase/auth';
-import { doc, collection } from 'firebase/firestore';
+import { collection, query, where, limit } from 'firebase/firestore';
 
 const adminItems = [
   { name: 'Inicio', href: '/dashboard', icon: LayoutDashboard },
@@ -53,6 +56,12 @@ const docenteItems = [
   { name: 'Configuración', href: '/dashboard/configuracion', icon: Settings },
 ];
 
+const alumnoItems = [
+  { name: 'Mi Asistencia', href: '/dashboard/alumno', icon: History },
+  { name: 'Mis Justificantes', href: '/dashboard/alumno/justificaciones', icon: FileText },
+  { name: 'Configuración', href: '/dashboard/configuracion', icon: Settings },
+];
+
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const router = useRouter();
@@ -60,18 +69,26 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   const { user, isUserLoading } = useUser();
   const auth = useAuth();
   
-  const userDocRef = useMemoFirebase(() => user ? doc(collection(db, 'users'), user.uid) : null, [user, db]);
-  const { data: userProfile, isLoading: isProfileLoading } = useDoc(userDocRef);
+  // Para Alumnos que entran por matrícula
+  const [activeMatricula, setActiveMatricula] = useState<string | null>(null);
+
+  useEffect(() => {
+    setActiveMatricula(sessionStorage.getItem('active_matricula'));
+  }, []);
+
+  const usersRef = useMemoFirebase(() => collection(db, 'users'), [db]);
+  const studentQuery = useMemoFirebase(() => 
+    activeMatricula ? query(usersRef, where("matricula", "==", activeMatricula), limit(1)) : null,
+  [usersRef, activeMatricula]);
   
+  const { data: studentProfiles, isLoading: isStudentLoading } = useCollection(studentQuery);
+  const studentProfile = studentProfiles?.[0];
+
   const navItems = useMemo(() => {
-    // Si el usuario es docente (o se logueó con el shortcut docente)
-    // En una app real, esto vendría del campo 'role' en el documento del usuario
-    if (userProfile?.role === 'Docente' || user?.isAnonymous) {
-      // Nota: Aquí se podría mejorar la detección del rol si se persiste en una cookie o sesión local
-      return docenteItems;
-    }
+    if (studentProfile) return alumnoItems;
+    if (user?.isAnonymous) return docenteItems;
     return adminItems; 
-  }, [userProfile, user]);
+  }, [studentProfile, user]);
 
   useEffect(() => {
     if (!isUserLoading && !user) {
@@ -81,6 +98,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
   const handleLogout = async () => {
     try {
+      sessionStorage.removeItem('active_matricula');
       await signOut(auth);
       router.push('/login');
     } catch (error) {
@@ -88,7 +106,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     }
   };
 
-  if (isUserLoading || (user && isProfileLoading)) {
+  if (isUserLoading || (activeMatricula && isStudentLoading)) {
     return (
       <div className="h-screen w-full flex items-center justify-center bg-white">
         <Loader2 className="w-10 h-10 animate-spin text-primary" />
@@ -97,6 +115,8 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   }
 
   if (!user) return null;
+
+  const currentProfile = studentProfile || { firstName: 'Admin', lastName: 'Demo', role: user?.isAnonymous ? 'Docente' : 'Administrador' };
 
   return (
     <SidebarProvider defaultOpen={true}>
@@ -107,15 +127,15 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
               <Image 
                 src="/logo.png" 
                 alt="SIBF - CAI Logo" 
-                width={180} 
-                height={180} 
+                width={150} 
+                height={150} 
                 className="object-contain hover:scale-105 transition-transform duration-500"
                 priority
               />
             </div>
             <div className="text-center space-y-1">
               <span className="block text-xl font-bold text-primary tracking-tight uppercase leading-none">SIBF - CAI</span>
-              <span className="block text-[9px] font-semibold text-muted-foreground uppercase tracking-[0.2em] opacity-80">Gestión Universitaria</span>
+              <span className="block text-[9px] font-semibold text-muted-foreground uppercase tracking-[0.2em] opacity-80">Portal de Servicios</span>
             </div>
           </SidebarHeader>
           <SidebarContent className="px-4 mt-6">
@@ -145,9 +165,9 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           </SidebarContent>
           <SidebarFooter className="p-6 mt-auto border-t bg-slate-50/50">
             <div className="px-4 py-3 mb-4 bg-white rounded-xl border border-border shadow-sm">
-              <p className="text-[9px] font-bold text-muted-foreground uppercase tracking-widest mb-1 text-center">Usuario Activo</p>
-              <p className="text-xs font-semibold text-slate-900 truncate text-center">{userProfile?.firstName || 'Usuario'} {userProfile?.lastName || 'Docente'}</p>
-              <p className="text-[9px] font-bold text-primary uppercase text-center">{userProfile?.role || 'Personal Académico'}</p>
+              <p className="text-[9px] font-bold text-muted-foreground uppercase tracking-widest mb-1 text-center">Identidad Digital</p>
+              <p className="text-xs font-semibold text-slate-900 truncate text-center">{currentProfile.firstName} {currentProfile.lastName}</p>
+              <p className="text-[9px] font-bold text-primary uppercase text-center">{currentProfile.role}</p>
             </div>
             <Button 
               variant="ghost" 

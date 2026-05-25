@@ -8,14 +8,14 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from "@/components/ui/card";
-import { Lock, User, Loader2 } from 'lucide-react';
+import { Lock, User, Loader2, GraduationCap } from 'lucide-react';
 import { useToast } from "@/hooks/use-toast";
 
 import { useAuth, useUser, useFirestore, initiateAnonymousSignIn } from '@/firebase';
 import { collection, query, where, getDocs, limit } from 'firebase/firestore';
 
 export default function LoginPage() {
-  const [email, setEmail] = useState('');
+  const [identifier, setIdentifier] = useState('');
   const [password, setPassword] = useState('');
   const [isVerifying, setIsVerifying] = useState(false);
   
@@ -35,32 +35,43 @@ export default function LoginPage() {
     e.preventDefault();
     setIsVerifying(true);
 
-    // Accesos directos solicitados
-    if (email === 'admin' && password === '1234') {
+    // Accesos directos administrativos
+    if (identifier === 'admin' && password === '1234') {
         initiateAnonymousSignIn(auth);
         toast({ title: "Bienvenido Admin", description: "Acceso administrativo concedido." });
-        setTimeout(() => { router.push('/dashboard'); }, 800);
         return;
     }
 
-    if (email === 'docente' && password === '1234') {
+    if (identifier === 'docente' && password === '1234') {
         initiateAnonymousSignIn(auth);
         toast({ title: "Bienvenido Docente", description: "Acceso al panel académico concedido." });
-        setTimeout(() => { router.push('/dashboard/docente/asistencia'); }, 800);
         return;
     }
 
     try {
+      // Intento de login por matrícula (Alumno)
       const usersRef = collection(db, 'users');
-      const q = query(usersRef, where("email", "==", email), where("password", "==", password), limit(1));
-      const querySnapshot = await getDocs(q);
+      const qMatricula = query(usersRef, where("matricula", "==", identifier), limit(1));
+      const queryMatricula = await getDocs(qMatricula);
 
-      if (!querySnapshot.empty) {
+      if (!queryMatricula.empty) {
+        const studentData = queryMatricula.docs[0].data();
+        // Guardamos la matrícula en sessionStorage para identificar al alumno en el dashboard
+        sessionStorage.setItem('active_matricula', identifier);
+        initiateAnonymousSignIn(auth);
+        toast({ title: `Hola, ${studentData.firstName}`, description: "Has ingresado como alumno." });
+        return;
+      }
+
+      // Intento de login por email/password (Personal)
+      const qEmail = query(usersRef, where("email", "==", identifier), where("password", "==", password), limit(1));
+      const queryEmail = await getDocs(qEmail);
+
+      if (!queryEmail.empty) {
         initiateAnonymousSignIn(auth);
         toast({ title: "Acceso concedido" });
-        setTimeout(() => { router.push('/dashboard'); }, 800);
       } else {
-        toast({ variant: "destructive", title: "Error", description: "Credenciales inválidas." });
+        toast({ variant: "destructive", title: "Error", description: "Credenciales no encontradas." });
         setIsVerifying(false);
       }
     } catch (error: any) {
@@ -83,7 +94,7 @@ export default function LoginPage() {
       
       <div className="w-full max-w-md z-10 flex flex-col items-center">
         <div className="flex flex-col items-center mb-8">
-          <Image src="/logo.png" alt="SIBF - CAI Logo" width={280} height={280} className="object-contain mb-4" priority />
+          <Image src="/logo.png" alt="SIBF - CAI Logo" width={240} height={240} className="object-contain mb-4" priority />
           <div className="text-center">
             <h1 className="text-3xl font-bold text-foreground tracking-tight uppercase">SIBF - CAI</h1>
             <p className="text-muted-foreground font-semibold uppercase tracking-[0.2em] text-[10px] bg-slate-50 px-3 py-1 rounded-full mt-2">Gestión Universitaria</p>
@@ -92,29 +103,30 @@ export default function LoginPage() {
 
         <Card className="w-full border shadow-xl bg-white/80 backdrop-blur-sm rounded-[2rem] overflow-hidden">
           <CardHeader className="space-y-1 pb-6 pt-8 text-center border-b bg-slate-50/30">
-            <CardTitle className="text-xl font-bold tracking-tight uppercase">Iniciar Sesión</CardTitle>
-            <CardDescription className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Credenciales de acceso institucional</CardDescription>
+            <CardTitle className="text-xl font-bold tracking-tight uppercase">Acceso Estudiantil y Personal</CardTitle>
+            <CardDescription className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Ingresa tu matrícula o correo institucional</CardDescription>
           </CardHeader>
           <form onSubmit={handleLogin}>
             <CardContent className="space-y-5 pt-8 px-8">
               <div className="space-y-2">
-                <Label className="text-[10px] font-bold uppercase text-muted-foreground tracking-widest ml-1">Usuario</Label>
+                <Label className="text-[10px] font-bold uppercase text-muted-foreground tracking-widest ml-1">Usuario / Matrícula</Label>
                 <div className="relative">
                   <User className="absolute left-4 top-3.5 h-4 w-4 text-muted-foreground" />
-                  <Input placeholder="admin o docente" className="pl-12 h-11 rounded-xl font-medium" value={email} onChange={(e) => setEmail(e.target.value)} required />
+                  <Input placeholder="Matrícula o Email" className="pl-12 h-11 rounded-xl font-medium" value={identifier} onChange={(e) => setIdentifier(e.target.value)} required />
                 </div>
               </div>
               <div className="space-y-2">
-                <Label className="text-[10px] font-bold uppercase text-muted-foreground tracking-widest ml-1">Contraseña</Label>
+                <Label className="text-[10px] font-bold uppercase text-muted-foreground tracking-widest ml-1">Contraseña (Solo Personal)</Label>
                 <div className="relative">
                   <Lock className="absolute left-4 top-3.5 h-4 w-4 text-muted-foreground" />
-                  <Input type="password" placeholder="••••••••" className="pl-12 pr-12 h-11 rounded-xl font-medium" value={password} onChange={(e) => setPassword(e.target.value)} required />
+                  <Input type="password" placeholder="••••••••" className="pl-12 h-11 rounded-xl font-medium" value={password} onChange={(e) => setPassword(e.target.value)} />
                 </div>
+                <p className="text-[9px] text-muted-foreground px-1 italic">Si eres alumno, deja la contraseña en blanco e ingresa tu matrícula arriba.</p>
               </div>
             </CardContent>
             <CardFooter className="pb-10 pt-4 px-8">
               <Button type="submit" className="w-full bg-primary hover:bg-accent text-white font-bold text-xs uppercase tracking-widest h-12 rounded-xl shadow-lg" disabled={isVerifying}>
-                {isVerifying ? <Loader2 className="h-4 w-4 animate-spin" /> : "Acceder al Sistema"}
+                {isVerifying ? <Loader2 className="h-4 w-4 animate-spin" /> : "Ingresar al Portal"}
               </Button>
             </CardFooter>
           </form>
