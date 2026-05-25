@@ -36,7 +36,7 @@ import {
 } from "@/components/ui/sidebar";
 import { useUser, useAuth, useCollection, useMemoFirebase, useFirestore } from '@/firebase';
 import { signOut } from 'firebase/auth';
-import { collection, query, where, limit, doc } from 'firebase/firestore';
+import { collection, query, where, limit } from 'firebase/firestore';
 
 const adminItems = [
   { name: 'Inicio', href: '/dashboard', icon: LayoutDashboard },
@@ -98,7 +98,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       return;
     }
 
-    // Redirección forzada por seguridad
+    // Redirección forzada por seguridad en la raíz del dashboard
     if (pathname === '/dashboard') {
       if (activeMatricula || studentProfile) {
         router.push('/dashboard/alumno');
@@ -163,7 +163,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
               <span className="block text-[8px] font-bold text-primary uppercase tracking-widest mt-1">Portal Universitario</span>
             </div>
           </SidebarHeader>
-          <SidebarContent className="px-4 mt-6">
+          <SidebarContent className="px-4 mt-6 bg-white">
             <SidebarMenu>
               {navItems.map((item) => {
                 const isActive = pathname === item.href;
