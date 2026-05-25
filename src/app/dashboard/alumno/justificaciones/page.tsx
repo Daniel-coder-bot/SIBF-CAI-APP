@@ -42,10 +42,11 @@ export default function MisJustificacionesPage() {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
 
   useEffect(() => {
-    setActiveMatricula(sessionStorage.getItem('active_matricula'));
+    if (typeof window !== 'undefined') {
+      setActiveMatricula(sessionStorage.getItem('active_matricula'));
+    }
   }, []);
 
-  // Buscar perfil del alumno
   const usersRef = useMemoFirebase(() => collection(db, 'users'), [db]);
   const studentQuery = useMemoFirebase(() => 
     activeMatricula ? query(usersRef, where("matricula", "==", activeMatricula), limit(1)) : null,
@@ -53,7 +54,6 @@ export default function MisJustificacionesPage() {
   const { data: studentData } = useCollection(studentQuery);
   const student = studentData?.[0];
 
-  // Buscar mis justificaciones
   const justificacionesRef = useMemoFirebase(() => collection(db, 'justificaciones'), [db]);
   const myJustificacionesQuery = useMemoFirebase(() => 
     student ? query(justificacionesRef, where("alumnoId", "==", student.id), orderBy("createdAt", "desc")) : null,

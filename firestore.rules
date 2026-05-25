@@ -2,10 +2,10 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
-    // Permitir lectura y escritura total para la demo de SIBF - CAI
-    // Esto elimina los errores de permisos persistentes
+    // REGLAS PERMISIVAS PARA LA DEMO SIBF - CAI
+    // Permite lectura y escritura a cualquier usuario autenticado (incluyendo anónimos)
     match /{document=**} {
-      allow read, write: if true;
+      allow read, write: if request.auth != null;
     }
   }
 }

@@ -1,7 +1,7 @@
 
 "use client";
 
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { 
   AlertCircle,
@@ -9,26 +9,41 @@ import {
   CheckCircle
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { useUser } from '@/firebase';
+import { useUser, useFirestore, useMemoFirebase, useCollection } from '@/firebase';
+import { collection, query, where, limit } from 'firebase/firestore';
 
 export default function DashboardPage() {
   const { user, isUserLoading } = useUser();
   const router = useRouter();
+  const db = useFirestore();
 
-  const activeMatricula = typeof window !== 'undefined' ? sessionStorage.getItem('active_matricula') : null;
+  const [activeMatricula, setActiveMatricula] = useState<string | null>(null);
 
   useEffect(() => {
-    if (isUserLoading) return;
+    if (typeof window !== 'undefined') {
+      setActiveMatricula(sessionStorage.getItem('active_matricula'));
+    }
+  }, []);
+
+  const usersRef = useMemoFirebase(() => collection(db, 'users'), [db]);
+  const studentQuery = useMemoFirebase(() => 
+    activeMatricula ? query(usersRef, where("matricula", "==", activeMatricula), limit(1)) : null,
+  [usersRef, activeMatricula]);
+  
+  const { data: studentProfiles, isLoading: isStudentLoading } = useCollection(studentQuery);
+  const studentProfile = studentProfiles?.[0];
+
+  useEffect(() => {
+    if (isUserLoading || (activeMatricula && isStudentLoading)) return;
     
-    // Redirección inmediata según el rol
-    if (activeMatricula) {
+    if (activeMatricula || studentProfile) {
       router.push('/dashboard/alumno');
     } else if (user?.isAnonymous) {
       router.push('/dashboard/docente/asistencia');
     }
-  }, [user, isUserLoading, router, activeMatricula]);
+  }, [user, isUserLoading, router, activeMatricula, studentProfile, isStudentLoading]);
 
-  if (isUserLoading || user?.isAnonymous || activeMatricula) {
+  if (isUserLoading || (activeMatricula && isStudentLoading) || user?.isAnonymous || activeMatricula || studentProfile) {
     return (
       <div className="h-[60vh] flex items-center justify-center">
         <Loader2 className="w-8 h-8 animate-spin text-primary" />

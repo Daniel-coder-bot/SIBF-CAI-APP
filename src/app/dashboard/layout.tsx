@@ -36,7 +36,7 @@ import {
 } from "@/components/ui/sidebar";
 import { useUser, useAuth, useCollection, useMemoFirebase, useFirestore } from '@/firebase';
 import { signOut } from 'firebase/auth';
-import { collection, query, where, limit } from 'firebase/firestore';
+import { collection, query, where, limit, doc } from 'firebase/firestore';
 
 const adminItems = [
   { name: 'Inicio', href: '/dashboard', icon: LayoutDashboard },
@@ -70,7 +70,9 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   const [activeMatricula, setActiveMatricula] = useState<string | null>(null);
 
   useEffect(() => {
-    setActiveMatricula(sessionStorage.getItem('active_matricula'));
+    if (typeof window !== 'undefined') {
+      setActiveMatricula(sessionStorage.getItem('active_matricula'));
+    }
   }, []);
 
   const usersRef = useMemoFirebase(() => collection(db, 'users'), [db]);
@@ -81,24 +83,22 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   const { data: studentProfiles, isLoading: isStudentLoading } = useCollection(studentQuery);
   const studentProfile = studentProfiles?.[0];
 
-  // Determinar los ítems de navegación de forma estricta
   const navItems = useMemo(() => {
-    // Si hay una matrícula activa, es un alumno
     if (activeMatricula || studentProfile) return alumnoItems;
-    
-    // Si el usuario es anónimo (pero no tiene matrícula), es un docente para esta demo
     if (user?.isAnonymous) return docenteItems;
-    
-    // Si no es ninguno de los anteriores y está autenticado, es admin
     if (user && !user.isAnonymous) return adminItems;
-    
     return [];
   }, [studentProfile, activeMatricula, user]);
 
-  // Redirección basada en roles si está en la raíz del dashboard o en áreas prohibidas
   useEffect(() => {
     if (isUserLoading) return;
 
+    if (!user) {
+      router.push('/login');
+      return;
+    }
+
+    // Redirección forzada por seguridad
     if (pathname === '/dashboard') {
       if (activeMatricula || studentProfile) {
         router.push('/dashboard/alumno');
@@ -108,15 +108,11 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     }
   }, [pathname, studentProfile, activeMatricula, user, router, isUserLoading]);
 
-  useEffect(() => {
-    if (!isUserLoading && !user) {
-      router.push('/login');
-    }
-  }, [user, isUserLoading, router]);
-
   const handleLogout = async () => {
     try {
-      sessionStorage.removeItem('active_matricula');
+      if (typeof window !== 'undefined') {
+        sessionStorage.removeItem('active_matricula');
+      }
       await signOut(auth);
       router.push('/login');
     } catch (error) {
@@ -134,7 +130,6 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
   if (!user) return null;
 
-  // Determinar el nombre a mostrar
   const displayName = studentProfile 
     ? `${studentProfile.firstName} ${studentProfile.lastName}`
     : user.isAnonymous 
@@ -154,12 +149,13 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           <SidebarHeader className="p-8 flex flex-col items-center gap-4 border-b bg-white">
             <div className="w-full flex justify-center py-2">
               <Image 
-                src="/logo.png" 
+                src="https://picsum.photos/seed/sibf/200/200" 
                 alt="SIBF - CAI Logo" 
-                width={120} 
-                height={120} 
-                className="object-contain"
+                width={80} 
+                height={80} 
+                className="object-contain rounded-2xl"
                 priority
+                data-ai-hint="university logo"
               />
             </div>
             <div className="text-center">
@@ -217,7 +213,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                <Menu className="w-6 h-6" />
              </SidebarTrigger>
              <div className="flex items-center gap-2">
-               <Image src="/logo.png" alt="Logo" width={40} height={40} />
+               <div className="w-8 h-8 bg-primary rounded-lg" />
                <h1 className="text-lg font-bold text-slate-900 uppercase tracking-tighter">SIBF - CAI</h1>
              </div>
              <div className="w-6 h-6" />
