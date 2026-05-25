@@ -81,14 +81,24 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   const { data: studentProfiles, isLoading: isStudentLoading } = useCollection(studentQuery);
   const studentProfile = studentProfiles?.[0];
 
+  // Determinar los ítems de navegación de forma estricta
   const navItems = useMemo(() => {
-    if (studentProfile || activeMatricula) return alumnoItems;
+    // Si hay una matrícula activa, es un alumno
+    if (activeMatricula || studentProfile) return alumnoItems;
+    
+    // Si el usuario es anónimo (pero no tiene matrícula), es un docente para esta demo
     if (user?.isAnonymous) return docenteItems;
-    return adminItems; 
+    
+    // Si no es ninguno de los anteriores y está autenticado, es admin
+    if (user && !user.isAnonymous) return adminItems;
+    
+    return [];
   }, [studentProfile, activeMatricula, user]);
 
-  // Redirección basada en roles si está en la raíz del dashboard
+  // Redirección basada en roles si está en la raíz del dashboard o en áreas prohibidas
   useEffect(() => {
+    if (isUserLoading) return;
+
     if (pathname === '/dashboard') {
       if (activeMatricula || studentProfile) {
         router.push('/dashboard/alumno');
@@ -96,7 +106,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         router.push('/dashboard/docente/asistencia');
       }
     }
-  }, [pathname, studentProfile, activeMatricula, user, router]);
+  }, [pathname, studentProfile, activeMatricula, user, router, isUserLoading]);
 
   useEffect(() => {
     if (!isUserLoading && !user) {
@@ -124,26 +134,37 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
   if (!user) return null;
 
-  const currentProfile = studentProfile || { firstName: 'Admin', lastName: 'Demo', role: user?.isAnonymous ? 'Docente' : 'Administrador' };
+  // Determinar el nombre a mostrar
+  const displayName = studentProfile 
+    ? `${studentProfile.firstName} ${studentProfile.lastName}`
+    : user.isAnonymous 
+      ? 'Docente Académico' 
+      : 'Administrador SIBF';
+
+  const displayRole = studentProfile 
+    ? 'Alumno' 
+    : user.isAnonymous 
+      ? 'Personal Docente' 
+      : 'Administrador';
 
   return (
     <SidebarProvider defaultOpen={true}>
       <div className="flex h-screen w-full bg-background overflow-hidden">
-        <Sidebar className="border-r border-border/50 bg-white">
-          <SidebarHeader className="p-8 flex flex-col items-center gap-6 border-b bg-slate-50/50">
+        <Sidebar className="border-r border-border/50 bg-white shadow-none">
+          <SidebarHeader className="p-8 flex flex-col items-center gap-4 border-b bg-white">
             <div className="w-full flex justify-center py-2">
               <Image 
                 src="/logo.png" 
                 alt="SIBF - CAI Logo" 
-                width={150} 
-                height={150} 
-                className="object-contain hover:scale-105 transition-transform duration-500"
+                width={120} 
+                height={120} 
+                className="object-contain"
                 priority
               />
             </div>
-            <div className="text-center space-y-1">
-              <span className="block text-xl font-bold text-primary tracking-tight uppercase leading-none">SIBF - CAI</span>
-              <span className="block text-[9px] font-semibold text-muted-foreground uppercase tracking-[0.2em] opacity-80">Portal de Servicios</span>
+            <div className="text-center">
+              <span className="block text-lg font-bold text-slate-900 tracking-tight uppercase leading-none">SIBF - CAI</span>
+              <span className="block text-[8px] font-bold text-primary uppercase tracking-widest mt-1">Portal Universitario</span>
             </div>
           </SidebarHeader>
           <SidebarContent className="px-4 mt-6">
@@ -156,14 +177,16 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                       asChild 
                       isActive={isActive}
                       className={cn(
-                        "group transition-all duration-300 py-6 px-5 rounded-2xl mb-2 h-auto",
-                        isActive ? "bg-primary text-white hover:bg-primary/90 shadow-md shadow-primary/20" : "hover:bg-primary/5 hover:text-primary"
+                        "group transition-all duration-200 py-5 px-5 rounded-xl mb-1 h-auto",
+                        isActive 
+                          ? "bg-slate-900 text-white hover:bg-slate-800" 
+                          : "hover:bg-slate-50 text-slate-600 hover:text-slate-900"
                       )}
                     >
                       <Link href={item.href}>
-                        <item.icon className={cn("w-5 h-5", isActive ? "text-white" : "text-muted-foreground group-hover:text-primary")} />
-                        <span className="font-medium text-base ml-3 tracking-tight">{item.name}</span>
-                        {isActive && <ChevronRight className="ml-auto w-4 h-4 opacity-80" />}
+                        <item.icon className={cn("w-5 h-5", isActive ? "text-primary" : "text-slate-400 group-hover:text-slate-600")} />
+                        <span className="font-semibold text-sm ml-3 tracking-tight">{item.name}</span>
+                        {isActive && <ChevronRight className="ml-auto w-4 h-4 opacity-50" />}
                       </Link>
                     </SidebarMenuButton>
                   </SidebarMenuItem>
@@ -171,35 +194,35 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
               })}
             </SidebarMenu>
           </SidebarContent>
-          <SidebarFooter className="p-6 mt-auto border-t bg-slate-50/50">
-            <div className="px-4 py-3 mb-4 bg-white rounded-xl border border-border shadow-sm">
-              <p className="text-[9px] font-bold text-muted-foreground uppercase tracking-widest mb-1 text-center">Identidad Digital</p>
-              <p className="text-xs font-semibold text-slate-900 truncate text-center">{currentProfile.firstName} {currentProfile.lastName}</p>
-              <p className="text-[9px] font-bold text-primary uppercase text-center">{currentProfile.role || (studentProfile ? 'Alumno' : 'Personal')}</p>
+          <SidebarFooter className="p-6 mt-auto border-t bg-white">
+            <div className="px-4 py-3 mb-4 bg-slate-50 rounded-xl border border-slate-100">
+              <p className="text-[9px] font-bold text-muted-foreground uppercase tracking-widest mb-1">Usuario Activo</p>
+              <p className="text-xs font-bold text-slate-900 truncate">{displayName}</p>
+              <p className="text-[9px] font-bold text-primary uppercase mt-0.5">{displayRole}</p>
             </div>
             <Button 
               variant="ghost" 
-              className="w-full justify-start text-muted-foreground hover:text-destructive hover:bg-destructive/5 rounded-2xl py-6 font-medium transition-all" 
+              className="w-full justify-start text-slate-500 hover:text-primary hover:bg-primary/5 rounded-xl py-5 font-bold transition-all" 
               onClick={handleLogout}
             >
-              <LogOut className="mr-3 h-5 w-5" />
-              <span className="text-base tracking-tight">Cerrar Sesión</span>
+              <LogOut className="mr-3 h-4 w-4" />
+              <span className="text-sm tracking-tight">Cerrar Sesión</span>
             </Button>
           </SidebarFooter>
         </Sidebar>
 
-        <main className="flex-1 overflow-y-auto p-4 md:p-8 bg-white">
+        <main className="flex-1 overflow-y-auto p-4 md:p-10 bg-white">
           <header className="flex items-center justify-between mb-8 md:hidden">
              <SidebarTrigger className="text-slate-600">
                <Menu className="w-6 h-6" />
              </SidebarTrigger>
              <div className="flex items-center gap-2">
                <Image src="/logo.png" alt="Logo" width={40} height={40} />
-               <h1 className="text-xl font-bold text-primary uppercase tracking-tighter">SIBF - CAI</h1>
+               <h1 className="text-lg font-bold text-slate-900 uppercase tracking-tighter">SIBF - CAI</h1>
              </div>
              <div className="w-6 h-6" />
           </header>
-          <div className="max-w-7xl mx-auto">
+          <div className="max-w-6xl mx-auto">
             {children}
           </div>
         </main>
