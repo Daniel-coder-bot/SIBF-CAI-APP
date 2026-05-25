@@ -9,7 +9,6 @@ import {
   Clock, 
   CheckCircle2, 
   XCircle, 
-  AlertCircle,
   Loader2
 } from 'lucide-react';
 import { 
@@ -80,7 +79,7 @@ export default function MisJustificacionesPage() {
 
     setIsDialogOpen(false);
     setNewJustificacion({ fecha: new Date().toISOString().split('T')[0], motivo: '' });
-    toast({ title: "Solicitud enviada", description: "Tu justificante está siendo revisado por el personal académico." });
+    toast({ title: "Solicitud enviada", description: "Tu justificante está siendo revisado." });
   };
 
   return (
@@ -118,7 +117,7 @@ export default function MisJustificacionesPage() {
               <div className="space-y-2">
                 <Label className="text-[10px] font-bold uppercase tracking-widest ml-1">Motivo / Descripción</Label>
                 <Textarea 
-                  placeholder="Explica brevemente el motivo de tu falta..." 
+                  placeholder="Explica brevemente el motivo..." 
                   value={newJustificacion.motivo}
                   onChange={e => setNewJustificacion({...newJustificacion, motivo: e.target.value})}
                   required
@@ -127,7 +126,7 @@ export default function MisJustificacionesPage() {
               </div>
               <DialogFooter className="pt-4">
                 <Button type="submit" className="w-full bg-primary hover:bg-accent text-white rounded-xl h-12 font-bold uppercase tracking-widest text-[10px]">
-                  <Send className="w-4 h-4 mr-2" /> Enviar para Revisión
+                  <Send className="w-4 h-4 mr-2" /> Enviar Revisión
                 </Button>
               </DialogFooter>
             </form>
@@ -141,7 +140,7 @@ export default function MisJustificacionesPage() {
         ) : !justificaciones || justificaciones.length === 0 ? (
           <div className="bg-slate-50 border-2 border-dashed rounded-[2.5rem] py-24 text-center">
             <FileText className="w-16 h-16 text-slate-200 mx-auto mb-4" />
-            <p className="text-slate-400 font-bold uppercase text-[10px] tracking-[0.2em]">No tienes solicitudes de justificante registradas</p>
+            <p className="text-slate-400 font-bold uppercase text-[10px] tracking-[0.2em]">No tienes solicitudes registradas</p>
           </div>
         ) : justificaciones.map(j => (
           <div key={j.id} className="bg-white border p-6 rounded-[2rem] shadow-sm hover:shadow-md transition-all flex flex-col md:flex-row md:items-center justify-between gap-6 group">

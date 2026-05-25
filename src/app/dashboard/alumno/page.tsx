@@ -8,8 +8,6 @@ import {
   CheckCircle2, 
   XCircle, 
   Clock, 
-  AlertCircle,
-  GraduationCap,
   Loader2
 } from 'lucide-react';
 import { 
@@ -17,8 +15,8 @@ import {
   useCollection, 
   useMemoFirebase 
 } from '@/firebase';
-import { collection, query, where, orderBy } from 'firebase/firestore';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { collection, query, where, orderBy, limit } from 'firebase/firestore';
+import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { 
   Table, 
@@ -41,7 +39,7 @@ export default function MiAsistenciaPage() {
   // Buscar perfil del alumno
   const usersRef = useMemoFirebase(() => collection(db, 'users'), [db]);
   const studentQuery = useMemoFirebase(() => 
-    activeMatricula ? query(usersRef, where("matricula", "==", activeMatricula), where("role", "==", "Alumno")) : null,
+    activeMatricula ? query(usersRef, where("matricula", "==", activeMatricula), limit(1)) : null,
   [usersRef, activeMatricula]);
   const { data: studentData } = useCollection(studentQuery);
   const student = studentData?.[0];

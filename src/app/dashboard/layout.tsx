@@ -18,7 +18,6 @@ import {
   CalendarCheck,
   ShieldAlert,
   ClipboardCheck,
-  UserCheck,
   History,
   FileText
 } from 'lucide-react';
@@ -49,7 +48,6 @@ const adminItems = [
 ];
 
 const docenteItems = [
-  { name: 'Inicio', href: '/dashboard', icon: LayoutDashboard },
   { name: 'Pase de Lista', href: '/dashboard/docente/asistencia', icon: ClipboardCheck },
   { name: 'Justificaciones', href: '/dashboard/docente/justificaciones', icon: ShieldAlert },
   { name: 'Reportes Académicos', href: '/dashboard/docente/reportes', icon: FileBarChart },
@@ -69,7 +67,6 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   const { user, isUserLoading } = useUser();
   const auth = useAuth();
   
-  // Para Alumnos que entran por matrícula
   const [activeMatricula, setActiveMatricula] = useState<string | null>(null);
 
   useEffect(() => {
@@ -85,10 +82,21 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   const studentProfile = studentProfiles?.[0];
 
   const navItems = useMemo(() => {
-    if (studentProfile) return alumnoItems;
+    if (studentProfile || activeMatricula) return alumnoItems;
     if (user?.isAnonymous) return docenteItems;
     return adminItems; 
-  }, [studentProfile, user]);
+  }, [studentProfile, activeMatricula, user]);
+
+  // Redirección basada en roles si está en la raíz del dashboard
+  useEffect(() => {
+    if (pathname === '/dashboard') {
+      if (activeMatricula || studentProfile) {
+        router.push('/dashboard/alumno');
+      } else if (user?.isAnonymous) {
+        router.push('/dashboard/docente/asistencia');
+      }
+    }
+  }, [pathname, studentProfile, activeMatricula, user, router]);
 
   useEffect(() => {
     if (!isUserLoading && !user) {
@@ -167,7 +175,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
             <div className="px-4 py-3 mb-4 bg-white rounded-xl border border-border shadow-sm">
               <p className="text-[9px] font-bold text-muted-foreground uppercase tracking-widest mb-1 text-center">Identidad Digital</p>
               <p className="text-xs font-semibold text-slate-900 truncate text-center">{currentProfile.firstName} {currentProfile.lastName}</p>
-              <p className="text-[9px] font-bold text-primary uppercase text-center">{currentProfile.role}</p>
+              <p className="text-[9px] font-bold text-primary uppercase text-center">{currentProfile.role || (studentProfile ? 'Alumno' : 'Personal')}</p>
             </div>
             <Button 
               variant="ghost" 
