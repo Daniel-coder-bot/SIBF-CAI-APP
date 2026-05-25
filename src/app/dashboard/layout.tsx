@@ -20,7 +20,6 @@ import {
   ClipboardCheck,
   History,
   FileText,
-  GraduationCap,
   User
 } from 'lucide-react';
 import { cn } from "@/lib/utils";
@@ -102,7 +101,8 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       return;
     }
 
-    if (pathname === '/dashboard') {
+    // Blindaje de navegación: Redirigir si un alumno o docente está en una zona administrativa
+    if (pathname === '/dashboard' || pathname.startsWith('/dashboard/usuarios') || pathname.startsWith('/dashboard/catalogos')) {
       if (isStudent) {
         router.push('/dashboard/alumno');
       } else if (user?.isAnonymous) {
@@ -153,7 +153,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
             <div className="w-full flex justify-center py-2">
               {isStudent ? (
                 <div className="w-20 h-20 bg-primary/10 rounded-3xl flex items-center justify-center transition-transform hover:scale-105">
-                  <GraduationCap className="w-10 h-10 text-primary" />
+                  <User className="w-10 h-10 text-primary" />
                 </div>
               ) : user?.isAnonymous ? (
                 <div className="w-20 h-20 bg-slate-900 rounded-3xl flex items-center justify-center transition-transform hover:scale-105">
@@ -229,7 +229,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
              </SidebarTrigger>
              <div className="flex items-center gap-2">
                <div className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center">
-                 <GraduationCap className="w-4 h-4 text-white" />
+                 <User className="w-4 h-4 text-white" />
                </div>
                <h1 className="text-lg font-bold text-slate-900 uppercase tracking-tighter">SIBF - CAI</h1>
              </div>

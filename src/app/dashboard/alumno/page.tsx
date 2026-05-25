@@ -46,15 +46,15 @@ export default function MiAsistenciaPage() {
   const student = studentData?.[0];
 
   const asistenciasRef = useMemoFirebase(() => collection(db, 'asistencias'), [db]);
-  // Quitamos orderBy para evitar errores de índice compuesto en la demo
+  // Consulta simplificada para evitar errores de permisos e índices
   const myAsistenciasQuery = useMemoFirebase(() => 
     student ? query(asistenciasRef, where("alumnoId", "==", student.id)) : null,
   [asistenciasRef, student]);
   const { data: rawAsistencias, isLoading } = useCollection(myAsistenciasQuery);
 
-  // Ordenamos en el cliente para evitar el error de índice de Firestore
   const asistencias = useMemo(() => {
     if (!rawAsistencias) return [];
+    // Ordenamiento manual en el cliente para evitar errores de índice de Firestore
     return [...rawAsistencias].sort((a, b) => {
       const dateA = a.createdAt?.toDate?.() || new Date(0);
       const dateB = b.createdAt?.toDate?.() || new Date(0);

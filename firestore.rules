@@ -2,8 +2,8 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
-    // REGLAS ABIERTAS PARA LA DEMO SIBF - CAI
-    // Permite lectura y escritura a cualquier usuario para evitar bloqueos en la fase de prototipado
+    // REGLAS PARA LA DEMO - PERMITE ACCESO TOTAL
+    // Esto resuelve los errores de "Missing or insufficient permissions"
     match /{document=**} {
       allow read, write: if true;
     }

@@ -55,7 +55,6 @@ export default function MisJustificacionesPage() {
   const student = studentData?.[0];
 
   const justificacionesRef = useMemoFirebase(() => collection(db, 'justificaciones'), [db]);
-  // Quitamos orderBy para evitar errores de índice compuesto
   const myJustificacionesQuery = useMemoFirebase(() => 
     student ? query(justificacionesRef, where("alumnoId", "==", student.id)) : null,
   [justificacionesRef, student]);
