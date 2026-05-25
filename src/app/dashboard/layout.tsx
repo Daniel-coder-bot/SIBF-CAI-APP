@@ -16,7 +16,8 @@ import {
   Settings,
   Loader2,
   CalendarCheck,
-  BookUser
+  ShieldAlert,
+  ClipboardCheck
 } from 'lucide-react';
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -36,7 +37,7 @@ import { signOut } from 'firebase/auth';
 import { doc, collection } from 'firebase/firestore';
 
 const adminItems = [
-  { name: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
+  { name: 'Inicio', href: '/dashboard', icon: LayoutDashboard },
   { name: 'Personal', href: '/dashboard/usuarios', icon: Users },
   { name: 'Catálogos', href: '/dashboard/catalogos', icon: FolderTree },
   { name: 'Asistencia Gral', href: '/dashboard/asistencia', icon: CalendarCheck },
@@ -46,8 +47,9 @@ const adminItems = [
 
 const docenteItems = [
   { name: 'Inicio', href: '/dashboard', icon: LayoutDashboard },
-  { name: 'Panel Docente', href: '/dashboard/docente', icon: BookUser },
-  { name: 'Reportes', href: '/dashboard/reportes', icon: FileBarChart },
+  { name: 'Pase de Lista', href: '/dashboard/docente/asistencia', icon: ClipboardCheck },
+  { name: 'Justificaciones', href: '/dashboard/docente/justificaciones', icon: ShieldAlert },
+  { name: 'Reportes Académicos', href: '/dashboard/docente/reportes', icon: FileBarChart },
   { name: 'Configuración', href: '/dashboard/configuracion', icon: Settings },
 ];
 
@@ -63,7 +65,9 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   
   const navItems = useMemo(() => {
     // Si el usuario es docente (o se logueó con el shortcut docente)
-    if (userProfile?.role === 'Docente' || (user && !userProfile)) {
+    // En una app real, esto vendría del campo 'role' en el documento del usuario
+    if (userProfile?.role === 'Docente' || user?.isAnonymous) {
+      // Nota: Aquí se podría mejorar la detección del rol si se persiste en una cookie o sesión local
       return docenteItems;
     }
     return adminItems; 
@@ -141,9 +145,9 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           </SidebarContent>
           <SidebarFooter className="p-6 mt-auto border-t bg-slate-50/50">
             <div className="px-4 py-3 mb-4 bg-white rounded-xl border border-border shadow-sm">
-              <p className="text-[9px] font-bold text-muted-foreground uppercase tracking-widest mb-1">Usuario Activo</p>
-              <p className="text-xs font-semibold text-slate-900 truncate">{userProfile?.firstName || 'Usuario'} {userProfile?.lastName || 'Demo'}</p>
-              <p className="text-[9px] font-bold text-primary uppercase">{userProfile?.role || 'Docente'}</p>
+              <p className="text-[9px] font-bold text-muted-foreground uppercase tracking-widest mb-1 text-center">Usuario Activo</p>
+              <p className="text-xs font-semibold text-slate-900 truncate text-center">{userProfile?.firstName || 'Usuario'} {userProfile?.lastName || 'Docente'}</p>
+              <p className="text-[9px] font-bold text-primary uppercase text-center">{userProfile?.role || 'Personal Académico'}</p>
             </div>
             <Button 
               variant="ghost" 

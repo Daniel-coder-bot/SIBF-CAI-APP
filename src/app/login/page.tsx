@@ -46,7 +46,7 @@ export default function LoginPage() {
     if (email === 'docente' && password === '1234') {
         initiateAnonymousSignIn(auth);
         toast({ title: "Bienvenido Docente", description: "Acceso al panel académico concedido." });
-        setTimeout(() => { router.push('/dashboard/docente'); }, 800);
+        setTimeout(() => { router.push('/dashboard/docente/asistencia'); }, 800);
         return;
     }
 
