@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from "@/components/ui/card";
-import { Eye, EyeOff, Lock, User, Loader2 } from 'lucide-react';
+import { Lock, User, Loader2 } from 'lucide-react';
 import { useToast } from "@/hooks/use-toast";
 
 import { useAuth, useUser, useFirestore, initiateAnonymousSignIn } from '@/firebase';
@@ -17,7 +17,6 @@ import { collection, query, where, getDocs, limit } from 'firebase/firestore';
 export default function LoginPage() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [showPassword, setShowPassword] = useState(false);
   const [isVerifying, setIsVerifying] = useState(false);
   
   const router = useRouter();
@@ -36,10 +35,18 @@ export default function LoginPage() {
     e.preventDefault();
     setIsVerifying(true);
 
+    // Accesos directos solicitados
     if (email === 'admin' && password === '1234') {
         initiateAnonymousSignIn(auth);
-        toast({ title: `Bienvenido`, description: "Acceso administrativo." });
+        toast({ title: "Bienvenido Admin", description: "Acceso administrativo concedido." });
         setTimeout(() => { router.push('/dashboard'); }, 800);
+        return;
+    }
+
+    if (email === 'docente' && password === '1234') {
+        initiateAnonymousSignIn(auth);
+        toast({ title: "Bienvenido Docente", description: "Acceso al panel académico concedido." });
+        setTimeout(() => { router.push('/dashboard/docente'); }, 800);
         return;
     }
 
@@ -57,7 +64,7 @@ export default function LoginPage() {
         setIsVerifying(false);
       }
     } catch (error: any) {
-      toast({ variant: "destructive", title: "Error", description: "No se pudo conectar." });
+      toast({ variant: "destructive", title: "Error", description: "No se pudo conectar al servidor." });
       setIsVerifying(false);
     }
   };
@@ -86,7 +93,7 @@ export default function LoginPage() {
         <Card className="w-full border shadow-xl bg-white/80 backdrop-blur-sm rounded-[2rem] overflow-hidden">
           <CardHeader className="space-y-1 pb-6 pt-8 text-center border-b bg-slate-50/30">
             <CardTitle className="text-xl font-bold tracking-tight uppercase">Iniciar Sesión</CardTitle>
-            <CardDescription className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Credenciales de acceso</CardDescription>
+            <CardDescription className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Credenciales de acceso institucional</CardDescription>
           </CardHeader>
           <form onSubmit={handleLogin}>
             <CardContent className="space-y-5 pt-8 px-8">
@@ -94,20 +101,20 @@ export default function LoginPage() {
                 <Label className="text-[10px] font-bold uppercase text-muted-foreground tracking-widest ml-1">Usuario</Label>
                 <div className="relative">
                   <User className="absolute left-4 top-3.5 h-4 w-4 text-muted-foreground" />
-                  <Input placeholder="admin" className="pl-12 h-11 rounded-xl font-medium" value={email} onChange={(e) => setEmail(e.target.value)} required />
+                  <Input placeholder="admin o docente" className="pl-12 h-11 rounded-xl font-medium" value={email} onChange={(e) => setEmail(e.target.value)} required />
                 </div>
               </div>
               <div className="space-y-2">
                 <Label className="text-[10px] font-bold uppercase text-muted-foreground tracking-widest ml-1">Contraseña</Label>
                 <div className="relative">
                   <Lock className="absolute left-4 top-3.5 h-4 w-4 text-muted-foreground" />
-                  <Input type={showPassword ? "text" : "password"} placeholder="••••••••" className="pl-12 pr-12 h-11 rounded-xl font-medium" value={password} onChange={(e) => setPassword(e.target.value)} required />
+                  <Input type="password" placeholder="••••••••" className="pl-12 pr-12 h-11 rounded-xl font-medium" value={password} onChange={(e) => setPassword(e.target.value)} required />
                 </div>
               </div>
             </CardContent>
             <CardFooter className="pb-10 pt-4 px-8">
               <Button type="submit" className="w-full bg-primary hover:bg-accent text-white font-bold text-xs uppercase tracking-widest h-12 rounded-xl shadow-lg" disabled={isVerifying}>
-                {isVerifying ? <Loader2 className="h-4 w-4 animate-spin" /> : "Acceder"}
+                {isVerifying ? <Loader2 className="h-4 w-4 animate-spin" /> : "Acceder al Sistema"}
               </Button>
             </CardFooter>
           </form>

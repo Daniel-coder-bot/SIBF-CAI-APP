@@ -47,7 +47,7 @@ const adminItems = [
 const docenteItems = [
   { name: 'Inicio', href: '/dashboard', icon: LayoutDashboard },
   { name: 'Panel Docente', href: '/dashboard/docente', icon: BookUser },
-  { name: 'Mis Reportes', href: '/dashboard/reportes', icon: FileBarChart },
+  { name: 'Reportes', href: '/dashboard/reportes', icon: FileBarChart },
   { name: 'Configuración', href: '/dashboard/configuracion', icon: Settings },
 ];
 
@@ -62,11 +62,12 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   const { data: userProfile, isLoading: isProfileLoading } = useDoc(userDocRef);
   
   const navItems = useMemo(() => {
-    if (userProfile?.role === 'Docente') {
+    // Si el usuario es docente (o se logueó con el shortcut docente)
+    if (userProfile?.role === 'Docente' || (user && !userProfile)) {
       return docenteItems;
     }
     return adminItems; 
-  }, [userProfile]);
+  }, [userProfile, user]);
 
   useEffect(() => {
     if (!isUserLoading && !user) {
@@ -96,7 +97,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   return (
     <SidebarProvider defaultOpen={true}>
       <div className="flex h-screen w-full bg-background overflow-hidden">
-        <Sidebar className="border-r border-border/50 bg-sidebar">
+        <Sidebar className="border-r border-border/50 bg-white">
           <SidebarHeader className="p-8 flex flex-col items-center gap-6 border-b bg-slate-50/50">
             <div className="w-full flex justify-center py-2">
               <Image 
@@ -141,8 +142,8 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           <SidebarFooter className="p-6 mt-auto border-t bg-slate-50/50">
             <div className="px-4 py-3 mb-4 bg-white rounded-xl border border-border shadow-sm">
               <p className="text-[9px] font-bold text-muted-foreground uppercase tracking-widest mb-1">Usuario Activo</p>
-              <p className="text-xs font-semibold text-slate-900 truncate">{userProfile?.firstName} {userProfile?.lastName}</p>
-              <p className="text-[9px] font-bold text-primary uppercase">{userProfile?.role}</p>
+              <p className="text-xs font-semibold text-slate-900 truncate">{userProfile?.firstName || 'Usuario'} {userProfile?.lastName || 'Demo'}</p>
+              <p className="text-[9px] font-bold text-primary uppercase">{userProfile?.role || 'Docente'}</p>
             </div>
             <Button 
               variant="ghost" 

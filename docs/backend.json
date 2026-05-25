@@ -104,6 +104,20 @@
         "createdAt": { "type": "string", "format": "date-time" }
       },
       "required": ["alumnoId", "docenteId", "grupoId", "fecha", "estado"]
+    },
+    "Justificacion": {
+      "title": "Justificacion",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "alumnoId": { "type": "string" },
+        "docenteId": { "type": "string" },
+        "fecha": { "type": "string", "format": "date" },
+        "motivo": { "type": "string" },
+        "estado": { "type": "string", "enum": ["Pendiente", "Aprobada", "Rechazada"] },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["alumnoId", "docenteId", "fecha", "motivo", "estado"]
     }
   },
   "auth": {
@@ -116,6 +130,7 @@
     "/materias/{materiaId}": { "schema": { "$ref": "#/backend/entities/Materia" }, "description": "Subjects" },
     "/grupos/{grupoId}": { "schema": { "$ref": "#/backend/entities/Grupo" }, "description": "Class groups" },
     "/horarios/{horarioId}": { "schema": { "$ref": "#/backend/entities/Horario" }, "description": "Schedules" },
-    "/asistencias/{asistenciaId}": { "schema": { "$ref": "#/backend/entities/Asistencia" }, "description": "Attendance records" }
+    "/asistencias/{asistenciaId}": { "schema": { "$ref": "#/backend/entities/Asistencia" }, "description": "Attendance records" },
+    "/justificaciones/{justificacionId}": { "schema": { "$ref": "#/backend/entities/Justificacion" }, "description": "Student justifications" }
   }
 }
