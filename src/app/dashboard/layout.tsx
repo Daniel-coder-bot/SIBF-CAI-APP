@@ -69,10 +69,12 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   const auth = useAuth();
   
   const [activeMatricula, setActiveMatricula] = useState<string | null>(null);
+  const [demoRole, setDemoRole] = useState<string | null>(null);
 
   useEffect(() => {
     if (typeof window !== 'undefined') {
       setActiveMatricula(sessionStorage.getItem('active_matricula'));
+      setDemoRole(sessionStorage.getItem('demo_role'));
     }
   }, []);
 
@@ -85,36 +87,39 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   const studentProfile = studentProfiles?.[0];
 
   const isStudent = !!(activeMatricula || studentProfile);
+  const isDocenteDemo = user?.isAnonymous && demoRole === 'docente';
+  const isAdminDemo = user?.isAnonymous && demoRole === 'admin';
 
   const navItems = useMemo(() => {
     if (isStudent) return alumnoItems;
-    if (user?.isAnonymous) return docenteItems;
-    if (user && !user.isAnonymous) return adminItems;
+    if (isDocenteDemo) return docenteItems;
+    if (isAdminDemo || (user && !user.isAnonymous)) return adminItems;
     return [];
-  }, [isStudent, user]);
+  }, [isStudent, isDocenteDemo, isAdminDemo, user]);
 
   useEffect(() => {
-    if (isUserLoading) return;
+    if (isUserLoading || (activeMatricula && isStudentLoading)) return;
 
     if (!user) {
       router.push('/login');
       return;
     }
 
-    // Blindaje de navegación: Redirigir si un alumno o docente está en una zona administrativa
+    // Redirecciones automáticas basadas en el rol para proteger las áreas
     if (pathname === '/dashboard' || pathname.startsWith('/dashboard/usuarios') || pathname.startsWith('/dashboard/catalogos')) {
       if (isStudent) {
         router.push('/dashboard/alumno');
-      } else if (user?.isAnonymous) {
+      } else if (isDocenteDemo) {
         router.push('/dashboard/docente/asistencia');
       }
     }
-  }, [pathname, isStudent, user, router, isUserLoading]);
+  }, [pathname, isStudent, isDocenteDemo, user, router, isUserLoading, activeMatricula, isStudentLoading]);
 
   const handleLogout = async () => {
     try {
       if (typeof window !== 'undefined') {
         sessionStorage.removeItem('active_matricula');
+        sessionStorage.removeItem('demo_role');
       }
       await signOut(auth);
       router.push('/login');
@@ -135,15 +140,19 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
   const displayName = studentProfile 
     ? `${studentProfile.firstName} ${studentProfile.lastName}`
-    : user.isAnonymous 
-      ? 'Docente Académico' 
-      : 'Administrador SIBF';
+    : isAdminDemo 
+      ? 'Administrador SIBF'
+      : isDocenteDemo
+        ? 'Docente Académico' 
+        : 'Usuario';
 
   const displayRole = studentProfile 
     ? 'Alumno' 
-    : user.isAnonymous 
-      ? 'Personal Docente' 
-      : 'Administrador';
+    : isAdminDemo 
+      ? 'Administrador'
+      : isDocenteDemo
+        ? 'Personal Docente' 
+        : 'Personal';
 
   return (
     <SidebarProvider defaultOpen={true}>
@@ -151,27 +160,12 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         <Sidebar className="border-r border-border/50 bg-white shadow-none">
           <SidebarHeader className="p-8 flex flex-col items-center gap-4 border-b bg-white">
             <div className="w-full flex justify-center py-2">
-              {isStudent ? (
-                <div className="w-20 h-20 bg-primary/10 rounded-3xl flex items-center justify-center transition-transform hover:scale-105">
-                  <User className="w-10 h-10 text-primary" />
-                </div>
-              ) : user?.isAnonymous ? (
-                <div className="w-20 h-20 bg-slate-900 rounded-3xl flex items-center justify-center transition-transform hover:scale-105">
-                  <User className="w-10 h-10 text-white" />
-                </div>
-              ) : (
-                <div className="w-20 h-20 bg-slate-50 rounded-3xl flex items-center justify-center p-2 border border-slate-100">
-                  <Image 
-                    src="https://picsum.photos/seed/sibf/200/200" 
-                    alt="SIBF - CAI Logo" 
-                    width={80} 
-                    height={80} 
-                    className="object-contain rounded-2xl"
-                    priority
-                    data-ai-hint="university logo"
-                  />
-                </div>
-              )}
+              <div className={cn(
+                "w-20 h-20 rounded-3xl flex items-center justify-center transition-transform hover:scale-105",
+                isStudent ? "bg-primary/10" : "bg-slate-900"
+              )}>
+                <User className={cn("w-10 h-10", isStudent ? "text-primary" : "text-white")} />
+              </div>
             </div>
             <div className="text-center">
               <span className="block text-lg font-bold text-slate-900 tracking-tight uppercase leading-none">SIBF - CAI</span>

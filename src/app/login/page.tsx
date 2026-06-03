@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from "@/components/ui/card";
-import { Lock, User, Loader2, GraduationCap } from 'lucide-react';
+import { Lock, User, Loader2 } from 'lucide-react';
 import { useToast } from "@/hooks/use-toast";
 
 import { useAuth, useUser, useFirestore, initiateAnonymousSignIn } from '@/firebase';
@@ -35,29 +35,37 @@ export default function LoginPage() {
     e.preventDefault();
     setIsVerifying(true);
 
-    // Accesos directos administrativos
+    // Accesos directos administrativos para la demo
     if (identifier === 'admin' && password === '1234') {
+        if (typeof window !== 'undefined') {
+          sessionStorage.setItem('demo_role', 'admin');
+        }
         initiateAnonymousSignIn(auth);
         toast({ title: "Bienvenido Admin", description: "Acceso administrativo concedido." });
         return;
     }
 
     if (identifier === 'docente' && password === '1234') {
+        if (typeof window !== 'undefined') {
+          sessionStorage.setItem('demo_role', 'docente');
+        }
         initiateAnonymousSignIn(auth);
         toast({ title: "Bienvenido Docente", description: "Acceso al panel académico concedido." });
         return;
     }
 
     try {
-      // Intento de login por matrícula (Alumno)
       const usersRef = collection(db, 'users');
+      
+      // Intento de login por matrícula (Alumno)
       const qMatricula = query(usersRef, where("matricula", "==", identifier), limit(1));
       const queryMatricula = await getDocs(qMatricula);
 
       if (!queryMatricula.empty) {
         const studentData = queryMatricula.docs[0].data();
-        // Guardamos la matrícula en sessionStorage para identificar al alumno en el dashboard
-        sessionStorage.setItem('active_matricula', identifier);
+        if (typeof window !== 'undefined') {
+          sessionStorage.setItem('active_matricula', identifier);
+        }
         initiateAnonymousSignIn(auth);
         toast({ title: `Hola, ${studentData.firstName}`, description: "Has ingresado como alumno." });
         return;
@@ -94,7 +102,9 @@ export default function LoginPage() {
       
       <div className="w-full max-w-md z-10 flex flex-col items-center">
         <div className="flex flex-col items-center mb-8">
-          <Image src="/logo.png" alt="SIBF - CAI Logo" width={240} height={240} className="object-contain mb-4" priority />
+          <div className="w-20 h-20 bg-primary rounded-3xl flex items-center justify-center mb-4 shadow-lg shadow-primary/20">
+            <User className="w-10 h-10 text-white" />
+          </div>
           <div className="text-center">
             <h1 className="text-3xl font-bold text-foreground tracking-tight uppercase">SIBF - CAI</h1>
             <p className="text-muted-foreground font-semibold uppercase tracking-[0.2em] text-[10px] bg-slate-50 px-3 py-1 rounded-full mt-2">Gestión Universitaria</p>

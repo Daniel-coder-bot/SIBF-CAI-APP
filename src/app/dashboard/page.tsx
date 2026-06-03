@@ -18,10 +18,12 @@ export default function DashboardPage() {
   const db = useFirestore();
 
   const [activeMatricula, setActiveMatricula] = useState<string | null>(null);
+  const [demoRole, setDemoRole] = useState<string | null>(null);
 
   useEffect(() => {
     if (typeof window !== 'undefined') {
       setActiveMatricula(sessionStorage.getItem('active_matricula'));
+      setDemoRole(sessionStorage.getItem('demo_role'));
     }
   }, []);
 
@@ -38,13 +40,14 @@ export default function DashboardPage() {
     
     if (activeMatricula || studentProfile) {
       router.push('/dashboard/alumno');
-    } else if (user?.isAnonymous) {
+    } else if (user?.isAnonymous && demoRole === 'docente') {
       router.push('/dashboard/docente/asistencia');
     }
-  }, [user, isUserLoading, router, activeMatricula, studentProfile, isStudentLoading]);
+    // Si es admin demo o personal autenticado, se queda en esta página
+  }, [user, isUserLoading, router, activeMatricula, studentProfile, isStudentLoading, demoRole]);
 
-  // Si no es un usuario limitado, mostramos el dashboard admin
-  if (isUserLoading || (activeMatricula && isStudentLoading) || user?.isAnonymous || activeMatricula || studentProfile) {
+  // Mostrar loader mientras se determina el rol
+  if (isUserLoading || (activeMatricula && isStudentLoading) || (user?.isAnonymous && demoRole === 'docente') || activeMatricula || studentProfile) {
     return (
       <div className="h-[60vh] flex items-center justify-center">
         <Loader2 className="w-8 h-8 animate-spin text-primary" />
