@@ -50,6 +50,7 @@ import {
 } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Label } from "@/components/ui/label";
 
 const COLORS = ['#FF4C5E', '#1E293B', '#334155', '#475569', '#64748B', '#0F172A'];
 
@@ -185,7 +186,6 @@ export default function DashboardPage() {
         </div>
       </div>
 
-      {/* BARRA DE FILTROS DINÁMICOS */}
       <Card className="rounded-[2rem] border-none shadow-sm bg-slate-50/50 p-6">
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4">
           <div className="space-y-1.5">
