@@ -12,7 +12,12 @@ import {
   CalendarCheck,
   TrendingUp,
   FileBarChart,
-  GraduationCap
+  GraduationCap,
+  Filter,
+  Calendar,
+  Search,
+  BookOpen,
+  Briefcase
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { 
@@ -36,6 +41,17 @@ import {
   LineChart,
   Line
 } from 'recharts';
+import { 
+  Select, 
+  SelectContent, 
+  SelectItem, 
+  SelectTrigger, 
+  SelectValue 
+} from "@/components/ui/select";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+
+const COLORS = ['#FF4C5E', '#1E293B', '#334155', '#475569', '#64748B', '#0F172A'];
 
 export default function DashboardPage() {
   const { user, isUserLoading } = useUser();
@@ -45,6 +61,14 @@ export default function DashboardPage() {
   const [activeMatricula, setActiveMatricula] = useState<string | null>(null);
   const [demoRole, setDemoRole] = useState<string | null>(null);
 
+  // Filtros de estado
+  const [filterSede, setFilterSede] = useState<string>("all");
+  const [filterCarrera, setFilterCarrera] = useState<string>("all");
+  const [filterMateria, setFilterMateria] = useState<string>("all");
+  const [filterGrupo, setFilterGrupo] = useState<string>("all");
+  const [filterDocente, setFilterDocente] = useState<string>("all");
+  const [filterMes, setFilterMes] = useState<string>("all");
+
   useEffect(() => {
     if (typeof window !== 'undefined') {
       setActiveMatricula(sessionStorage.getItem('active_matricula'));
@@ -52,47 +76,78 @@ export default function DashboardPage() {
     }
   }, []);
 
+  // Colecciones
   const usersRef = useMemoFirebase(() => collection(db, 'users'), [db]);
   const sedesRef = useMemoFirebase(() => collection(db, 'sedes'), [db]);
   const asistenciasRef = useMemoFirebase(() => collection(db, 'asistencias'), [db]);
   const carrerasRef = useMemoFirebase(() => collection(db, 'carreras'), [db]);
+  const materiasRef = useMemoFirebase(() => collection(db, 'materias'), [db]);
+  const gruposRef = useMemoFirebase(() => collection(db, 'grupos'), [db]);
 
   const { data: allUsers } = useCollection(usersRef);
   const { data: allSedes } = useCollection(sedesRef);
   const { data: allAsistencias } = useCollection(asistenciasRef);
   const { data: allCarreras } = useCollection(carrerasRef);
+  const { data: allMaterias } = useCollection(materiasRef);
+  const { data: allGrupos } = useCollection(gruposRef);
 
-  // Estadísticas Rápidas
-  const stats = useMemo(() => {
-    const totalAlumnos = allUsers?.filter(u => u.role === 'Alumno').length || 0;
-    const totalDocentes = allUsers?.filter(u => u.role === 'Docente').length || 0;
-    const asistenciasHoy = allAsistencias?.filter(a => a.fecha === new Date().toISOString().split('T')[0]).length || 0;
-    const sedesActivas = allSedes?.length || 0;
+  const docentes = useMemo(() => allUsers?.filter(u => u.role === 'Docente') || [], [allUsers]);
 
-    return { totalAlumnos, totalDocentes, asistenciasHoy, sedesActivas };
-  }, [allUsers, allAsistencias, allSedes]);
-
-  // Datos para Gráfico de Sedes
-  const dataSedes = useMemo(() => {
-    if (!allSedes || !allAsistencias) return [];
-    return allSedes.map(s => {
-      // Nota: En un sistema real, los usuarios tendrían sedeId. 
-      // Aquí simplificamos contando asistencias que ocurrieron en esa sede (asumiendo lógica de grupo->carrera->sede)
-      const count = allAsistencias.length; // Placeholder real: filtrar asistencias por sede
-      return { name: s.nombre, value: Math.floor(Math.random() * 100) + 20 }; // Data aleatoria para demo visual
+  // Aplicación de Filtros a los Datos de Asistencia
+  const filteredAsistencias = useMemo(() => {
+    if (!allAsistencias) return [];
+    return allAsistencias.filter(a => {
+      const matchesSede = filterSede === "all" || allCarreras?.find(c => c.id === a.materiaId)?.sedeId === filterSede;
+      const matchesCarrera = filterCarrera === "all" || allMaterias?.find(m => m.id === a.materiaId)?.carreraId === filterCarrera;
+      const matchesMateria = filterMateria === "all" || a.materiaId === filterMateria;
+      const matchesGrupo = filterGrupo === "all" || a.grupoId === filterGrupo;
+      const matchesDocente = filterDocente === "all" || a.docenteId === filterDocente;
+      const matchesMes = filterMes === "all" || a.fecha.startsWith(filterMes);
+      
+      return matchesSede && matchesCarrera && matchesMateria && matchesGrupo && matchesDocente && matchesMes;
     });
-  }, [allSedes, allAsistencias]);
+  }, [allAsistencias, filterSede, filterCarrera, filterMateria, filterGrupo, filterDocente, filterMes, allCarreras, allMaterias]);
 
-  // Datos para Gráfico de Asistencia Semanal
-  const dataSemana = [
-    { day: 'Lun', asistencia: 85 },
-    { day: 'Mar', asistencia: 92 },
-    { day: 'Mie', asistencia: 78 },
-    { day: 'Jue', asistencia: 95 },
-    { day: 'Vie', asistencia: 88 },
-  ];
+  // Estadísticas Calculadas
+  const stats = useMemo(() => {
+    const presentes = filteredAsistencias.filter(a => a.estado === 'Presente').length;
+    const retardos = filteredAsistencias.filter(a => a.estado === 'Retraso').length;
+    const faltas = filteredAsistencias.filter(a => a.estado === 'Falta').length;
+    const total = filteredAsistencias.length || 1;
 
-  const COLORS = ['#FF4C5E', '#1E293B', '#334155', '#475569', '#64748B'];
+    return {
+      presentes,
+      retardos,
+      faltas,
+      indicePuntualidad: ((presentes / total) * 100).toFixed(1)
+    };
+  }, [filteredAsistencias]);
+
+  // Datos para Gráfico de Sedes (Dinámico)
+  const dataSedes = useMemo(() => {
+    if (!allSedes || !filteredAsistencias) return [];
+    return allSedes.map(s => {
+      const count = filteredAsistencias.filter(a => {
+        const materia = allMaterias?.find(m => m.id === a.materiaId);
+        const carrera = allCarreras?.find(c => c.id === materia?.carreraId);
+        return carrera?.sedeId === s.id;
+      }).length;
+      return { name: s.nombre, value: count };
+    }).filter(d => d.value > 0);
+  }, [allSedes, filteredAsistencias, allMaterias, allCarreras]);
+
+  // Datos para Tendencia (Días de la semana)
+  const dataSemana = useMemo(() => {
+    const dias = ['Dom', 'Lun', 'Mar', 'Mie', 'Jue', 'Vie', 'Sab'];
+    const counts = dias.map(d => ({ day: d, asistencia: 0 }));
+    
+    filteredAsistencias.forEach(a => {
+      const date = new Date(a.fecha);
+      counts[date.getDay()].asistencia++;
+    });
+
+    return counts.filter(c => c.day !== 'Dom' && c.day !== 'Sab');
+  }, [filteredAsistencias]);
 
   useEffect(() => {
     if (isUserLoading) return;
@@ -117,55 +172,133 @@ export default function DashboardPage() {
         <div>
           <div className="flex items-center gap-3 mb-2">
             <div className="w-1.5 h-8 bg-primary rounded-full" />
-            <h1 className="text-3xl font-bold tracking-tight text-slate-900 uppercase">Inteligencia Administrativa</h1>
+            <h1 className="text-3xl font-bold tracking-tight text-slate-900 uppercase">Inteligencia de Datos</h1>
           </div>
-          <p className="text-muted-foreground font-medium text-base">
-            Monitoreo en tiempo real de la institución <span className="text-primary font-bold">SIBF - CAI</span>
+          <p className="text-muted-foreground font-medium text-sm">
+            Análisis transversal de asistencia <span className="text-primary font-bold">SIBF - CAI</span>
           </p>
+        </div>
+        <div className="flex gap-2">
+          <Badge variant="outline" className="h-8 rounded-full px-4 border-slate-300 bg-slate-50 text-[10px] font-bold uppercase tracking-widest text-slate-600">
+            {filteredAsistencias.length} Registros Filtrados
+          </Badge>
         </div>
       </div>
 
+      {/* BARRA DE FILTROS DINÁMICOS */}
+      <Card className="rounded-[2rem] border-none shadow-sm bg-slate-50/50 p-6">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4">
+          <div className="space-y-1.5">
+            <Label className="text-[9px] font-bold uppercase text-muted-foreground ml-1">Sede</Label>
+            <Select value={filterSede} onValueChange={setFilterSede}>
+              <SelectTrigger className="rounded-xl h-10 border-none bg-white shadow-sm font-semibold text-xs"><SelectValue placeholder="Todas" /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Todas las Sedes</SelectItem>
+                {allSedes?.map(s => <SelectItem key={s.id} value={s.id}>{s.nombre}</SelectItem>)}
+              </SelectContent>
+            </Select>
+          </div>
+
+          <div className="space-y-1.5">
+            <Label className="text-[9px] font-bold uppercase text-muted-foreground ml-1">Carrera</Label>
+            <Select value={filterCarrera} onValueChange={setFilterCarrera}>
+              <SelectTrigger className="rounded-xl h-10 border-none bg-white shadow-sm font-semibold text-xs"><SelectValue placeholder="Todas" /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Todas las Carreras</SelectItem>
+                {allCarreras?.filter(c => filterSede === 'all' || c.sedeId === filterSede).map(c => <SelectItem key={c.id} value={c.id}>{c.nombre}</SelectItem>)}
+              </SelectContent>
+            </Select>
+          </div>
+
+          <div className="space-y-1.5">
+            <Label className="text-[9px] font-bold uppercase text-muted-foreground ml-1">Docente</Label>
+            <Select value={filterDocente} onValueChange={setFilterDocente}>
+              <SelectTrigger className="rounded-xl h-10 border-none bg-white shadow-sm font-semibold text-xs"><SelectValue placeholder="Todos" /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Todos los Docentes</SelectItem>
+                {docentes.map(d => <SelectItem key={d.id} value={d.id}>{d.firstName} {d.lastName}</SelectItem>)}
+              </SelectContent>
+            </Select>
+          </div>
+
+          <div className="space-y-1.5">
+            <Label className="text-[9px] font-bold uppercase text-muted-foreground ml-1">Materia</Label>
+            <Select value={filterMateria} onValueChange={setFilterMateria}>
+              <SelectTrigger className="rounded-xl h-10 border-none bg-white shadow-sm font-semibold text-xs"><SelectValue placeholder="Todas" /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Todas las Materias</SelectItem>
+                {allMaterias?.filter(m => filterCarrera === 'all' || m.carreraId === filterCarrera).map(m => <SelectItem key={m.id} value={m.id}>{m.nombre}</SelectItem>)}
+              </SelectContent>
+            </Select>
+          </div>
+
+          <div className="space-y-1.5">
+            <Label className="text-[9px] font-bold uppercase text-muted-foreground ml-1">Grupo</Label>
+            <Select value={filterGrupo} onValueChange={setFilterGrupo}>
+              <SelectTrigger className="rounded-xl h-10 border-none bg-white shadow-sm font-semibold text-xs"><SelectValue placeholder="Todos" /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Todos los Grupos</SelectItem>
+                {allGrupos?.filter(g => filterCarrera === 'all' || g.carreraId === filterCarrera).map(g => <SelectItem key={g.id} value={g.id}>{g.nombre}</SelectItem>)}
+              </SelectContent>
+            </Select>
+          </div>
+
+          <div className="space-y-1.5">
+            <Label className="text-[9px] font-bold uppercase text-muted-foreground ml-1">Periodo (Mes)</Label>
+            <Select value={filterMes} onValueChange={setFilterMes}>
+              <SelectTrigger className="rounded-xl h-10 border-none bg-white shadow-sm font-semibold text-xs"><SelectValue placeholder="Cualquier" /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Todo el Historial</SelectItem>
+                <SelectItem value="2025-01">Enero 2025</SelectItem>
+                <SelectItem value="2025-02">Febrero 2025</SelectItem>
+                <SelectItem value="2025-03">Marzo 2025</SelectItem>
+                <SelectItem value="2025-04">Abril 2025</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+        </div>
+      </Card>
+
+      {/* ESTADÍSTICAS RÁPIDAS FILTRADAS */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-        <Card className="rounded-3xl border-none bg-slate-900 text-white shadow-lg shadow-slate-200">
+        <Card className="rounded-3xl border-none bg-slate-900 text-white shadow-lg">
           <CardContent className="p-6">
             <div className="flex items-center justify-between mb-4">
-              <div className="bg-primary/20 p-2 rounded-xl"><GraduationCap className="w-6 h-6 text-primary" /></div>
-              <span className="text-[10px] font-bold uppercase tracking-widest text-white/40">Total Alumnos</span>
+              <div className="bg-primary/20 p-2 rounded-xl"><CalendarCheck className="w-6 h-6 text-primary" /></div>
+              <span className="text-[9px] font-bold uppercase tracking-widest text-white/40">Presentes</span>
             </div>
-            <h3 className="text-4xl font-bold">{stats.totalAlumnos}</h3>
-            <p className="text-[10px] font-bold text-green-400 mt-2 uppercase flex items-center gap-1">
-              <TrendingUp className="w-3 h-3" /> +12% vs mes anterior
-            </p>
+            <h3 className="text-4xl font-bold">{stats.presentes}</h3>
+            <p className="text-[9px] font-bold text-green-400 mt-2 uppercase tracking-tight">Puntualidad: {stats.indicePuntualidad}%</p>
           </CardContent>
         </Card>
         <Card className="rounded-3xl border-none bg-white shadow-sm border border-slate-100">
           <CardContent className="p-6">
             <div className="flex items-center justify-between mb-4">
-              <div className="bg-slate-100 p-2 rounded-xl"><Users className="w-6 h-6 text-slate-600" /></div>
-              <span className="text-[10px] font-bold uppercase tracking-widest text-slate-400">Docentes</span>
+              <div className="bg-amber-100 p-2 rounded-xl"><AlertCircle className="w-6 h-6 text-amber-600" /></div>
+              <span className="text-[9px] font-bold uppercase tracking-widest text-slate-400">Retardos</span>
             </div>
-            <h3 className="text-4xl font-bold text-slate-900">{stats.totalDocentes}</h3>
-            <p className="text-[10px] font-bold text-slate-400 mt-2 uppercase">Activos en plataforma</p>
+            <h3 className="text-4xl font-bold text-slate-900">{stats.retardos}</h3>
+            <p className="text-[9px] font-bold text-slate-400 mt-2 uppercase">Incidencias detectadas</p>
           </CardContent>
         </Card>
         <Card className="rounded-3xl border-none bg-white shadow-sm border border-slate-100">
           <CardContent className="p-6">
             <div className="flex items-center justify-between mb-4">
-              <div className="bg-primary/10 p-2 rounded-xl"><CalendarCheck className="w-6 h-6 text-primary" /></div>
-              <span className="text-[10px] font-bold uppercase tracking-widest text-slate-400">Asistencia Hoy</span>
+              <div className="bg-red-50 p-2 rounded-xl"><AlertCircle className="w-6 h-6 text-red-600" /></div>
+              <span className="text-[9px] font-bold uppercase tracking-widest text-slate-400">Faltas</span>
             </div>
-            <h3 className="text-4xl font-bold text-slate-900">{stats.asistenciasHoy}</h3>
-            <p className="text-[10px] font-bold text-slate-400 mt-2 uppercase">Registros capturados</p>
+            <h3 className="text-4xl font-bold text-slate-900">{stats.faltas}</h3>
+            <p className="text-[9px] font-bold text-red-600 mt-2 uppercase">Ausentismo crítico</p>
           </CardContent>
         </Card>
         <Card className="rounded-3xl border-none bg-white shadow-sm border border-slate-100">
           <CardContent className="p-6">
             <div className="flex items-center justify-between mb-4">
-              <div className="bg-slate-100 p-2 rounded-xl"><Building2 className="w-6 h-6 text-slate-600" /></div>
-              <span className="text-[10px] font-bold uppercase tracking-widest text-slate-400">Sedes</span>
+              <div className="bg-slate-100 p-2 rounded-xl"><Briefcase className="w-6 h-6 text-slate-600" /></div>
+              <span className="text-[9px] font-bold uppercase tracking-widest text-slate-400">Docentes</span>
             </div>
-            <h3 className="text-4xl font-bold text-slate-900">{stats.sedesActivas}</h3>
-            <p className="text-[10px] font-bold text-slate-400 mt-2 uppercase">Campus vinculados</p>
+            <h3 className="text-4xl font-bold text-slate-900">{docentes.length}</h3>
+            <p className="text-[9px] font-bold text-slate-400 mt-2 uppercase">Personal Académico</p>
           </CardContent>
         </Card>
       </div>
@@ -175,67 +308,81 @@ export default function DashboardPage() {
           <CardHeader className="p-8 border-b border-slate-50 flex flex-row items-center justify-between">
             <div>
               <CardTitle className="text-xl font-bold flex items-center gap-2">
-                <FileBarChart className="w-5 h-5 text-primary" /> Asistencia por Sede
+                <FileBarChart className="w-5 h-5 text-primary" /> Distribución por Sede
               </CardTitle>
-              <CardDescription className="text-xs font-medium">Distribución porcentual de participación estudiantil.</CardDescription>
+              <CardDescription className="text-xs font-medium">Volumen de asistencias según filtros aplicados.</CardDescription>
             </div>
           </CardHeader>
-          <CardContent className="p-8 h-[300px]">
-            <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={dataSedes}>
-                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
-                <XAxis 
-                  dataKey="name" 
-                  axisLine={false} 
-                  tickLine={false} 
-                  tick={{fill: '#64748b', fontSize: 10, fontWeight: 700}} 
-                />
-                <YAxis hide />
-                <Tooltip 
-                  cursor={{fill: '#f8fafc'}}
-                  contentStyle={{borderRadius: '16px', border: 'none', boxShadow: '0 10px 15px -3px rgba(0,0,0,0.1)'}}
-                />
-                <Bar dataKey="value" radius={[10, 10, 0, 0]} barSize={40}>
-                  {dataSedes.map((entry, index) => (
-                    <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                  ))}
-                </Bar>
-              </BarChart>
-            </ResponsiveContainer>
+          <CardContent className="p-8 h-[350px]">
+            {dataSedes.length > 0 ? (
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={dataSedes}>
+                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
+                  <XAxis 
+                    dataKey="name" 
+                    axisLine={false} 
+                    tickLine={false} 
+                    tick={{fill: '#64748b', fontSize: 10, fontWeight: 700}} 
+                  />
+                  <YAxis axisLine={false} tickLine={false} tick={{fill: '#64748b', fontSize: 10}} />
+                  <Tooltip 
+                    cursor={{fill: '#f8fafc'}}
+                    contentStyle={{borderRadius: '16px', border: 'none', boxShadow: '0 10px 15px -3px rgba(0,0,0,0.1)'}}
+                  />
+                  <Bar dataKey="value" radius={[10, 10, 0, 0]} barSize={40}>
+                    {dataSedes.map((entry, index) => (
+                      <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                    ))}
+                  </Bar>
+                </BarChart>
+              </ResponsiveContainer>
+            ) : (
+              <div className="h-full flex flex-col items-center justify-center opacity-30">
+                <Search className="w-12 h-12 mb-2" />
+                <p className="font-bold uppercase text-[10px]">Sin datos para esta selección</p>
+              </div>
+            )}
           </CardContent>
         </Card>
 
         <Card className="rounded-[2.5rem] border-slate-100 shadow-sm overflow-hidden bg-white">
           <CardHeader className="p-8 border-b border-slate-50">
             <CardTitle className="text-xl font-bold flex items-center gap-2">
-              <TrendingUp className="w-5 h-5 text-primary" /> Tendencia Semanal
+              <TrendingUp className="w-5 h-5 text-primary" /> Tendencia por Día
             </CardTitle>
-            <CardDescription className="text-xs font-medium">Porcentaje de asistencia grupal últimos 5 días.</CardDescription>
+            <CardDescription className="text-xs font-medium">Frecuencia de inasistencias por día laboral.</CardDescription>
           </CardHeader>
-          <CardContent className="p-8 h-[300px]">
-            <ResponsiveContainer width="100%" height="100%">
-              <LineChart data={dataSemana}>
-                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
-                <XAxis 
-                  dataKey="day" 
-                  axisLine={false} 
-                  tickLine={false} 
-                  tick={{fill: '#64748b', fontSize: 10, fontWeight: 700}} 
-                />
-                <YAxis axisLine={false} tickLine={false} tick={{fill: '#64748b', fontSize: 10}} />
-                <Tooltip 
-                  contentStyle={{borderRadius: '16px', border: 'none', boxShadow: '0 10px 15px -3px rgba(0,0,0,0.1)'}}
-                />
-                <Line 
-                  type="monotone" 
-                  dataKey="asistencia" 
-                  stroke="#FF4C5E" 
-                  strokeWidth={4} 
-                  dot={{ r: 6, fill: '#FF4C5E', strokeWidth: 0 }} 
-                  activeDot={{ r: 8, strokeWidth: 0 }}
-                />
-              </LineChart>
-            </ResponsiveContainer>
+          <CardContent className="p-8 h-[350px]">
+            {filteredAsistencias.length > 0 ? (
+              <ResponsiveContainer width="100%" height="100%">
+                <LineChart data={dataSemana}>
+                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
+                  <XAxis 
+                    dataKey="day" 
+                    axisLine={false} 
+                    tickLine={false} 
+                    tick={{fill: '#64748b', fontSize: 10, fontWeight: 700}} 
+                  />
+                  <YAxis axisLine={false} tickLine={false} tick={{fill: '#64748b', fontSize: 10}} />
+                  <Tooltip 
+                    contentStyle={{borderRadius: '16px', border: 'none', boxShadow: '0 10px 15px -3px rgba(0,0,0,0.1)'}}
+                  />
+                  <Line 
+                    type="monotone" 
+                    dataKey="asistencia" 
+                    stroke="#FF4C5E" 
+                    strokeWidth={4} 
+                    dot={{ r: 6, fill: '#FF4C5E', strokeWidth: 0 }} 
+                    activeDot={{ r: 8, strokeWidth: 0 }}
+                  />
+                </LineChart>
+              </ResponsiveContainer>
+            ) : (
+              <div className="h-full flex flex-col items-center justify-center opacity-30">
+                <TrendingUp className="w-12 h-12 mb-2" />
+                <p className="font-bold uppercase text-[10px]">Sin registros en el historial</p>
+              </div>
+            )}
           </CardContent>
         </Card>
       </div>
@@ -246,9 +393,9 @@ export default function DashboardPage() {
             <div className="w-16 h-16 bg-white rounded-3xl flex items-center justify-center mx-auto shadow-sm">
               <TrendingUp className="w-8 h-8 text-primary" />
             </div>
-            <h3 className="text-xl font-bold text-slate-900 uppercase">Análisis Predictivo</h3>
+            <h3 className="text-xl font-bold text-slate-900 uppercase">Alertas Tempranas</h3>
             <p className="text-sm text-muted-foreground font-medium">
-              Próximamente: El sistema identificará automáticamente a los alumnos con riesgo de deserción basado en su patrón de inasistencias y retardos históricos.
+              El análisis dinámico permite identificar patrones de inasistencia críticos por materia o docente. Utiliza los filtros para refinar tu búsqueda y exportar reportes focalizados.
             </p>
           </div>
         </CardContent>
@@ -256,4 +403,3 @@ export default function DashboardPage() {
     </div>
   );
 }
-
