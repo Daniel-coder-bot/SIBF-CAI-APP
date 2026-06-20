@@ -172,7 +172,7 @@ export default function LoginPage() {
                 alt="SIBF-CAI Logo" 
                 width={350} 
                 height={350} 
-                className="object-contain drop-shadow-2xl animate-pulse"
+                className="object-contain drop-shadow-2xl"
               />
               <span className="text-4xl font-black text-slate-900 tracking-tighter font-headline uppercase">SIBF-CAI</span>
             </div>
@@ -226,21 +226,6 @@ export default function LoginPage() {
                 disabled={isVerifying}
               >
                 {isVerifying ? <Loader2 className="h-5 w-5 animate-spin" /> : "Ingresar al Sistema"}
-              </Button>
-              
-              <div className="relative flex items-center py-4">
-                <div className="flex-grow border-t border-slate-100"></div>
-                <span className="flex-shrink mx-4 text-[10px] font-bold text-slate-400 uppercase tracking-widest">O accede mediante</span>
-                <div className="flex-grow border-t border-slate-100"></div>
-              </div>
-
-              <Button 
-                type="button"
-                variant="outline"
-                className="w-full border-emerald-100 bg-emerald-50/50 hover:bg-emerald-50 text-emerald-700 font-bold text-sm uppercase tracking-widest h-14 rounded-2xl transition-all flex items-center justify-center gap-3"
-              >
-                <Camera className="w-5 h-5" />
-                Iniciar con Reconocimiento Facial
               </Button>
             </div>
           </form>
