@@ -1,8 +1,8 @@
-
 "use client";
 
 import React, { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
+import Image from 'next/image';
 import { usePathname, useRouter } from 'next/navigation';
 import { 
   Users, 
@@ -165,18 +165,15 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     <SidebarProvider defaultOpen={true}>
       <div className="flex h-screen w-full bg-background overflow-hidden">
         <Sidebar className="border-r border-border/50 bg-white shadow-none">
-          <SidebarHeader className="p-8 flex flex-col items-center gap-4 border-b bg-white">
-            <div className="w-full flex justify-center py-2">
-              <div className={cn(
-                "w-20 h-20 rounded-3xl flex items-center justify-center transition-transform hover:scale-105",
-                isStudent ? "bg-primary/10" : "bg-slate-900"
-              )}>
-                {isStudent ? (
-                   <History className="w-10 h-10 text-primary" />
-                ) : (
-                   <User className="w-10 h-10 text-white" />
-                )}
-              </div>
+          <SidebarHeader className="p-8 flex flex-col items-center gap-2 border-b bg-white">
+            <div className="w-full flex justify-center py-4">
+              <Image 
+                src="/logo.png" 
+                alt="SIBF-CAI Logo" 
+                width={80} 
+                height={80} 
+                className="object-contain hover:scale-105 transition-transform"
+              />
             </div>
             <div className="text-center">
               <span className="block text-lg font-bold text-slate-900 tracking-tight uppercase leading-none">SIBF - CAI</span>
@@ -233,9 +230,13 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                <Menu className="w-6 h-6" />
              </SidebarTrigger>
              <div className="flex items-center gap-2">
-               <div className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center">
-                 <User className="w-4 h-4 text-white" />
-               </div>
+               <Image 
+                src="/logo.png" 
+                alt="Logo" 
+                width={40} 
+                height={40} 
+                className="object-contain"
+               />
                <h1 className="text-lg font-bold text-slate-900 uppercase tracking-tighter">SIBF - CAI</h1>
              </div>
              <div className="w-6 h-6" />

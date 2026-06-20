@@ -12,8 +12,7 @@ import {
   Scan, 
   ShieldCheck, 
   Cpu, 
-  Camera,
-  ChevronRight
+  Camera
 } from 'lucide-react';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -166,10 +165,14 @@ export default function LoginPage() {
       <div className="w-full md:w-1/2 flex flex-col justify-between p-8 md:p-16 lg:p-24 bg-white relative">
         <div className="w-full max-w-md mx-auto flex-1 flex flex-col justify-center">
           <div className="mb-10 text-center md:text-left animate-in fade-in slide-in-from-right duration-700">
-            <div className="flex items-center justify-center md:justify-start gap-3 mb-6">
-              <div className="bg-primary p-3 rounded-2xl shadow-xl shadow-primary/20">
-                <Scan className="w-8 h-8 text-white" />
-              </div>
+            <div className="flex items-center justify-center md:justify-start gap-4 mb-6">
+              <Image 
+                src="/logo.png" 
+                alt="SIBF-CAI Logo" 
+                width={70} 
+                height={70} 
+                className="object-contain"
+              />
               <span className="text-3xl font-black text-slate-900 tracking-tighter font-headline">SIBF-CAI</span>
             </div>
             <h2 className="text-3xl font-bold text-slate-900 tracking-tight">Bienvenido de vuelta</h2>
@@ -218,7 +221,7 @@ export default function LoginPage() {
             <div className="space-y-3 pt-4">
               <Button 
                 type="submit" 
-                className="w-full bg-[#FF4C5E] hover:bg-[#E33E4F] text-white font-bold text-sm uppercase tracking-widest h-14 rounded-2xl shadow-lg shadow-red-900/10 transition-all hover:scale-[1.02] active:scale-[0.98]" 
+                className="w-full bg-primary hover:bg-accent text-white font-bold text-sm uppercase tracking-widest h-14 rounded-2xl shadow-lg shadow-primary/10 transition-all hover:scale-[1.02] active:scale-[0.98]" 
                 disabled={isVerifying}
               >
                 {isVerifying ? <Loader2 className="h-5 w-5 animate-spin" /> : "Ingresar al Sistema"}
