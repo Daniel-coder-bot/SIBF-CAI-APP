@@ -12,10 +12,11 @@ import { useToast } from "@/hooks/use-toast";
 interface FacialRecognitionProps {
   mode: 'enroll' | 'recognize';
   onCapture?: (descriptor: number[]) => void;
+  onRecognized?: (label: string) => void;
   labeledDescriptors?: Array<{ label: string; descriptor: number[] }>;
 }
 
-export function FacialRecognitionComponent({ mode, onCapture, labeledDescriptors }: FacialRecognitionProps) {
+export function FacialRecognitionComponent({ mode, onCapture, onRecognized, labeledDescriptors }: FacialRecognitionProps) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const { toast } = useToast();
@@ -26,7 +27,6 @@ export function FacialRecognitionComponent({ mode, onCapture, labeledDescriptors
   const [capturedDescriptor, setCapturedDescriptor] = useState<number[] | null>(null);
   const [matcher, setMatcher] = useState<faceapi.FaceMatcher | null>(null);
   
-  // Estado para el feedback visual (destello blanco)
   const [showSuccessFlash, setShowSuccessFlash] = useState(false);
   const [lastRecognizedId, setLastRecognizedId] = useState<string | null>(null);
   const cooldownRef = useRef<NodeJS.Timeout | null>(null);
@@ -118,37 +118,35 @@ export function FacialRecognitionComponent({ mode, onCapture, labeledDescriptors
           if (mode === 'recognize' && matcher) {
             const bestMatch = matcher.findBestMatch(descriptor);
             
-            // Si hay un match positivo
             if (bestMatch.label !== 'unknown') {
-              // Evitar disparar múltiples veces para el mismo alumno seguidas
               if (lastRecognizedId !== bestMatch.label) {
                 setLastRecognizedId(bestMatch.label);
                 setShowSuccessFlash(true);
                 
-                toast({
-                  title: "Alumno Identificado",
-                  description: `${bestMatch.label} está en el sistema.`,
-                });
+                if (onRecognized) {
+                  onRecognized(bestMatch.label);
+                } else {
+                  toast({
+                    title: "Alumno Identificado",
+                    description: `${bestMatch.label} está en el sistema.`,
+                  });
+                }
 
-                // Quitar el flash después de 500ms
                 setTimeout(() => setShowSuccessFlash(false), 500);
                 
-                // Cooldown para volver a reconocer al mismo alumno
                 if (cooldownRef.current) clearTimeout(cooldownRef.current);
                 cooldownRef.current = setTimeout(() => {
                   setLastRecognizedId(null);
                 }, 5000);
               }
               
-              // Dibujar solo el cuadro, sin texto arriba (pasando label vacío o nulo)
               const drawBox = new faceapi.draw.DrawBox(detection.box, { 
                 label: '', 
-                boxColor: 'rgba(34, 197, 94, 1)', // Verde para éxito
+                boxColor: 'rgba(34, 197, 94, 1)', 
                 lineWidth: 4 
               });
               drawBox.draw(canvas);
             } else {
-              // Rostro desconocido (Cuadro rojo/gris)
               const drawBox = new faceapi.draw.DrawBox(detection.box, { 
                 label: '', 
                 boxColor: 'rgba(239, 68, 68, 0.5)', 
@@ -157,7 +155,6 @@ export function FacialRecognitionComponent({ mode, onCapture, labeledDescriptors
               drawBox.draw(canvas);
             }
           } else {
-            // Modo Enrolamiento: Dibujar cuadro neutro
             const drawBox = new faceapi.draw.DrawBox(detection.box, { 
               label: mode === 'enroll' ? 'Posiciona tu rostro' : '',
               boxColor: 'rgba(255, 31, 45, 1)', 
@@ -212,7 +209,6 @@ export function FacialRecognitionComponent({ mode, onCapture, labeledDescriptors
           className="absolute top-0 left-0 w-full h-full pointer-events-none" 
         />
         
-        {/* DESTELLO BLANCO DE ÉXITO */}
         {showSuccessFlash && (
           <div className="absolute inset-0 bg-white animate-in fade-in duration-300 z-20 flex items-center justify-center">
              <div className="text-primary flex flex-col items-center scale-110">

@@ -11,7 +11,8 @@ import {
   Camera,
   Save,
   AlertCircle,
-  CalendarDays
+  CalendarDays,
+  ScanFace
 } from 'lucide-react';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -41,7 +42,7 @@ import { collection, serverTimestamp, query, where } from 'firebase/firestore';
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
 import { FacialRecognitionComponent } from '@/components/FacialRecognitionComponent';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
 
 const DAYS_MAP: Record<number, string> = {
@@ -63,8 +64,8 @@ export default function TomaAsistenciaPage() {
   const [attendanceMap, setAttendanceMap] = useState<Record<string, 'Presente' | 'Retraso' | 'Falta'>>({});
   const [searchQuery, setSearchQuery] = useState("");
   const [currentTime, setCurrentTime] = useState(new Date());
+  const [isCameraOpen, setIsCameraOpen] = useState(false);
 
-  // Actualizar hora cada minuto para la lógica de tolerancia
   useEffect(() => {
     const timer = setInterval(() => setCurrentTime(new Date()), 60000);
     return () => clearInterval(timer);
@@ -81,13 +82,11 @@ export default function TomaAsistenciaPage() {
   const { data: allUsers } = useCollection(usersRef);
   const { data: horarios } = useCollection(horariosRef);
 
-  // Determinar horario actual basado en el grupo seleccionado y tiempo real
   const currentSchedule = useMemo(() => {
     if (!selectedGrupoId || !horarios) return null;
     const currentDayStr = DAYS_MAP[currentTime.getDay()];
     const currentHourStr = currentTime.toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit', hour12: false });
     
-    // Buscar el horario que coincida con el día y esté dentro del rango de horas
     return horarios.find(h => 
       h.grupoId === selectedGrupoId && 
       h.dia === currentDayStr &&
@@ -113,6 +112,15 @@ export default function TomaAsistenciaPage() {
     );
   }, [studentsInGrupo, searchQuery]);
 
+  const labeledDescriptors = useMemo(() => {
+    return studentsInGrupo
+      .filter(s => s.faceDescriptor && Array.isArray(s.faceDescriptor))
+      .map(s => ({
+        label: `${s.firstName} ${s.lastName}`,
+        descriptor: s.faceDescriptor
+      }));
+  }, [studentsInGrupo]);
+
   const handleMarkAttendance = (alumnoId: string, statusOverride?: 'Presente' | 'Retraso' | 'Falta') => {
     if (statusOverride) {
       setAttendanceMap(prev => ({ ...prev, [alumnoId]: statusOverride }));
@@ -124,7 +132,6 @@ export default function TomaAsistenciaPage() {
       return;
     }
 
-    // Lógica de tolerancia de 15 minutos
     const [startHour, startMin] = currentSchedule.horaInicio.split(':').map(Number);
     const startTime = new Date(currentTime);
     startTime.setHours(startHour, startMin, 0, 0);
@@ -138,6 +145,17 @@ export default function TomaAsistenciaPage() {
       title: autoStatus === 'Presente' ? "Asistencia Marcada" : "Retardo Marcado", 
       description: `${diffInMinutes.toFixed(0)} min de retraso detectados.` 
     });
+  };
+
+  const handleRecognized = (label: string) => {
+    const student = studentsInGrupo.find(s => `${s.firstName} ${s.lastName}` === label);
+    if (student) {
+      handleMarkAttendance(student.id);
+      toast({
+        title: "¡Alumno Identificado!",
+        description: `${label} ha sido marcado como presente.`,
+      });
+    }
   };
 
   const handleMarkAllAbsences = () => {
@@ -184,7 +202,7 @@ export default function TomaAsistenciaPage() {
           <h1 className="text-3xl font-bold tracking-tight text-foreground uppercase flex items-center gap-3">
             <ClipboardCheck className="w-9 h-9 text-primary" /> Pase de Lista
           </h1>
-          <p className="text-muted-foreground font-medium text-sm">Control inteligente de puntualidad (15 min de tolerancia).</p>
+          <p className="text-muted-foreground font-medium text-sm">Control inteligente de puntualidad con reconocimiento facial.</p>
         </div>
         <div className="bg-slate-50 px-6 py-3 rounded-2xl border flex items-center gap-4">
           <Clock className="w-5 h-5 text-primary animate-pulse" />
@@ -228,6 +246,13 @@ export default function TomaAsistenciaPage() {
           </div>
 
           <div className="space-y-3">
+            <Button 
+              onClick={() => setIsCameraOpen(true)}
+              disabled={!selectedGrupoId || !currentSchedule}
+              className="w-full h-14 bg-slate-900 hover:bg-slate-800 text-white rounded-2xl font-bold uppercase tracking-widest text-[11px] shadow-lg"
+            >
+              <ScanFace className="w-5 h-5 mr-2" /> Iniciar Reconocimiento (Prueba)
+            </Button>
             <Button 
               onClick={handleMarkAllAbsences} 
               disabled={!selectedGrupoId}
@@ -351,7 +376,27 @@ export default function TomaAsistenciaPage() {
           </div>
         </div>
       </div>
+
+      <Dialog open={isCameraOpen} onOpenChange={setIsCameraOpen}>
+        <DialogContent className="max-w-3xl rounded-[2rem] p-8 border-none shadow-2xl">
+          <DialogHeader className="mb-6">
+            <DialogTitle className="text-2xl font-bold uppercase tracking-tight flex items-center gap-3">
+              <Camera className="w-6 h-6 text-primary" /> Identificación Biométrica
+            </DialogTitle>
+            <DialogDescription className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">
+              Modo de prueba: Posiciona a los alumnos frente a la cámara para el pase de lista automático.
+            </DialogDescription>
+          </DialogHeader>
+          <FacialRecognitionComponent 
+            mode="recognize" 
+            labeledDescriptors={labeledDescriptors}
+            onRecognized={handleRecognized}
+          />
+          <div className="mt-8 flex justify-end">
+            <Button variant="outline" className="rounded-xl px-8 h-12 font-bold uppercase tracking-widest text-[10px]" onClick={() => setIsCameraOpen(false)}>Finalizar Prueba</Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
-
