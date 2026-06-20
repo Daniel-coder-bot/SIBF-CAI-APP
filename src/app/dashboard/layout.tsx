@@ -3,7 +3,6 @@
 
 import React, { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
-import Image from 'next/image';
 import { usePathname, useRouter } from 'next/navigation';
 import { 
   Users, 
@@ -43,6 +42,7 @@ const adminItems = [
   { name: 'Inicio', href: '/dashboard', icon: LayoutDashboard },
   { name: 'Personal', href: '/dashboard/usuarios', icon: Users },
   { name: 'Catálogos', href: '/dashboard/catalogos', icon: FolderTree },
+  { name: 'Justificaciones', href: '/dashboard/justificaciones', icon: ShieldAlert },
   { name: 'Asistencia Gral', href: '/dashboard/asistencia', icon: CalendarCheck },
   { name: 'Reportes', href: '/dashboard/reportes', icon: FileBarChart },
   { name: 'Configuración', href: '/dashboard/configuracion', icon: Settings },
@@ -86,16 +86,23 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   const { data: studentProfiles, isLoading: isStudentLoading } = useCollection(studentQuery);
   const studentProfile = studentProfiles?.[0];
 
+  // Obtener perfil de usuario si no es alumno
+  const userProfileQuery = useMemoFirebase(() => 
+    user && !user.isAnonymous ? query(usersRef, where("email", "==", user.email || ""), limit(1)) : null,
+  [usersRef, user]);
+  const { data: userProfiles } = useCollection(userProfileQuery);
+  const userProfile = userProfiles?.[0];
+
   const isStudent = !!(activeMatricula || studentProfile);
-  const isDocenteDemo = user?.isAnonymous && demoRole === 'docente';
-  const isAdminDemo = user?.isAnonymous && demoRole === 'admin';
+  const isDocente = (user?.isAnonymous && demoRole === 'docente') || userProfile?.role === 'Docente';
+  const isAdmin = (user?.isAnonymous && demoRole === 'admin') || userProfile?.role === 'Administrador' || userProfile?.role === 'Jefe de Carrera';
 
   const navItems = useMemo(() => {
     if (isStudent) return alumnoItems;
-    if (isDocenteDemo) return docenteItems;
-    if (isAdminDemo || (user && !user.isAnonymous)) return adminItems;
+    if (isDocente) return docenteItems;
+    if (isAdmin) return adminItems;
     return [];
-  }, [isStudent, isDocenteDemo, isAdminDemo, user]);
+  }, [isStudent, isDocente, isAdmin]);
 
   useEffect(() => {
     if (isUserLoading || (activeMatricula && isStudentLoading)) return;
@@ -105,15 +112,11 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       return;
     }
 
-    // Redirecciones automáticas basadas en el rol para proteger las áreas
-    if (pathname === '/dashboard' || pathname.startsWith('/dashboard/usuarios') || pathname.startsWith('/dashboard/catalogos')) {
-      if (isStudent) {
-        router.push('/dashboard/alumno');
-      } else if (isDocenteDemo) {
-        router.push('/dashboard/docente/asistencia');
-      }
+    if (pathname === '/dashboard') {
+      if (isStudent) router.push('/dashboard/alumno');
+      else if (isDocente) router.push('/dashboard/docente/asistencia');
     }
-  }, [pathname, isStudent, isDocenteDemo, user, router, isUserLoading, activeMatricula, isStudentLoading]);
+  }, [pathname, isStudent, isDocente, user, router, isUserLoading, activeMatricula, isStudentLoading]);
 
   const handleLogout = async () => {
     try {
@@ -140,19 +143,23 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
   const displayName = studentProfile 
     ? `${studentProfile.firstName} ${studentProfile.lastName}`
-    : isAdminDemo 
-      ? 'Administrador SIBF'
-      : isDocenteDemo
-        ? 'Docente Académico' 
-        : 'Usuario';
+    : userProfile
+      ? `${userProfile.firstName} ${userProfile.lastName}`
+      : isAdmin 
+        ? 'Administrador SIBF'
+        : isDocente
+          ? 'Docente Académico' 
+          : 'Usuario';
 
   const displayRole = studentProfile 
     ? 'Alumno' 
-    : isAdminDemo 
-      ? 'Administrador'
-      : isDocenteDemo
-        ? 'Personal Docente' 
-        : 'Personal';
+    : userProfile
+      ? userProfile.role
+      : isAdmin 
+        ? 'Administrador'
+        : isDocente
+          ? 'Personal Docente' 
+          : 'Personal';
 
   return (
     <SidebarProvider defaultOpen={true}>
@@ -164,7 +171,11 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                 "w-20 h-20 rounded-3xl flex items-center justify-center transition-transform hover:scale-105",
                 isStudent ? "bg-primary/10" : "bg-slate-900"
               )}>
-                <User className={cn("w-10 h-10", isStudent ? "text-primary" : "text-white")} />
+                {isStudent ? (
+                   <History className="w-10 h-10 text-primary" />
+                ) : (
+                   <User className="w-10 h-10 text-white" />
+                )}
               </div>
             </div>
             <div className="text-center">
