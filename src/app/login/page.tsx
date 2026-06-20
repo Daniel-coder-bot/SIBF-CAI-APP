@@ -1,3 +1,4 @@
+
 "use client";
 
 import React, { useState, useEffect } from 'react';
@@ -165,15 +166,15 @@ export default function LoginPage() {
       <div className="w-full md:w-1/2 flex flex-col justify-between p-8 md:p-16 lg:p-24 bg-white relative">
         <div className="w-full max-w-md mx-auto flex-1 flex flex-col justify-center">
           <div className="mb-10 text-center md:text-left animate-in fade-in slide-in-from-right duration-700">
-            <div className="flex items-center justify-center md:justify-start gap-4 mb-6">
+            <div className="flex flex-col items-center md:items-start gap-6 mb-8">
               <Image 
                 src="/logo.png" 
                 alt="SIBF-CAI Logo" 
-                width={70} 
-                height={70} 
-                className="object-contain"
+                width={350} 
+                height={350} 
+                className="object-contain drop-shadow-2xl animate-pulse"
               />
-              <span className="text-3xl font-black text-slate-900 tracking-tighter font-headline">SIBF-CAI</span>
+              <span className="text-4xl font-black text-slate-900 tracking-tighter font-headline uppercase">SIBF-CAI</span>
             </div>
             <h2 className="text-3xl font-bold text-slate-900 tracking-tight">Bienvenido de vuelta</h2>
             <p className="text-muted-foreground font-medium mt-2">Ingrese sus credenciales para acceder al sistema.</p>

@@ -1,3 +1,4 @@
+
 "use client";
 
 import React, { useEffect, useMemo, useState } from 'react';
@@ -164,23 +165,23 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   return (
     <SidebarProvider defaultOpen={true}>
       <div className="flex h-screen w-full bg-background overflow-hidden">
-        <Sidebar className="border-r border-border/50 bg-white shadow-none">
-          <SidebarHeader className="p-8 flex flex-col items-center gap-2 border-b bg-white">
-            <div className="w-full flex justify-center py-4">
+        <Sidebar className="border-r border-border/50 bg-white shadow-none w-[320px]">
+          <SidebarHeader className="p-10 flex flex-col items-center gap-4 border-b bg-white">
+            <div className="w-full flex justify-center py-6">
               <Image 
                 src="/logo.png" 
                 alt="SIBF-CAI Logo" 
-                width={80} 
-                height={80} 
-                className="object-contain hover:scale-105 transition-transform"
+                width={250} 
+                height={250} 
+                className="object-contain hover:scale-105 transition-transform drop-shadow-lg"
               />
             </div>
             <div className="text-center">
-              <span className="block text-lg font-bold text-slate-900 tracking-tight uppercase leading-none">SIBF - CAI</span>
-              <span className="block text-[8px] font-bold text-primary uppercase tracking-widest mt-1">Portal Universitario</span>
+              <span className="block text-2xl font-black text-slate-900 tracking-tighter uppercase leading-none">SIBF - CAI</span>
+              <span className="block text-[10px] font-bold text-primary uppercase tracking-[0.2em] mt-2">Portal Universitario</span>
             </div>
           </SidebarHeader>
-          <SidebarContent className="px-4 mt-6 bg-white">
+          <SidebarContent className="px-6 mt-8 bg-white">
             <SidebarMenu>
               {navItems.map((item) => {
                 const isActive = pathname === item.href;
@@ -190,16 +191,16 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                       asChild 
                       isActive={isActive}
                       className={cn(
-                        "group transition-all duration-200 py-5 px-5 rounded-xl mb-1 h-auto",
+                        "group transition-all duration-200 py-6 px-6 rounded-2xl mb-2 h-auto",
                         isActive 
-                          ? "bg-slate-900 text-white hover:bg-slate-800 shadow-md" 
+                          ? "bg-slate-900 text-white hover:bg-slate-800 shadow-xl" 
                           : "hover:bg-slate-50 text-slate-600 hover:text-slate-900"
                       )}
                     >
                       <Link href={item.href}>
-                        <item.icon className={cn("w-5 h-5", isActive ? "text-primary" : "text-slate-400 group-hover:text-slate-600")} />
-                        <span className="font-semibold text-sm ml-3 tracking-tight">{item.name}</span>
-                        {isActive && <ChevronRight className="ml-auto w-4 h-4 opacity-50" />}
+                        <item.icon className={cn("w-6 h-6", isActive ? "text-primary" : "text-slate-400 group-hover:text-slate-600")} />
+                        <span className="font-bold text-base ml-4 tracking-tight">{item.name}</span>
+                        {isActive && <ChevronRight className="ml-auto w-5 h-5 opacity-50" />}
                       </Link>
                     </SidebarMenuButton>
                   </SidebarMenuItem>
@@ -207,19 +208,19 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
               })}
             </SidebarMenu>
           </SidebarContent>
-          <SidebarFooter className="p-6 mt-auto border-t bg-white">
-            <div className="px-4 py-3 mb-4 bg-slate-50 rounded-xl border border-slate-100">
-              <p className="text-[9px] font-bold text-muted-foreground uppercase tracking-widest mb-1">Usuario Activo</p>
-              <p className="text-xs font-bold text-slate-900 truncate">{displayName}</p>
-              <p className="text-[9px] font-bold text-primary uppercase mt-0.5">{displayRole}</p>
+          <SidebarFooter className="p-8 mt-auto border-t bg-white">
+            <div className="px-5 py-4 mb-4 bg-slate-50 rounded-2xl border border-slate-100">
+              <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest mb-1">Usuario Activo</p>
+              <p className="text-sm font-black text-slate-900 truncate">{displayName}</p>
+              <p className="text-[10px] font-bold text-primary uppercase mt-0.5">{displayRole}</p>
             </div>
             <Button 
               variant="ghost" 
-              className="w-full justify-start text-slate-500 hover:text-primary hover:bg-primary/5 rounded-xl py-5 font-bold transition-all" 
+              className="w-full justify-start text-slate-500 hover:text-primary hover:bg-primary/5 rounded-2xl py-6 font-bold transition-all" 
               onClick={handleLogout}
             >
-              <LogOut className="mr-3 h-4 w-4" />
-              <span className="text-sm tracking-tight">Cerrar Sesión</span>
+              <LogOut className="mr-4 h-5 w-5" />
+              <span className="text-base tracking-tight font-bold">Cerrar Sesión</span>
             </Button>
           </SidebarFooter>
         </Sidebar>
@@ -227,19 +228,19 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         <main className="flex-1 overflow-y-auto p-4 md:p-10 bg-white">
           <header className="flex items-center justify-between mb-8 md:hidden">
              <SidebarTrigger className="text-slate-600">
-               <Menu className="w-6 h-6" />
+               <Menu className="w-8 h-8" />
              </SidebarTrigger>
-             <div className="flex items-center gap-2">
+             <div className="flex items-center gap-3">
                <Image 
                 src="/logo.png" 
                 alt="Logo" 
-                width={40} 
-                height={40} 
+                width={150} 
+                height={150} 
                 className="object-contain"
                />
-               <h1 className="text-lg font-bold text-slate-900 uppercase tracking-tighter">SIBF - CAI</h1>
+               <h1 className="text-xl font-black text-slate-900 uppercase tracking-tighter">SIBF - CAI</h1>
              </div>
-             <div className="w-6 h-6" />
+             <div className="w-8 h-8" />
           </header>
           <div className="max-w-6xl mx-auto">
             {children}
