@@ -19,8 +19,7 @@ import {
   ShieldAlert,
   ClipboardCheck,
   History,
-  FileText,
-  User
+  FileText
 } from 'lucide-react';
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -33,7 +32,8 @@ import {
   SidebarMenuButton, 
   SidebarProvider, 
   SidebarTrigger,
-  SidebarFooter
+  SidebarFooter,
+  SidebarInset
 } from "@/components/ui/sidebar";
 import { useUser, useAuth, useCollection, useMemoFirebase, useFirestore } from '@/firebase';
 import { signOut } from 'firebase/auth';
@@ -87,7 +87,6 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   const { data: studentProfiles, isLoading: isStudentLoading } = useCollection(studentQuery);
   const studentProfile = studentProfiles?.[0];
 
-  // Obtener perfil de usuario si no es alumno
   const userProfileQuery = useMemoFirebase(() => 
     user && !user.isAnonymous ? query(usersRef, where("email", "==", user.email || ""), limit(1)) : null,
   [usersRef, user]);
@@ -163,17 +162,17 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           : 'Personal';
 
   return (
-    <SidebarProvider defaultOpen={true}>
-      <div className="flex h-screen w-full bg-background overflow-hidden">
-        <Sidebar className="border-r border-border/50 bg-white shadow-none w-[320px]">
-          <SidebarHeader className="p-10 flex flex-col items-center gap-4 border-b bg-white">
-            <div className="w-full flex justify-center py-6">
+    <SidebarProvider defaultOpen={true} style={{ "--sidebar-width": "350px" } as React.CSSProperties}>
+      <div className="flex h-svh w-full bg-background overflow-hidden">
+        <Sidebar className="border-r border-border/50 bg-white">
+          <SidebarHeader className="p-8 flex flex-col items-center gap-4 bg-white">
+            <div className="w-full flex justify-center py-4">
               <Image 
                 src="/logo.png" 
                 alt="SIBF-CAI Logo" 
-                width={250} 
-                height={250} 
-                className="object-contain hover:scale-105 transition-transform drop-shadow-lg"
+                width={280} 
+                height={280} 
+                className="object-contain hover:scale-105 transition-transform drop-shadow-xl"
               />
             </div>
             <div className="text-center">
@@ -181,7 +180,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
               <span className="block text-[10px] font-bold text-primary uppercase tracking-[0.2em] mt-2">Portal Universitario</span>
             </div>
           </SidebarHeader>
-          <SidebarContent className="px-6 mt-8 bg-white">
+          <SidebarContent className="px-4 mt-4 bg-white">
             <SidebarMenu>
               {navItems.map((item) => {
                 const isActive = pathname === item.href;
@@ -191,7 +190,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                       asChild 
                       isActive={isActive}
                       className={cn(
-                        "group transition-all duration-200 py-6 px-6 rounded-2xl mb-2 h-auto",
+                        "group transition-all duration-200 py-6 px-6 rounded-2xl mb-1 h-auto",
                         isActive 
                           ? "bg-slate-900 text-white hover:bg-slate-800 shadow-xl" 
                           : "hover:bg-slate-50 text-slate-600 hover:text-slate-900"
@@ -208,7 +207,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
               })}
             </SidebarMenu>
           </SidebarContent>
-          <SidebarFooter className="p-8 mt-auto border-t bg-white">
+          <SidebarFooter className="p-6 mt-auto border-t bg-white">
             <div className="px-5 py-4 mb-4 bg-slate-50 rounded-2xl border border-slate-100">
               <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest mb-1">Usuario Activo</p>
               <p className="text-sm font-black text-slate-900 truncate">{displayName}</p>
@@ -225,27 +224,26 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           </SidebarFooter>
         </Sidebar>
 
-        <main className="flex-1 overflow-y-auto p-4 md:p-10 bg-white">
-          <header className="flex items-center justify-between mb-8 md:hidden">
-             <SidebarTrigger className="text-slate-600">
-               <Menu className="w-8 h-8" />
-             </SidebarTrigger>
-             <div className="flex items-center gap-3">
+        <SidebarInset className="bg-white">
+          <header className="flex h-16 shrink-0 items-center gap-2 border-b px-4 md:hidden">
+            <SidebarTrigger className="-ml-1" />
+            <div className="flex items-center gap-3 ml-2">
                <Image 
                 src="/logo.png" 
                 alt="Logo" 
-                width={150} 
-                height={150} 
+                width={120} 
+                height={120} 
                 className="object-contain"
                />
-               <h1 className="text-xl font-black text-slate-900 uppercase tracking-tighter">SIBF - CAI</h1>
+               <h1 className="text-lg font-black text-slate-900 uppercase tracking-tighter">SIBF - CAI</h1>
              </div>
-             <div className="w-8 h-8" />
           </header>
-          <div className="max-w-6xl mx-auto">
-            {children}
+          <div className="flex-1 overflow-y-auto p-4 md:p-10">
+            <div className="max-w-6xl mx-auto">
+              {children}
+            </div>
           </div>
-        </main>
+        </SidebarInset>
       </div>
     </SidebarProvider>
   );
