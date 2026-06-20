@@ -1,4 +1,3 @@
-
 "use client";
 
 import React, { useState, useEffect } from 'react';
@@ -219,7 +218,7 @@ export default function LoginPage() {
             <div className="space-y-3 pt-4">
               <Button 
                 type="submit" 
-                className="w-full bg-[#1565C0] hover:bg-[#0D47A1] text-white font-bold text-sm uppercase tracking-widest h-14 rounded-2xl shadow-lg shadow-blue-900/10 transition-all hover:scale-[1.02] active:scale-[0.98]" 
+                className="w-full bg-[#FF4C5E] hover:bg-[#E33E4F] text-white font-bold text-sm uppercase tracking-widest h-14 rounded-2xl shadow-lg shadow-red-900/10 transition-all hover:scale-[1.02] active:scale-[0.98]" 
                 disabled={isVerifying}
               >
                 {isVerifying ? <Loader2 className="h-5 w-5 animate-spin" /> : "Ingresar al Sistema"}
