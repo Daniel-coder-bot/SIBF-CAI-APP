@@ -13,16 +13,36 @@ import {
   Scan, 
   ShieldCheck, 
   Cpu, 
-  Camera
+  Camera,
+  UserPlus,
+  BookOpen,
+  GraduationCap
 } from 'lucide-react';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { 
+  Dialog, 
+  DialogContent, 
+  DialogHeader, 
+  DialogTitle, 
+  DialogTrigger,
+  DialogFooter,
+  DialogDescription
+} from "@/components/ui/dialog";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
+import { FacialRecognitionComponent } from '@/components/FacialRecognitionComponent';
 
-import { useAuth, useUser, useFirestore, initiateAnonymousSignIn } from '@/firebase';
-import { collection, query, where, getDocs, limit } from 'firebase/firestore';
+import { useAuth, useUser, useFirestore, useCollection, useMemoFirebase, initiateAnonymousSignIn, addDocumentNonBlocking } from '@/firebase';
+import { collection, query, where, getDocs, limit, serverTimestamp } from 'firebase/firestore';
 
 export default function LoginPage() {
   const [identifier, setIdentifier] = useState('');
@@ -30,17 +50,33 @@ export default function LoginPage() {
   const [showPassword, setShowPassword] = useState(false);
   const [isVerifying, setIsVerifying] = useState(false);
   
+  // Registration States
+  const [isRegDialogOpen, setIsRegDialogOpen] = useState(false);
+  const [regStep, setRegStep] = useState(1);
+  const [newStudent, setNewStudent] = useState({
+    firstName: '',
+    lastName: '',
+    email: '',
+    password: '',
+    matricula: '',
+    grupoId: '',
+    faceDescriptor: null as number[] | null
+  });
+
   const router = useRouter();
   const { toast } = useToast();
   const auth = useAuth();
   const db = useFirestore();
   const { user, isUserLoading } = useUser();
 
+  const gruposRef = useMemoFirebase(() => collection(db, 'grupos'), [db]);
+  const { data: grupos } = useCollection(gruposRef);
+
   useEffect(() => {
-    if (user && !isVerifying) {
+    if (user && !isVerifying && !isRegDialogOpen) {
       router.push('/dashboard');
     }
-  }, [user, router, isVerifying]);
+  }, [user, router, isVerifying, isRegDialogOpen]);
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -92,6 +128,33 @@ export default function LoginPage() {
     } catch (error: any) {
       toast({ variant: "destructive", title: "Error", description: "No se pudo conectar al servidor." });
       setIsVerifying(false);
+    }
+  };
+
+  const handleRegister = async () => {
+    if (!newStudent.faceDescriptor) {
+      toast({ variant: "destructive", title: "Falta Biometría", description: "Debes capturar tu rostro antes de finalizar." });
+      return;
+    }
+
+    try {
+      const usersRef = collection(db, 'users');
+      await addDocumentNonBlocking(usersRef, {
+        ...newStudent,
+        role: 'Alumno',
+        createdAt: serverTimestamp(),
+        updatedAt: serverTimestamp()
+      });
+
+      if (typeof window !== 'undefined') {
+        sessionStorage.setItem('active_matricula', newStudent.matricula);
+      }
+      initiateAnonymousSignIn(auth);
+      
+      setIsRegDialogOpen(false);
+      toast({ title: "Registro Exitoso", description: "Tu cuenta ha sido creada y tu biometría registrada." });
+    } catch (error) {
+      toast({ variant: "destructive", title: "Error", description: "No se pudo completar el registro." });
     }
   };
 
@@ -182,7 +245,7 @@ export default function LoginPage() {
 
           <form onSubmit={handleLogin} className="space-y-6 animate-in fade-in slide-in-from-bottom duration-1000 delay-200">
             <div className="space-y-2">
-              <Label className="text-xs font-bold uppercase tracking-widest text-slate-500 ml-1">Usuario</Label>
+              <Label className="text-xs font-bold uppercase tracking-widest text-slate-500 ml-1">Usuario / Matrícula</Label>
               <div className="relative">
                 <User className="absolute left-4 top-3.5 h-4 w-4 text-slate-400" />
                 <Input 
@@ -219,7 +282,7 @@ export default function LoginPage() {
               </div>
             </div>
 
-            <div className="space-y-3 pt-4">
+            <div className="space-y-4 pt-4">
               <Button 
                 type="submit" 
                 className="w-full bg-primary hover:bg-accent text-white font-bold text-sm uppercase tracking-widest h-14 rounded-2xl shadow-lg shadow-primary/10 transition-all hover:scale-[1.02] active:scale-[0.98]" 
@@ -227,6 +290,99 @@ export default function LoginPage() {
               >
                 {isVerifying ? <Loader2 className="h-5 w-5 animate-spin" /> : "Ingresar al Sistema"}
               </Button>
+
+              <div className="relative py-2">
+                <div className="absolute inset-0 flex items-center"><span className="w-full border-t border-slate-200" /></div>
+                <div className="relative flex justify-center text-[10px] uppercase font-bold tracking-widest text-slate-400">
+                  <span className="bg-white px-4">O</span>
+                </div>
+              </div>
+
+              <Dialog open={isRegDialogOpen} onOpenChange={(o) => { setIsRegDialogOpen(o); if(!o) setRegStep(1); }}>
+                <DialogTrigger asChild>
+                  <Button variant="outline" className="w-full h-14 rounded-2xl border-2 border-slate-100 hover:border-primary hover:text-primary transition-all font-bold uppercase tracking-widest text-[10px]">
+                    <UserPlus className="w-4 h-4 mr-2" /> Darme de Alta
+                  </Button>
+                </DialogTrigger>
+                <DialogContent className="max-w-2xl rounded-[2.5rem] p-8 border-none shadow-2xl overflow-hidden">
+                  <div className="absolute top-0 left-0 w-full h-1.5 bg-primary" />
+                  <DialogHeader className="mb-6">
+                    <DialogTitle className="text-2xl font-bold uppercase tracking-tight flex items-center gap-3">
+                      {regStep === 1 ? <UserPlus className="w-6 h-6 text-primary" /> : <Camera className="w-6 h-6 text-primary" />}
+                      {regStep === 1 ? 'Registro de Nuevo Alumno' : 'Registro Biométrico Facial'}
+                    </DialogTitle>
+                    <DialogDescription className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">
+                      {regStep === 1 ? 'Paso 1: Información Personal y Académica' : 'Paso 2: Captura de descriptor facial de 128 puntos'}
+                    </DialogDescription>
+                  </DialogHeader>
+
+                  {regStep === 1 ? (
+                    <div className="grid grid-cols-2 gap-4 py-4">
+                      <div className="space-y-2">
+                        <Label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground ml-1">Nombre(s)</Label>
+                        <Input value={newStudent.firstName} onChange={e => setNewStudent({...newStudent, firstName: e.target.value})} className="rounded-xl h-11" placeholder="Ej. Juan" />
+                      </div>
+                      <div className="space-y-2">
+                        <Label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground ml-1">Apellido(s)</Label>
+                        <Input value={newStudent.lastName} onChange={e => setNewStudent({...newStudent, lastName: e.target.value})} className="rounded-xl h-11" placeholder="Ej. Perez" />
+                      </div>
+                      <div className="space-y-2">
+                        <Label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground ml-1">Matrícula</Label>
+                        <Input value={newStudent.matricula} onChange={e => setNewStudent({...newStudent, matricula: e.target.value})} className="rounded-xl h-11" placeholder="Ej. 20261234" />
+                      </div>
+                      <div className="space-y-2">
+                        <Label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground ml-1">Grupo</Label>
+                        <Select value={newStudent.grupoId} onValueChange={v => setNewStudent({...newStudent, grupoId: v})}>
+                          <SelectTrigger className="rounded-xl h-11 font-medium"><SelectValue placeholder="Elegir Grupo..." /></SelectTrigger>
+                          <SelectContent>
+                            {grupos?.map(g => <SelectItem key={g.id} value={g.id}>{g.nombre}</SelectItem>)}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <div className="space-y-2 col-span-2">
+                        <Label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground ml-1">Correo Institucional</Label>
+                        <Input type="email" value={newStudent.email} onChange={e => setNewStudent({...newStudent, email: e.target.value})} className="rounded-xl h-11" placeholder="alumno@universidad.edu" />
+                      </div>
+                      <div className="space-y-2 col-span-2">
+                        <Label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground ml-1">Establecer Contraseña</Label>
+                        <Input type="password" value={newStudent.password} onChange={e => setNewStudent({...newStudent, password: e.target.value})} className="rounded-xl h-11" placeholder="********" />
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="py-4">
+                      <FacialRecognitionComponent 
+                        mode="enroll" 
+                        onCapture={(desc) => setNewStudent({...newStudent, faceDescriptor: desc})} 
+                      />
+                    </div>
+                  )}
+
+                  <DialogFooter className="mt-6 flex flex-row gap-2">
+                    {regStep === 1 ? (
+                      <Button 
+                        onClick={() => setRegStep(2)} 
+                        className="w-full bg-primary h-12 rounded-xl font-bold uppercase tracking-widest text-[10px]"
+                        disabled={!newStudent.firstName || !newStudent.matricula || !newStudent.grupoId}
+                      >
+                        Siguiente: Captura Facial <Camera className="ml-2 w-4 h-4" />
+                      </Button>
+                    ) : (
+                      <>
+                        <Button variant="outline" onClick={() => setRegStep(1)} className="flex-1 h-12 rounded-xl font-bold uppercase tracking-widest text-[10px]">
+                          Atrás
+                        </Button>
+                        <Button 
+                          onClick={handleRegister} 
+                          className="flex-1 bg-green-600 hover:bg-green-700 text-white h-12 rounded-xl font-bold uppercase tracking-widest text-[10px]"
+                          disabled={!newStudent.faceDescriptor}
+                        >
+                          Finalizar Registro <ShieldCheck className="ml-2 w-4 h-4" />
+                        </Button>
+                      </>
+                    )}
+                  </DialogFooter>
+                </DialogContent>
+              </Dialog>
             </div>
           </form>
         </div>
