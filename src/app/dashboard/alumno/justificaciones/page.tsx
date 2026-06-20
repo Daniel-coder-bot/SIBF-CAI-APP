@@ -9,7 +9,9 @@ import {
   Clock, 
   CheckCircle2, 
   XCircle, 
-  Loader2
+  Loader2,
+  Paperclip,
+  Upload
 } from 'lucide-react';
 import { 
   useFirestore, 
@@ -40,6 +42,7 @@ export default function MisJustificacionesPage() {
   const { toast } = useToast();
   const [activeMatricula, setActiveMatricula] = useState<string | null>(null);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [isUploading, setIsUploading] = useState(false);
 
   useEffect(() => {
     if (typeof window !== 'undefined') {
@@ -72,7 +75,31 @@ export default function MisJustificacionesPage() {
   const [newJustificacion, setNewJustificacion] = useState({
     fecha: new Date().toISOString().split('T')[0],
     motivo: '',
+    evidenciaUrl: '',
   });
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (file.size > 2 * 1024 * 1024) { // Límite de 2MB para Base64 en Firestore
+      toast({ variant: "destructive", title: "Archivo demasiado grande", description: "El límite es de 2MB." });
+      return;
+    }
+
+    setIsUploading(true);
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      setNewJustificacion(prev => ({ ...prev, evidenciaUrl: event.target?.result as string }));
+      setIsUploading(false);
+      toast({ title: "Archivo cargado", description: "La evidencia se ha adjuntado correctamente." });
+    };
+    reader.onerror = () => {
+      setIsUploading(false);
+      toast({ variant: "destructive", title: "Error", description: "No se pudo leer el archivo." });
+    };
+    reader.readAsDataURL(file);
+  };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -87,7 +114,7 @@ export default function MisJustificacionesPage() {
     });
 
     setIsDialogOpen(false);
-    setNewJustificacion({ fecha: new Date().toISOString().split('T')[0], motivo: '' });
+    setNewJustificacion({ fecha: new Date().toISOString().split('T')[0], motivo: '', evidenciaUrl: '' });
     toast({ title: "Solicitud enviada", description: "Tu justificante está siendo revisado." });
   };
 
@@ -110,7 +137,7 @@ export default function MisJustificacionesPage() {
           <DialogContent className="rounded-[2rem] p-8 max-w-lg border-none">
             <DialogHeader className="mb-4">
               <DialogTitle className="text-2xl font-bold uppercase tracking-tight">Solicitar Justificante</DialogTitle>
-              <DialogDescription className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Proporciona los detalles de tu inasistencia.</DialogDescription>
+              <DialogDescription className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Proporciona los detalles y evidencia de tu inasistencia.</DialogDescription>
             </DialogHeader>
             <form onSubmit={handleSubmit} className="space-y-5">
               <div className="space-y-2">
@@ -130,11 +157,35 @@ export default function MisJustificacionesPage() {
                   value={newJustificacion.motivo}
                   onChange={e => setNewJustificacion({...newJustificacion, motivo: e.target.value})}
                   required
-                  className="rounded-2xl min-h-[120px] font-medium pt-3"
+                  className="rounded-2xl min-h-[100px] font-medium pt-3"
                 />
               </div>
+              <div className="space-y-2">
+                <Label className="text-[10px] font-bold uppercase tracking-widest ml-1">Adjuntar Evidencia (PDF/Imagen)</Label>
+                <div className="relative">
+                  <Input 
+                    type="file" 
+                    onChange={handleFileChange}
+                    className="hidden" 
+                    id="file-upload"
+                    accept="application/pdf,image/*"
+                  />
+                  <label 
+                    htmlFor="file-upload"
+                    className={cn(
+                      "flex items-center justify-center gap-2 w-full h-12 border-2 border-dashed rounded-xl cursor-pointer hover:bg-slate-50 transition-colors font-bold text-xs uppercase tracking-tight",
+                      newJustificacion.evidenciaUrl ? "border-green-500 text-green-600 bg-green-50" : "border-slate-300 text-slate-500"
+                    )}
+                  >
+                    {isUploading ? <Loader2 className="w-4 h-4 animate-spin" /> : 
+                     newJustificacion.evidenciaUrl ? <CheckCircle2 className="w-4 h-4" /> : <Upload className="w-4 h-4" />}
+                    {newJustificacion.evidenciaUrl ? "Evidencia lista" : "Elegir archivo"}
+                  </label>
+                </div>
+                <p className="text-[9px] text-muted-foreground italic ml-1">Asegúrate de que el archivo sea legible y menor a 2MB.</p>
+              </div>
               <DialogFooter className="pt-4">
-                <Button type="submit" className="w-full bg-primary hover:bg-accent text-white rounded-xl h-12 font-bold uppercase tracking-widest text-[10px]">
+                <Button type="submit" disabled={isUploading} className="w-full bg-primary hover:bg-accent text-white rounded-xl h-12 font-bold uppercase tracking-widest text-[10px]">
                   <Send className="w-4 h-4 mr-2" /> Enviar Revisión
                 </Button>
               </DialogFooter>
@@ -173,6 +224,11 @@ export default function MisJustificacionesPage() {
                   )}>
                     {j.estado}
                   </Badge>
+                  {j.evidenciaUrl && (
+                    <Badge className="bg-primary/10 text-primary border-none text-[9px] uppercase font-bold flex items-center gap-1">
+                      <Paperclip className="w-2.5 h-2.5" /> Con Evidencia
+                    </Badge>
+                  )}
                 </div>
                 <p className="text-sm text-muted-foreground font-medium line-clamp-2">{j.motivo}</p>
               </div>

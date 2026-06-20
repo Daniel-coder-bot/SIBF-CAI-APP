@@ -114,10 +114,11 @@
         "docenteId": { "type": "string" },
         "fecha": { "type": "string", "format": "date" },
         "motivo": { "type": "string" },
+        "evidenciaUrl": { "type": "string", "description": "Data URI or URL of the attached file" },
         "estado": { "type": "string", "enum": ["Pendiente", "Aprobada", "Rechazada"] },
         "createdAt": { "type": "string", "format": "date-time" }
       },
-      "required": ["alumnoId", "docenteId", "fecha", "motivo", "estado"]
+      "required": ["alumnoId", "fecha", "motivo", "estado"]
     }
   },
   "auth": {

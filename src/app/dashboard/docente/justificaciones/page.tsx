@@ -10,7 +10,9 @@ import {
   XCircle,
   FileText,
   Loader2,
-  Calendar
+  Calendar,
+  ExternalLink,
+  Paperclip
 } from 'lucide-react';
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -48,6 +50,13 @@ export default function JustificacionesDocentePage() {
       title: newStatus === 'Aprobada' ? "Solicitud Aprobada" : "Solicitud Rechazada",
       description: "El estado del justificante ha sido actualizado."
     });
+  };
+
+  const openEvidencia = (url: string) => {
+    const newWindow = window.open();
+    if (newWindow) {
+      newWindow.document.write(`<iframe src="${url}" frameborder="0" style="border:0; top:0px; left:0px; bottom:0px; right:0px; width:100%; height:100%;" allowfullscreen></iframe>`);
+    }
   };
 
   return (
@@ -97,6 +106,19 @@ export default function JustificacionesDocentePage() {
                       <span className="flex items-center gap-1.5"><Clock className="w-3.5 h-3.5" /> Enviado: {j.createdAt?.toDate ? j.createdAt.toDate().toLocaleDateString() : 'Hoy'}</span>
                     </div>
                     <p className="text-sm text-slate-600 font-medium bg-slate-50 p-3 rounded-xl mt-3 italic border-l-4 border-primary/20">"{j.motivo}"</p>
+                    
+                    {j.evidenciaUrl && (
+                      <div className="pt-2">
+                        <Button 
+                          variant="outline" 
+                          size="sm" 
+                          onClick={() => openEvidencia(j.evidenciaUrl)}
+                          className="h-8 rounded-lg border-primary/20 text-primary hover:bg-primary/5 font-bold text-[10px] uppercase tracking-widest"
+                        >
+                          <ExternalLink className="w-3 h-3 mr-2" /> Ver Documento Adjunto
+                        </Button>
+                      </div>
+                    )}
                   </div>
                 </div>
                 
