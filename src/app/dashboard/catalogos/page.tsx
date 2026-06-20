@@ -116,6 +116,7 @@ export default function CatalogosPage() {
   const [newCarrera, setNewCarrera] = useState({ nombre: '', sedeId: '' });
   const [newMateria, setNewMateria] = useState({ nombre: '', codigo: '', carreraId: '', cuatrimestre: '' });
   const [newGrupo, setNewGrupo] = useState({ nombre: '', carreraId: '', cuatrimestre: '' });
+  const [editingGrupo, setEditingGrupo] = useState<any>(null);
   const [newUser, setNewUser] = useState({ 
     firstName: '', 
     lastName: '', 
@@ -246,6 +247,20 @@ export default function CatalogosPage() {
     setter(emptyData);
     setOpenDialog(null);
     toast({ title: `${title} guardado` });
+  };
+
+  const handleUpdateGroup = () => {
+    if (!editingGrupo) return;
+    const groupDocRef = doc(db, 'grupos', editingGrupo.id);
+    updateDocumentNonBlocking(groupDocRef, {
+      nombre: editingGrupo.nombre,
+      carreraId: editingGrupo.carreraId,
+      cuatrimestre: editingGrupo.cuatrimestre,
+      updatedAt: serverTimestamp()
+    });
+    setOpenDialog(null);
+    setEditingGrupo(null);
+    toast({ title: "Grupo actualizado" });
   };
 
   const handleDelete = (collectionName: string, id: string) => {
@@ -639,9 +654,59 @@ export default function CatalogosPage() {
           </div>
           <div className="bg-white border rounded-3xl overflow-hidden shadow-sm">
             <Table><TableHeader className="bg-slate-50"><TableRow><TableHead className="px-6 font-bold">Nombre</TableHead><TableHead className="font-bold">Carrera</TableHead><TableHead className="font-bold">Cuatrimestre</TableHead><TableHead className="text-right pr-6 font-bold">Acciones</TableHead></TableRow></TableHeader>
-              <TableBody>{filteredGrupos.map(g => (<TableRow key={g.id} className="hover:bg-slate-50/50"><TableCell className="px-6 font-bold text-primary">{g.nombre}</TableCell><TableCell className="font-medium">{carreras?.find(c => c.id === g.carreraId)?.nombre}</TableCell><TableCell className="font-medium">{g.cuatrimestre}º</TableCell><TableCell className="text-right pr-6"><Button variant="ghost" size="icon" className="rounded-full" onClick={() => handleDelete('grupos', g.id)}><Trash2 className="w-4 h-4 text-primary" /></Button></TableCell></TableRow>))}</TableBody>
+              <TableBody>{filteredGrupos.map(g => (
+                <TableRow key={g.id} className="hover:bg-slate-50/50">
+                  <TableCell className="px-6 font-bold text-primary">{g.nombre}</TableCell>
+                  <TableCell className="font-medium">{carreras?.find(c => c.id === g.carreraId)?.nombre}</TableCell>
+                  <TableCell className="font-medium">{g.cuatrimestre}º</TableCell>
+                  <TableCell className="text-right pr-6 flex justify-end gap-1">
+                    <Button variant="ghost" size="icon" className="rounded-full" onClick={() => { setEditingGrupo(g); setOpenDialog('edit_grupo'); }}>
+                      <Edit2 className="w-4 h-4 text-primary" />
+                    </Button>
+                    <Button variant="ghost" size="icon" className="rounded-full" onClick={() => handleDelete('grupos', g.id)}>
+                      <Trash2 className="w-4 h-4 text-primary" />
+                    </Button>
+                  </TableCell>
+                </TableRow>
+              ))}</TableBody>
             </Table>
           </div>
+
+          <Dialog open={openDialog === 'grupo'} onOpenChange={(o) => setOpenDialog(o ? 'grupo' : null)}>
+            <DialogContent className="rounded-3xl">
+              <DialogHeader><DialogTitle className="font-bold">Nuevo Grupo</DialogTitle></DialogHeader>
+              <div className="space-y-4 py-4">
+                <div className="space-y-2"><Label className="font-bold text-xs uppercase text-muted-foreground">Nombre</Label><Input value={newGrupo.nombre} onChange={e => setNewGrupo({...newGrupo, nombre: e.target.value})} className="rounded-xl" /></div>
+                <div className="space-y-2"><Label className="font-bold text-xs uppercase text-muted-foreground">Carrera</Label>
+                  <Select value={newGrupo.carreraId} onValueChange={v => setNewGrupo({...newGrupo, carreraId: v})}>
+                    <SelectTrigger className="rounded-xl"><SelectValue placeholder="Elegir..." /></SelectTrigger>
+                    <SelectContent>{carreras?.map(c => <SelectItem key={c.id} value={c.id}>{c.nombre}</SelectItem>)}</SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-2"><Label className="font-bold text-xs uppercase text-muted-foreground">Cuatrimestre</Label><Input value={newGrupo.cuatrimestre} onChange={e => setNewGrupo({...newGrupo, cuatrimestre: e.target.value})} className="rounded-xl" /></div>
+              </div>
+              <DialogFooter><Button onClick={() => handleAdd(gruposRef, newGrupo, setNewGrupo, {nombre: '', carreraId: '', cuatrimestre: ''}, "Grupo")} className="w-full bg-primary font-bold rounded-xl h-12">Guardar Grupo</Button></DialogFooter>
+            </DialogContent>
+          </Dialog>
+
+          <Dialog open={openDialog === 'edit_grupo'} onOpenChange={(o) => setOpenDialog(o ? 'edit_grupo' : null)}>
+            <DialogContent className="rounded-3xl">
+              <DialogHeader><DialogTitle className="font-bold">Editar Grupo</DialogTitle></DialogHeader>
+              {editingGrupo && (
+                <div className="space-y-4 py-4">
+                  <div className="space-y-2"><Label className="font-bold text-xs uppercase text-muted-foreground">Nombre</Label><Input value={editingGrupo.nombre} onChange={e => setEditingGrupo({...editingGrupo, nombre: e.target.value})} className="rounded-xl" /></div>
+                  <div className="space-y-2"><Label className="font-bold text-xs uppercase text-muted-foreground">Carrera</Label>
+                    <Select value={editingGrupo.carreraId} onValueChange={v => setEditingGrupo({...editingGrupo, carreraId: v})}>
+                      <SelectTrigger className="rounded-xl"><SelectValue placeholder="Elegir..." /></SelectTrigger>
+                      <SelectContent>{carreras?.map(c => <SelectItem key={c.id} value={c.id}>{c.nombre}</SelectItem>)}</SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-2"><Label className="font-bold text-xs uppercase text-muted-foreground">Cuatrimestre</Label><Input value={editingGrupo.cuatrimestre} onChange={e => setEditingGrupo({...editingGrupo, cuatrimestre: e.target.value})} className="rounded-xl" /></div>
+                </div>
+              )}
+              <DialogFooter><Button onClick={handleUpdateGroup} className="w-full bg-primary font-bold rounded-xl h-12">Actualizar Grupo</Button></DialogFooter>
+            </DialogContent>
+          </Dialog>
         </TabsContent>
       </Tabs>
 
