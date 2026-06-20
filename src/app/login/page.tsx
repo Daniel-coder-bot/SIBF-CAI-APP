@@ -1,7 +1,7 @@
 
 "use client";
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import Image from 'next/image';
 import { 
@@ -16,7 +16,8 @@ import {
   Camera,
   UserPlus,
   BookOpen,
-  GraduationCap
+  GraduationCap,
+  Building2
 } from 'lucide-react';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -59,6 +60,7 @@ export default function LoginPage() {
     email: '',
     password: '',
     matricula: '',
+    carreraId: '',
     grupoId: '',
     faceDescriptor: null as number[] | null
   });
@@ -69,8 +71,17 @@ export default function LoginPage() {
   const db = useFirestore();
   const { user, isUserLoading } = useUser();
 
+  const carrerasRef = useMemoFirebase(() => collection(db, 'carreras'), [db]);
   const gruposRef = useMemoFirebase(() => collection(db, 'grupos'), [db]);
+  
+  const { data: carreras } = useCollection(carrerasRef);
   const { data: grupos } = useCollection(gruposRef);
+
+  // Filtrar grupos por carrera seleccionada
+  const filteredGrupos = useMemo(() => {
+    if (!newStudent.carreraId || !grupos) return [];
+    return grupos.filter(g => g.carreraId === newStudent.carreraId);
+  }, [newStudent.carreraId, grupos]);
 
   useEffect(() => {
     if (user && !isVerifying && !isRegDialogOpen) {
@@ -139,9 +150,13 @@ export default function LoginPage() {
 
     try {
       const usersRef = collection(db, 'users');
+      // Obtener sedeId de la carrera para mantener integridad de datos
+      const selectedCarrera = carreras?.find(c => c.id === newStudent.carreraId);
+      
       await addDocumentNonBlocking(usersRef, {
         ...newStudent,
         role: 'Alumno',
+        sedeId: selectedCarrera?.sedeId || '',
         createdAt: serverTimestamp(),
         updatedAt: serverTimestamp()
       });
@@ -331,11 +346,26 @@ export default function LoginPage() {
                         <Input value={newStudent.matricula} onChange={e => setNewStudent({...newStudent, matricula: e.target.value})} className="rounded-xl h-11" placeholder="Ej. 20261234" />
                       </div>
                       <div className="space-y-2">
-                        <Label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground ml-1">Grupo</Label>
-                        <Select value={newStudent.grupoId} onValueChange={v => setNewStudent({...newStudent, grupoId: v})}>
-                          <SelectTrigger className="rounded-xl h-11 font-medium"><SelectValue placeholder="Elegir Grupo..." /></SelectTrigger>
+                        <Label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground ml-1">Carrera</Label>
+                        <Select value={newStudent.carreraId} onValueChange={v => setNewStudent({...newStudent, carreraId: v, grupoId: ''})}>
+                          <SelectTrigger className="rounded-xl h-11 font-medium"><SelectValue placeholder="Elegir Carrera..." /></SelectTrigger>
                           <SelectContent>
-                            {grupos?.map(g => <SelectItem key={g.id} value={g.id}>{g.nombre}</SelectItem>)}
+                            {carreras?.map(c => <SelectItem key={c.id} value={c.id}>{c.nombre}</SelectItem>)}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <div className="space-y-2">
+                        <Label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground ml-1">Grupo</Label>
+                        <Select 
+                          value={newStudent.grupoId} 
+                          onValueChange={v => setNewStudent({...newStudent, grupoId: v})}
+                          disabled={!newStudent.carreraId}
+                        >
+                          <SelectTrigger className="rounded-xl h-11 font-medium">
+                            <SelectValue placeholder={!newStudent.carreraId ? "Primero elige carrera" : "Elegir Grupo..."} />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {filteredGrupos.map(g => <SelectItem key={g.id} value={g.id}>{g.nombre}</SelectItem>)}
                           </SelectContent>
                         </Select>
                       </div>
@@ -362,7 +392,7 @@ export default function LoginPage() {
                       <Button 
                         onClick={() => setRegStep(2)} 
                         className="w-full bg-primary h-12 rounded-xl font-bold uppercase tracking-widest text-[10px]"
-                        disabled={!newStudent.firstName || !newStudent.matricula || !newStudent.grupoId}
+                        disabled={!newStudent.firstName || !newStudent.matricula || !newStudent.grupoId || !newStudent.carreraId}
                       >
                         Siguiente: Captura Facial <Camera className="ml-2 w-4 h-4" />
                       </Button>
