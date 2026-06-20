@@ -127,23 +127,22 @@ export default function TomaAsistenciaPage() {
       return;
     }
 
-    if (!currentSchedule) {
-      toast({ variant: "destructive", title: "Fuera de Horario", description: "No hay una clase programada para este momento." });
-      return;
-    }
+    let autoStatus: 'Presente' | 'Retraso' | 'Falta' = 'Presente';
 
-    const [startHour, startMin] = currentSchedule.horaInicio.split(':').map(Number);
-    const startTime = new Date(currentTime);
-    startTime.setHours(startHour, startMin, 0, 0);
-    
-    const diffInMinutes = (currentTime.getTime() - startTime.getTime()) / 60000;
-    const autoStatus = diffInMinutes <= 15 ? 'Presente' : 'Retraso';
+    if (currentSchedule) {
+      const [startHour, startMin] = currentSchedule.horaInicio.split(':').map(Number);
+      const startTime = new Date(currentTime);
+      startTime.setHours(startHour, startMin, 0, 0);
+      
+      const diffInMinutes = (currentTime.getTime() - startTime.getTime()) / 60000;
+      autoStatus = diffInMinutes <= 15 ? 'Presente' : 'Retraso';
+    }
 
     setAttendanceMap(prev => ({ ...prev, [alumnoId]: autoStatus }));
     
     toast({ 
       title: autoStatus === 'Presente' ? "Asistencia Marcada" : "Retardo Marcado", 
-      description: `${diffInMinutes.toFixed(0)} min de retraso detectados.` 
+      description: currentSchedule ? "Basado en horario oficial." : "Marcado en modo de prueba."
     });
   };
 
@@ -153,7 +152,7 @@ export default function TomaAsistenciaPage() {
       handleMarkAttendance(student.id);
       toast({
         title: "¡Alumno Identificado!",
-        description: `${label} ha sido marcado como presente.`,
+        description: `${label} ha sido marcado automáticamente.`,
       });
     }
   };
@@ -168,14 +167,24 @@ export default function TomaAsistenciaPage() {
   };
 
   const handleSaveAttendance = () => {
-    if (!selectedGrupoId || !currentSchedule) {
-      toast({ variant: "destructive", title: "Error", description: "Debes tener un grupo seleccionado con clase activa." });
+    if (!selectedGrupoId) {
+      toast({ variant: "destructive", title: "Error", description: "Debes seleccionar un grupo." });
       return;
     }
 
     const records = Object.entries(attendanceMap);
     if (records.length === 0) {
-      toast({ variant: "destructive", title: "Sin datos", description: "No has marcado ninguna asistencia." });
+      toast({ variant: "destructive", title: "Sin datos", description: "No hay asistencias marcadas." });
+      return;
+    }
+
+    // Para la demo, si no hay horario actual, usamos cualquier materia válida del grupo
+    const grupoActual = grupos?.find(g => g.id === selectedGrupoId);
+    const materiaIdFallback = materias?.find(m => m.carreraId === grupoActual?.carreraId)?.id;
+    const finalMateriaId = currentSchedule?.materiaId || materiaIdFallback;
+
+    if (!finalMateriaId) {
+      toast({ variant: "destructive", title: "Error", description: "No se encontró una materia asociada al grupo." });
       return;
     }
 
@@ -184,14 +193,14 @@ export default function TomaAsistenciaPage() {
         alumnoId,
         docenteId: user?.uid || 'docente-demo',
         grupoId: selectedGrupoId,
-        materiaId: currentSchedule.materiaId,
+        materiaId: finalMateriaId,
         fecha: currentTime.toISOString().split('T')[0],
         estado,
         createdAt: serverTimestamp()
       });
     });
 
-    toast({ title: "Éxito", description: "Registros guardados en la base de datos." });
+    toast({ title: "Éxito", description: "Registros guardados en el historial." });
     setAttendanceMap({});
   };
 
@@ -240,7 +249,7 @@ export default function TomaAsistenciaPage() {
             ) : selectedGrupoId && (
               <div className="p-4 bg-amber-50 border border-amber-100 rounded-2xl flex items-start gap-3">
                 <AlertCircle className="w-5 h-5 text-amber-600 flex-shrink-0 mt-0.5" />
-                <p className="text-xs font-bold text-amber-800 uppercase leading-relaxed">No hay clases programadas para este grupo en este momento.</p>
+                <p className="text-xs font-bold text-amber-800 uppercase leading-relaxed">Sin clases en este momento. El pase de lista se guardará como modo de prueba.</p>
               </div>
             )}
           </div>
@@ -248,7 +257,7 @@ export default function TomaAsistenciaPage() {
           <div className="space-y-3">
             <Button 
               onClick={() => setIsCameraOpen(true)}
-              disabled={!selectedGrupoId || !currentSchedule}
+              disabled={!selectedGrupoId}
               className="w-full h-14 bg-slate-900 hover:bg-slate-800 text-white rounded-2xl font-bold uppercase tracking-widest text-[11px] shadow-lg"
             >
               <ScanFace className="w-5 h-5 mr-2" /> Iniciar Reconocimiento (Prueba)
