@@ -79,9 +79,9 @@ export default function MiAsistenciaPage() {
     <div className="space-y-8 animate-in fade-in duration-500 pb-20">
       <div className="border-b pb-6">
         <h1 className="text-3xl font-bold tracking-tight text-foreground uppercase flex items-center gap-2">
-          <History className="w-8 h-8 text-primary" /> Mi Historial Académico
+          <History className="w-8 h-8 text-primary" /> Mi Historial de Asistencia
         </h1>
-        <p className="text-muted-foreground font-medium text-sm">Resumen de puntualidad y permanencia escolar.</p>
+        <p className="text-muted-foreground font-medium text-sm">Resumen personal de puntualidad y permanencia escolar.</p>
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
@@ -126,8 +126,8 @@ export default function MiAsistenciaPage() {
       <div className="bg-white border rounded-[2.5rem] overflow-hidden shadow-sm">
         <div className="p-8 border-b bg-slate-50/30 flex justify-between items-center">
           <div>
-            <h3 className="font-bold text-xl">Registros de Asistencia</h3>
-            <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Listado detallado por fecha y materia</p>
+            <h3 className="font-bold text-xl">Registros de Clase</h3>
+            <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Listado detallado sincronizado con tu horario</p>
           </div>
           <Calendar className="w-6 h-6 text-slate-300" />
         </div>
@@ -135,7 +135,7 @@ export default function MiAsistenciaPage() {
           <TableHeader className="bg-slate-50/50">
             <TableRow>
               <TableHead className="px-8 font-bold py-5 uppercase text-[10px] tracking-widest">Fecha</TableHead>
-              <TableHead className="font-bold uppercase text-[10px] tracking-widest">Materia</TableHead>
+              <TableHead className="font-bold uppercase text-[10px] tracking-widest">Materia / Asignatura</TableHead>
               <TableHead className="font-bold text-center uppercase text-[10px] tracking-widest">Estado</TableHead>
             </TableRow>
           </TableHeader>
@@ -143,12 +143,12 @@ export default function MiAsistenciaPage() {
             {isLoading ? (
               <TableRow><TableCell colSpan={3} className="py-10 text-center"><Loader2 className="w-6 h-6 animate-spin text-primary mx-auto" /></TableCell></TableRow>
             ) : asistencias.length === 0 ? (
-              <TableRow><TableCell colSpan={3} className="py-20 text-center text-muted-foreground italic font-medium">Aún no tienes registros de asistencia en el sistema.</TableCell></TableRow>
+              <TableRow><TableCell colSpan={3} className="py-20 text-center text-muted-foreground italic font-medium uppercase text-[10px] tracking-widest">Sin registros históricos detectados.</TableCell></TableRow>
             ) : asistencias.map(asist => (
               <TableRow key={asist.id} className="hover:bg-slate-50/30">
                 <TableCell className="px-8 font-medium">{asist.fecha}</TableCell>
                 <TableCell className="font-bold text-slate-900">
-                  {materias?.find(m => m.id === asist.materiaId)?.nombre || 'Materia'}
+                  {materias?.find(m => m.id === asist.materiaId)?.nombre || 'Asistencia General'}
                 </TableCell>
                 <TableCell className="text-center">
                   <Badge 
