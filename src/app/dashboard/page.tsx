@@ -17,7 +17,8 @@ import {
   Calendar,
   Search,
   BookOpen,
-  Briefcase
+  Briefcase,
+  Download
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { 
@@ -51,6 +52,8 @@ import {
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Label } from "@/components/ui/label";
+import { useToast } from "@/hooks/use-toast";
+import * as XLSX from 'xlsx';
 
 const COLORS = ['#FF4C5E', '#1E293B', '#334155', '#475569', '#64748B', '#0F172A'];
 
@@ -58,6 +61,7 @@ export default function DashboardPage() {
   const { user, isUserLoading } = useUser();
   const router = useRouter();
   const db = useFirestore();
+  const { toast } = useToast();
 
   const [activeMatricula, setActiveMatricula] = useState<string | null>(null);
   const [demoRole, setDemoRole] = useState<string | null>(null);
@@ -150,6 +154,36 @@ export default function DashboardPage() {
     return counts.filter(c => c.day !== 'Dom' && c.day !== 'Sab');
   }, [filteredAsistencias]);
 
+  const handleExportFilteredData = () => {
+    if (filteredAsistencias.length === 0) {
+      toast({ variant: "destructive", title: "Sin datos", description: "No hay registros filtrados para exportar." });
+      return;
+    }
+
+    const exportData = filteredAsistencias.map(a => {
+      const alumno = allUsers?.find(u => u.id === a.alumnoId);
+      const materia = allMaterias?.find(m => m.id === a.materiaId);
+      const grupo = allGrupos?.find(g => g.id === a.grupoId);
+      
+      return {
+        Fecha: a.fecha,
+        Alumno: alumno ? `${alumno.firstName} ${alumno.lastName}` : 'Desconocido',
+        Matricula: alumno?.matricula || 'N/A',
+        Materia: materia?.nombre || 'N/A',
+        Grupo: grupo?.nombre || 'N/A',
+        Estado: a.estado,
+        Hora_Registro: a.createdAt?.toDate ? a.createdAt.toDate().toLocaleTimeString() : 'N/A'
+      };
+    });
+
+    const worksheet = XLSX.utils.json_to_sheet(exportData);
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, worksheet, "Dashboard_Filtrado");
+    XLSX.writeFile(workbook, `SIBF_CAI_Analytics_${new Date().toISOString().split('T')[0]}.xlsx`);
+    
+    toast({ title: "Excel Generado", description: "Se han exportado los datos actuales del dashboard." });
+  };
+
   useEffect(() => {
     if (isUserLoading) return;
     if (activeMatricula) {
@@ -180,8 +214,15 @@ export default function DashboardPage() {
           </p>
         </div>
         <div className="flex gap-2">
-          <Badge variant="outline" className="h-8 rounded-full px-4 border-slate-300 bg-slate-50 text-[10px] font-bold uppercase tracking-widest text-slate-600">
-            {filteredAsistencias.length} Registros Filtrados
+          <Button 
+            onClick={handleExportFilteredData}
+            variant="outline" 
+            className="h-10 rounded-xl px-6 border-slate-200 bg-white text-[10px] font-bold uppercase tracking-widest text-slate-600 hover:bg-slate-50"
+          >
+            <Download className="w-4 h-4 mr-2 text-primary" /> Exportar Vista Actual
+          </Button>
+          <Badge variant="outline" className="h-10 flex items-center rounded-xl px-4 border-slate-300 bg-slate-50 text-[10px] font-bold uppercase tracking-widest text-slate-600">
+            {filteredAsistencias.length} Registros
           </Badge>
         </div>
       </div>
