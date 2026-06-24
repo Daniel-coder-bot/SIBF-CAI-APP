@@ -66,6 +66,7 @@ import {
 } from "@/components/ui/table";
 import { Checkbox } from "@/components/ui/checkbox";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { Badge } from "@/components/ui/badge";
 import { 
   useFirestore, 
   useCollection, 
@@ -656,7 +657,6 @@ export default function CatalogosPage() {
           </div>
         </TabsContent>
 
-        {/* Los demás TabsContent permanecen iguales pero conservando la estructura general */}
         <TabsContent value="sedes" className="mt-6 space-y-4">
           <div className="flex justify-between items-center gap-4">
             <div className="relative flex-1 max-w-xs">
@@ -754,7 +754,6 @@ export default function CatalogosPage() {
         </DialogContent>
       </Dialog>
 
-      {/* Diálogos para otros catálogos permanecen igual para asegurar funcionalidad */}
       <Dialog open={openDialog === 'alumno'} onOpenChange={(o) => setOpenDialog(o ? 'alumno' : null)}>
             <DialogContent className="rounded-3xl max-w-xl">
               <DialogHeader><DialogTitle className="font-bold text-xl">Inscripción</DialogTitle></DialogHeader>
@@ -857,3 +856,4 @@ export default function CatalogosPage() {
     </div>
   );
 }
+
