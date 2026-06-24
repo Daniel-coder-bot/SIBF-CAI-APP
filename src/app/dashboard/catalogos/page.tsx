@@ -35,7 +35,10 @@ import {
   UserCheck,
   Filter,
   Key,
-  BookMarked
+  BookMarked,
+  Printer,
+  FileDown,
+  Loader2
 } from 'lucide-react';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -80,6 +83,8 @@ import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
 import * as XLSX from 'xlsx';
 import { FacialRecognitionComponent } from '@/components/FacialRecognitionComponent';
+import html2canvas from 'html2canvas';
+import jsPDF from 'jspdf';
 
 const DAYS = ["Lunes", "Martes", "Miércoles", "Jueves", "Viernes"];
 const SLOTS = [
@@ -94,6 +99,7 @@ export default function CatalogosPage() {
   const { toast } = useToast();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const docentFileInputRef = useRef<HTMLInputElement>(null);
+  const scheduleExportRef = useRef<HTMLDivElement>(null);
 
   // Queries
   const sedesRef = useMemoFirebase(() => collection(db, 'sedes'), [db]);
@@ -115,6 +121,7 @@ export default function CatalogosPage() {
 
   // States
   const [openDialog, setOpenDialog] = useState<string | null>(null);
+  const [isExporting, setIsExporting] = useState(false);
   const [newSede, setNewSede] = useState({ nombre: '', ubicacion: '' });
   const [newCarrera, setNewCarrera] = useState({ nombre: '', sedeId: '' });
   const [newMateria, setNewMateria] = useState({ nombre: '', codigo: '', carreraId: '', cuatrimestre: '' });
@@ -356,6 +363,53 @@ export default function CatalogosPage() {
     reader.readAsBinaryString(file);
   };
 
+  // PDF Export Function
+  const handleDownloadSchedule = async () => {
+    if (!scheduleExportRef.current || !selectedGrupoForSchedule) return;
+    
+    setIsExporting(true);
+    toast({ title: "Generando PDF", description: "Capturando horario para impresión..." });
+
+    try {
+      const element = scheduleExportRef.current;
+      const canvas = await html2canvas(element, {
+        scale: 2, // Alta resolución
+        useCORS: true,
+        backgroundColor: '#ffffff',
+        logging: false
+      });
+
+      const imgData = canvas.toDataURL('image/png');
+      const pdf = new jsPDF({
+        orientation: 'landscape',
+        unit: 'mm',
+        format: 'a4'
+      });
+
+      const pdfWidth = pdf.internal.pageSize.getWidth();
+      const pdfHeight = pdf.internal.pageSize.getHeight();
+      const imgWidth = canvas.width;
+      const imgHeight = canvas.height;
+      const ratio = Math.min(pdfWidth / imgWidth, pdfHeight / imgHeight);
+      
+      const finalWidth = imgWidth * ratio;
+      const finalHeight = imgHeight * ratio;
+      
+      const x = (pdfWidth - finalWidth) / 2;
+      const y = (pdfHeight - finalHeight) / 2;
+
+      pdf.addImage(imgData, 'PNG', x, y, finalWidth, finalHeight);
+      pdf.save(`Horario_${selectedGrupoForSchedule.nombre}_${new Date().toLocaleDateString()}.pdf`);
+      
+      toast({ title: "Descarga Completa", description: "El PDF se ha guardado correctamente." });
+    } catch (error) {
+      console.error("Error generating PDF:", error);
+      toast({ variant: "destructive", title: "Error", description: "No se pudo generar el PDF." });
+    } finally {
+      setIsExporting(false);
+    }
+  };
+
   // Facial Recognition
   const [faceTargetUser, setFaceTargetUser] = useState<any>(null);
   const [faceMode, setFaceMode] = useState<'enroll' | 'recognize'>('enroll');
@@ -407,17 +461,34 @@ export default function CatalogosPage() {
               <h2 className="text-xl font-bold flex items-center gap-2"><Grid className="w-5 h-5 text-primary" /> Generador de Horarios</h2>
               <p className="text-xs text-muted-foreground">Administra la carga académica por grupo.</p>
             </div>
-            <div className="flex gap-2 w-full md:w-auto">
+            <div className="flex flex-wrap gap-2 w-full md:w-auto">
               <Select value={selectedGrupoScheduleId} onValueChange={setSelectedGrupoScheduleId}>
-                <SelectTrigger className="w-full md:w-[300px] h-11 rounded-xl font-medium"><SelectValue placeholder="Seleccionar Grupo..." /></SelectTrigger>
+                <SelectTrigger className="w-full md:w-[250px] h-11 rounded-xl font-medium"><SelectValue placeholder="Seleccionar Grupo..." /></SelectTrigger>
                 <SelectContent>
                   {grupos?.map(g => <SelectItem key={g.id} value={g.id}>{g.nombre} - {carreras?.find(c => c.id === g.carreraId)?.nombre}</SelectItem>)}
                 </SelectContent>
               </Select>
+              
               {selectedGrupoScheduleId && (
-                <Button onClick={() => setIsEditingSchedule(!isEditingSchedule)} variant={isEditingSchedule ? "destructive" : "outline"} className="rounded-xl h-11 font-medium">
-                  {isEditingSchedule ? "Cancelar Edición" : "Editar Horario"}
-                </Button>
+                <>
+                  <Button 
+                    onClick={handleDownloadSchedule} 
+                    disabled={isExporting}
+                    variant="secondary" 
+                    className="rounded-xl h-11 font-bold text-[10px] uppercase tracking-widest bg-slate-900 text-white hover:bg-slate-800"
+                  >
+                    {isExporting ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <FileDown className="w-4 h-4 mr-2 text-primary" />}
+                    Descargar para Impresión
+                  </Button>
+                  
+                  <Button 
+                    onClick={() => setIsEditingSchedule(!isEditingSchedule)} 
+                    variant={isEditingSchedule ? "destructive" : "outline"} 
+                    className="rounded-xl h-11 font-medium"
+                  >
+                    {isEditingSchedule ? "Cancelar Edición" : "Editar Horario"}
+                  </Button>
+                </>
               )}
             </div>
           </div>
@@ -458,97 +529,99 @@ export default function CatalogosPage() {
                  </div>
                )}
 
-               <div className="bg-white border p-6 rounded-t-[2.5rem] border-b-0 text-center relative overflow-hidden shadow-sm">
-                  <div className="absolute top-0 left-0 w-full h-1.5 bg-primary" />
-                  <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground mb-1">Carga Académica</p>
-                  <h1 className="text-3xl font-bold tracking-tight uppercase text-slate-900">{selectedGrupoForSchedule?.nombre}</h1>
-                  <p className="text-xs font-medium text-slate-500 uppercase">{carreras?.find(c => c.id === selectedGrupoForSchedule?.carreraId)?.nombre}</p>
-               </div>
-               
-               <ScrollArea className="w-full bg-white border border-slate-300 rounded-b-[2.5rem] overflow-hidden shadow-md">
-                 <div className="min-w-[800px]">
-                   <div className="grid grid-cols-[100px_repeat(5,1fr)] border-b border-slate-200 bg-slate-100/80 font-bold text-[10px] uppercase tracking-widest">
-                      <div className="border-r border-slate-200 py-4 flex items-center justify-center text-slate-500">Día / Bloque</div>
-                      {SLOTS.map(s => (
-                        <div key={s.id} className="border-r border-slate-200 p-4 text-center flex flex-col items-center justify-center">
-                          <span className="text-slate-700">Bloque {s.id}</span>
-                          <span className="text-[9px] opacity-70 font-medium text-primary mt-1">{s.range}</span>
-                        </div>
-                      ))}
-                   </div>
-                   {DAYS.map(day => (
-                      <div key={day} className="grid grid-cols-[100px_repeat(5,1fr)] border-b border-slate-200 last:border-b-0 min-h-[140px]">
-                        <div className="border-r border-slate-200 flex items-center justify-center bg-slate-50/50 font-black text-xl text-slate-400 uppercase">{day.substring(0, 3)}</div>
-                        {SLOTS.map(slot => {
-                          const key = `${day}-${slot.id}`;
-                          const cell = tempGrid[key];
-                          return (
-                            <div key={key} className="border-r border-slate-200 p-3 flex flex-col justify-center gap-2 group transition-colors hover:bg-slate-50/30">
-                              {isEditingSchedule ? (
-                                <div className="space-y-1.5 animate-in fade-in duration-300">
-                                  <Select value={cell?.materiaId || "none"} onValueChange={(v) => setTempGrid({...tempGrid, [key]: { ...cell, materiaId: v === "none" ? "" : v }})}>
-                                    <SelectTrigger className="h-8 text-[9px] font-bold border-slate-200 rounded-lg"><SelectValue placeholder="Materia" /></SelectTrigger>
-                                    <SelectContent>
-                                      <SelectItem value="none" className="text-[9px] font-bold">-- Vacío --</SelectItem>
-                                      <ScrollArea className="h-48">
-                                        {filteredMateriasForSchedule.map(m => (
-                                          <SelectItem key={m.id} value={m.id} className="text-[9px] font-medium">{m.nombre}</SelectItem>
-                                        ))}
-                                      </ScrollArea>
-                                    </SelectContent>
-                                  </Select>
-                                  
-                                  <Select value={cell?.docenteId || "none"} onValueChange={(v) => setTempGrid({...tempGrid, [key]: { ...cell, docenteId: v === "none" ? "" : v }})}>
-                                    <SelectTrigger className="h-8 text-[9px] font-bold border-slate-200 rounded-lg"><SelectValue placeholder="Docente" /></SelectTrigger>
-                                    <SelectContent>
-                                      <SelectItem value="none" className="text-[9px] font-bold">-- Vacío --</SelectItem>
-                                      <ScrollArea className="h-48">
-                                        {filteredDocentesForSchedule.map(d => (
-                                          <SelectItem key={d.id} value={d.id} className="text-[9px] font-medium">{d.firstName} {d.lastName}</SelectItem>
-                                        ))}
-                                      </ScrollArea>
-                                    </SelectContent>
-                                  </Select>
-                                  
-                                  <div className="relative">
-                                    <Building2 className="absolute left-2 top-1/2 -translate-y-1/2 w-3 h-3 text-slate-300" />
-                                    <Input 
-                                      placeholder="Aula" 
-                                      className="h-8 pl-7 text-[9px] font-bold border-slate-200 rounded-lg" 
-                                      value={cell?.aula || ''} 
-                                      onChange={(e) => setTempGrid({...tempGrid, [key]: { ...cell, aula: e.target.value }})} 
-                                    />
-                                  </div>
-                                </div>
-                              ) : (
-                                cell?.materiaId ? (
-                                  <div className="text-center space-y-1">
-                                    <div className="bg-primary/5 p-2 rounded-xl border border-primary/10">
-                                      <p className="text-[10px] font-bold uppercase leading-tight text-slate-900">{materias?.find(m => m.id === cell.materiaId)?.nombre}</p>
-                                    </div>
-                                    <p className="text-[9px] font-bold text-muted-foreground uppercase flex items-center justify-center gap-1">
-                                      <Briefcase className="w-3 h-3" /> {docentes.find(d => d.id === cell.docenteId)?.firstName} {docentes.find(d => d.id === cell.docenteId)?.lastName}
-                                    </p>
-                                    {cell.aula && (
-                                      <Badge variant="outline" className="text-[8px] font-black border-primary/20 text-primary uppercase py-0 px-2 rounded-md">
-                                        Aula: {cell.aula}
-                                      </Badge>
-                                    )}
-                                  </div>
-                                ) : (
-                                  <div className="flex flex-col items-center opacity-20 group-hover:opacity-40 transition-opacity">
-                                    <BookMarked className="w-5 h-5 mb-1" />
-                                    <span className="font-bold text-[9px] uppercase tracking-tighter">Disponible</span>
-                                  </div>
-                                )
-                              )}
+               <div id="schedule-print-container" ref={scheduleExportRef} className="bg-white p-2">
+                  <div className="bg-white border p-6 rounded-t-[2.5rem] border-b-0 text-center relative overflow-hidden shadow-sm">
+                      <div className="absolute top-0 left-0 w-full h-1.5 bg-primary" />
+                      <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground mb-1">Carga Académica</p>
+                      <h1 className="text-3xl font-bold tracking-tight uppercase text-slate-900">{selectedGrupoForSchedule?.nombre}</h1>
+                      <p className="text-xs font-medium text-slate-500 uppercase">{carreras?.find(c => c.id === selectedGrupoForSchedule?.carreraId)?.nombre}</p>
+                  </div>
+                  
+                  <ScrollArea className="w-full bg-white border border-slate-300 rounded-b-[2.5rem] overflow-hidden shadow-md">
+                    <div className="min-w-[800px]">
+                      <div className="grid grid-cols-[100px_repeat(5,1fr)] border-b border-slate-200 bg-slate-100/80 font-bold text-[10px] uppercase tracking-widest">
+                          <div className="border-r border-slate-200 py-4 flex items-center justify-center text-slate-500">Día / Bloque</div>
+                          {SLOTS.map(s => (
+                            <div key={s.id} className="border-r border-slate-200 p-4 text-center flex flex-col items-center justify-center">
+                              <span className="text-slate-700">Bloque {s.id}</span>
+                              <span className="text-[9px] opacity-70 font-medium text-primary mt-1">{s.range}</span>
                             </div>
-                          );
-                        })}
+                          ))}
                       </div>
-                   ))}
-                 </div>
-               </ScrollArea>
+                      {DAYS.map(day => (
+                          <div key={day} className="grid grid-cols-[100px_repeat(5,1fr)] border-b border-slate-200 last:border-b-0 min-h-[140px]">
+                            <div className="border-r border-slate-200 flex items-center justify-center bg-slate-50/50 font-black text-xl text-slate-400 uppercase">{day.substring(0, 3)}</div>
+                            {SLOTS.map(slot => {
+                              const key = `${day}-${slot.id}`;
+                              const cell = tempGrid[key];
+                              return (
+                                <div key={key} className="border-r border-slate-200 p-3 flex flex-col justify-center gap-2 group transition-colors hover:bg-slate-50/30">
+                                  {isEditingSchedule ? (
+                                    <div className="space-y-1.5 animate-in fade-in duration-300">
+                                      <Select value={cell?.materiaId || "none"} onValueChange={(v) => setTempGrid({...tempGrid, [key]: { ...cell, materiaId: v === "none" ? "" : v }})}>
+                                        <SelectTrigger className="h-8 text-[9px] font-bold border-slate-200 rounded-lg"><SelectValue placeholder="Materia" /></SelectTrigger>
+                                        <SelectContent>
+                                          <SelectItem value="none" className="text-[9px] font-bold">-- Vacío --</SelectItem>
+                                          <ScrollArea className="h-48">
+                                            {filteredMateriasForSchedule.map(m => (
+                                              <SelectItem key={m.id} value={m.id} className="text-[9px] font-medium">{m.nombre}</SelectItem>
+                                            ))}
+                                          </ScrollArea>
+                                        </SelectContent>
+                                      </Select>
+                                      
+                                      <Select value={cell?.docenteId || "none"} onValueChange={(v) => setTempGrid({...tempGrid, [key]: { ...cell, docenteId: v === "none" ? "" : v }})}>
+                                        <SelectTrigger className="h-8 text-[9px] font-bold border-slate-200 rounded-lg"><SelectValue placeholder="Docente" /></SelectTrigger>
+                                        <SelectContent>
+                                          <SelectItem value="none" className="text-[9px] font-bold">-- Vacío --</SelectItem>
+                                          <ScrollArea className="h-48">
+                                            {filteredDocentesForSchedule.map(d => (
+                                              <SelectItem key={d.id} value={d.id} className="text-[9px] font-medium">{d.firstName} {d.lastName}</SelectItem>
+                                            ))}
+                                          </ScrollArea>
+                                        </SelectContent>
+                                      </Select>
+                                      
+                                      <div className="relative">
+                                        <Building2 className="absolute left-2 top-1/2 -translate-y-1/2 w-3 h-3 text-slate-300" />
+                                        <Input 
+                                          placeholder="Aula" 
+                                          className="h-8 pl-7 text-[9px] font-bold border-slate-200 rounded-lg" 
+                                          value={cell?.aula || ''} 
+                                          onChange={(e) => setTempGrid({...tempGrid, [key]: { ...cell, aula: e.target.value }})} 
+                                        />
+                                      </div>
+                                    </div>
+                                  ) : (
+                                    cell?.materiaId ? (
+                                      <div className="text-center space-y-1">
+                                        <div className="bg-primary/5 p-2 rounded-xl border border-primary/10">
+                                          <p className="text-[10px] font-bold uppercase leading-tight text-slate-900">{materias?.find(m => m.id === cell.materiaId)?.nombre}</p>
+                                        </div>
+                                        <p className="text-[9px] font-bold text-muted-foreground uppercase flex items-center justify-center gap-1">
+                                          <Briefcase className="w-3 h-3" /> {docentes.find(d => d.id === cell.docenteId)?.firstName} {docentes.find(d => d.id === cell.docenteId)?.lastName}
+                                        </p>
+                                        {cell.aula && (
+                                          <Badge variant="outline" className="text-[8px] font-black border-primary/20 text-primary uppercase py-0 px-2 rounded-md">
+                                            Aula: {cell.aula}
+                                          </Badge>
+                                        )}
+                                      </div>
+                                    ) : (
+                                      <div className="flex flex-col items-center opacity-20 group-hover:opacity-40 transition-opacity">
+                                        <BookMarked className="w-5 h-5 mb-1" />
+                                        <span className="font-bold text-[9px] uppercase tracking-tighter">Disponible</span>
+                                      </div>
+                                    )
+                                  )}
+                                </div>
+                              );
+                            })}
+                          </div>
+                      ))}
+                    </div>
+                  </ScrollArea>
+               </div>
 
                {isEditingSchedule && (
                  <div className="flex justify-center pt-8">
@@ -856,4 +929,3 @@ export default function CatalogosPage() {
     </div>
   );
 }
-
