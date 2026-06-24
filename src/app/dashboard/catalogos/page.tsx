@@ -1,4 +1,3 @@
-
 "use client";
 
 import React, { useState, useRef, useMemo, useEffect } from 'react';
@@ -539,7 +538,7 @@ export default function CatalogosPage() {
                   
                   <ScrollArea className="w-full bg-white border border-slate-300 rounded-b-[2.5rem] overflow-hidden shadow-md">
                     <div className="min-w-[800px]">
-                      <div className="grid grid-cols-[100px_repeat(5,1fr)] border-b border-slate-200 bg-slate-100/80 font-bold text-[10px] uppercase tracking-widest">
+                      <div className="grid grid-cols-[100px_repeat(4,1fr)] border-b border-slate-200 bg-slate-100/80 font-bold text-[10px] uppercase tracking-widest">
                           <div className="border-r border-slate-200 py-4 flex items-center justify-center text-slate-500">Día / Bloque</div>
                           {SLOTS.map(s => (
                             <div key={s.id} className="border-r border-slate-200 p-4 text-center flex flex-col items-center justify-center">
@@ -549,7 +548,7 @@ export default function CatalogosPage() {
                           ))}
                       </div>
                       {DAYS.map(day => (
-                          <div key={day} className="grid grid-cols-[100px_repeat(5,1fr)] border-b border-slate-200 last:border-b-0 min-h-[140px]">
+                          <div key={day} className="grid grid-cols-[100px_repeat(4,1fr)] border-b border-slate-200 last:border-b-0 min-h-[140px]">
                             <div className="border-r border-slate-200 flex items-center justify-center bg-slate-50/50 font-black text-xl text-slate-400 uppercase">{day.substring(0, 3)}</div>
                             {SLOTS.map(slot => {
                               const key = `${day}-${slot.id}`;
