@@ -100,7 +100,7 @@
         "grupoId": { "type": "string" },
         "materiaId": { "type": "string" },
         "fecha": { "type": "string", "format": "date" },
-        "estado": { "type": "string", "enum": ["Presente", "Retraso", "Falta"] },
+        "estado": { "type": "string", "enum": ["Presente", "Retraso", "Falta", "Justificada"] },
         "createdAt": { "type": "string", "format": "date-time" }
       },
       "required": ["alumnoId", "docenteId", "grupoId", "fecha", "estado"]

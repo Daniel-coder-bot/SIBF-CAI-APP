@@ -8,7 +8,8 @@ import {
   CheckCircle2, 
   XCircle, 
   Clock, 
-  Loader2
+  Loader2,
+  ShieldCheck
 } from 'lucide-react';
 import { 
   useFirestore, 
@@ -46,7 +47,6 @@ export default function MiAsistenciaPage() {
   const student = studentData?.[0];
 
   const asistenciasRef = useMemoFirebase(() => collection(db, 'asistencias'), [db]);
-  // Consulta simplificada para evitar errores de permisos e índices
   const myAsistenciasQuery = useMemoFirebase(() => 
     student ? query(asistenciasRef, where("alumnoId", "==", student.id)) : null,
   [asistenciasRef, student]);
@@ -54,7 +54,6 @@ export default function MiAsistenciaPage() {
 
   const asistencias = useMemo(() => {
     if (!rawAsistencias) return [];
-    // Ordenamiento manual en el cliente para evitar errores de índice de Firestore
     return [...rawAsistencias].sort((a, b) => {
       const dateA = a.createdAt?.toDate?.() || new Date(0);
       const dateB = b.createdAt?.toDate?.() || new Date(0);
@@ -66,13 +65,14 @@ export default function MiAsistenciaPage() {
   const { data: materias } = useCollection(materiasRef);
 
   const stats = useMemo(() => {
-    if (!asistencias) return { presentes: 0, faltas: 0, retardos: 0 };
+    if (!asistencias) return { presentes: 0, faltas: 0, retardos: 0, justificadas: 0 };
     return asistencias.reduce((acc, curr) => {
       if (curr.estado === 'Presente') acc.presentes++;
       else if (curr.estado === 'Falta') acc.faltas++;
       else if (curr.estado === 'Retraso') acc.retardos++;
+      else if (curr.estado === 'Justificada') acc.justificadas++;
       return acc;
-    }, { presentes: 0, faltas: 0, retardos: 0 });
+    }, { presentes: 0, faltas: 0, retardos: 0, justificadas: 0 });
   }, [asistencias]);
 
   return (
@@ -84,7 +84,7 @@ export default function MiAsistenciaPage() {
         <p className="text-muted-foreground font-medium text-sm">Resumen de puntualidad y permanencia escolar.</p>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
         <Card className="rounded-[2rem] border-none bg-green-50 shadow-sm">
           <CardContent className="p-8 flex items-center justify-between">
             <div>
@@ -101,6 +101,15 @@ export default function MiAsistenciaPage() {
               <h3 className="text-4xl font-bold text-amber-900">{stats.retardos}</h3>
             </div>
             <div className="bg-amber-500 p-3 rounded-2xl text-white"><Clock className="w-6 h-6" /></div>
+          </CardContent>
+        </Card>
+        <Card className="rounded-[2rem] border-none bg-blue-50 shadow-sm">
+          <CardContent className="p-8 flex items-center justify-between">
+            <div>
+              <p className="text-[10px] font-bold text-blue-700 uppercase tracking-widest mb-1">Justificadas</p>
+              <h3 className="text-4xl font-bold text-blue-900">{stats.justificadas}</h3>
+            </div>
+            <div className="bg-blue-600 p-3 rounded-2xl text-white"><ShieldCheck className="w-6 h-6" /></div>
           </CardContent>
         </Card>
         <Card className="rounded-[2rem] border-none bg-red-50 shadow-sm">
@@ -148,6 +157,7 @@ export default function MiAsistenciaPage() {
                       "rounded-full px-4 py-1 font-bold text-[9px] uppercase",
                       asist.estado === 'Presente' ? "border-green-600 text-green-600 bg-green-50" :
                       asist.estado === 'Retraso' ? "border-amber-500 text-amber-500 bg-amber-50" :
+                      asist.estado === 'Justificada' ? "border-blue-600 text-blue-600 bg-blue-50" :
                       "border-red-600 text-red-600 bg-red-50"
                     )}
                   >

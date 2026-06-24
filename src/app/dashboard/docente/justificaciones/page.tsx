@@ -12,7 +12,8 @@ import {
   Loader2,
   Calendar,
   ExternalLink,
-  Paperclip
+  Paperclip,
+  AlertTriangle
 } from 'lucide-react';
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -22,7 +23,7 @@ import {
   useMemoFirebase,
   updateDocumentNonBlocking
 } from '@/firebase';
-import { collection, doc, serverTimestamp, query, orderBy } from 'firebase/firestore';
+import { collection, doc, serverTimestamp, query, orderBy, getDocs, where } from 'firebase/firestore';
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
 
@@ -39,17 +40,56 @@ export default function JustificacionesDocentePage() {
   const { data: allUsers } = useCollection(usersRef);
   const { data: justificaciones, isLoading } = useCollection(q);
 
-  const handleUpdateStatus = (id: string, newStatus: 'Aprobada' | 'Rechazada') => {
+  const handleUpdateStatus = async (id: string, newStatus: 'Aprobada' | 'Rechazada', justificacion: any) => {
     const docRef = doc(db, 'justificaciones', id);
+    
+    // 1. Actualizar el estado del justificante
     updateDocumentNonBlocking(docRef, {
       estado: newStatus,
       updatedAt: serverTimestamp()
     });
     
-    toast({
-      title: newStatus === 'Aprobada' ? "Solicitud Aprobada" : "Solicitud Rechazada",
-      description: "El estado del justificante ha sido actualizado."
-    });
+    // 2. Si es aprobada, buscar faltas para ese día y cambiarlas a "Justificada"
+    if (newStatus === 'Aprobada') {
+      try {
+        const asistenciasRef = collection(db, 'asistencias');
+        const qAsist = query(
+          asistenciasRef, 
+          where("alumnoId", "==", justificacion.alumnoId),
+          where("fecha", "==", justificacion.fecha),
+          where("estado", "==", "Falta")
+        );
+        
+        const querySnapshot = await getDocs(qAsist);
+        
+        if (querySnapshot.empty) {
+          toast({
+            variant: "destructive",
+            title: "Aviso de Sistema",
+            description: `El justificante fue aprobado, pero no se encontró ninguna inasistencia registrada para el día ${justificacion.fecha}.`
+          });
+        } else {
+          querySnapshot.forEach((asistDoc) => {
+            updateDocumentNonBlocking(asistDoc.ref, {
+              estado: 'Justificada',
+              updatedAt: serverTimestamp()
+            });
+          });
+          
+          toast({
+            title: "Justificación Aplicada",
+            description: `Se han justificado ${querySnapshot.size} registro(s) de inasistencia para el alumno.`
+          });
+        }
+      } catch (error) {
+        console.error("Error al procesar la justificación automática:", error);
+      }
+    } else {
+      toast({
+        title: "Solicitud Rechazada",
+        description: "El estado del justificante ha sido actualizado a Rechazada."
+      });
+    }
   };
 
   const openEvidencia = (url: string) => {
@@ -125,13 +165,13 @@ export default function JustificacionesDocentePage() {
                 {j.estado === 'Pendiente' && (
                   <div className="flex gap-2 w-full md:w-auto flex-shrink-0">
                     <Button 
-                      onClick={() => handleUpdateStatus(j.id, 'Aprobada')}
+                      onClick={() => handleUpdateStatus(j.id, 'Aprobada', j)}
                       className="flex-1 md:flex-none bg-green-600 hover:bg-green-700 text-white rounded-xl h-11 px-6 font-bold uppercase text-[10px] tracking-widest"
                     >
                       <CheckCircle2 className="w-4 h-4 mr-2" /> Aprobar
                     </Button>
                     <Button 
-                      onClick={() => handleUpdateStatus(j.id, 'Rechazada')}
+                      onClick={() => handleUpdateStatus(j.id, 'Rechazada', j)}
                       variant="outline"
                       className="flex-1 md:flex-none border-red-200 text-red-600 hover:bg-red-50 rounded-xl h-11 px-6 font-bold uppercase text-[10px] tracking-widest"
                     >

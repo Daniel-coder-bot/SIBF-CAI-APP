@@ -12,7 +12,8 @@ import {
   Save,
   AlertCircle,
   CalendarDays,
-  ScanFace
+  ScanFace,
+  ShieldCheck
 } from 'lucide-react';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -61,7 +62,7 @@ export default function TomaAsistenciaPage() {
   const { toast } = useToast();
 
   const [selectedGrupoId, setSelectedGrupoId] = useState<string>("");
-  const [attendanceMap, setAttendanceMap] = useState<Record<string, 'Presente' | 'Retraso' | 'Falta'>>({});
+  const [attendanceMap, setAttendanceMap] = useState<Record<string, 'Presente' | 'Retraso' | 'Falta' | 'Justificada'>>({});
   const [searchQuery, setSearchQuery] = useState("");
   const [currentTime, setCurrentTime] = useState(new Date());
   const [isCameraOpen, setIsCameraOpen] = useState(false);
@@ -121,7 +122,7 @@ export default function TomaAsistenciaPage() {
       }));
   }, [studentsInGrupo]);
 
-  const handleMarkAttendance = (alumnoId: string, statusOverride?: 'Presente' | 'Retraso' | 'Falta') => {
+  const handleMarkAttendance = (alumnoId: string, statusOverride?: 'Presente' | 'Retraso' | 'Falta' | 'Justificada') => {
     if (statusOverride) {
       setAttendanceMap(prev => ({ ...prev, [alumnoId]: statusOverride }));
       return;
@@ -178,7 +179,6 @@ export default function TomaAsistenciaPage() {
       return;
     }
 
-    // Para la demo, si no hay horario actual, usamos cualquier materia válida del grupo
     const grupoActual = grupos?.find(g => g.id === selectedGrupoId);
     const materiaIdFallback = materias?.find(m => m.carreraId === grupoActual?.carreraId)?.id;
     const finalMateriaId = currentSchedule?.materiaId || materiaIdFallback;
@@ -332,6 +332,7 @@ export default function TomaAsistenciaPage() {
                             "rounded-full px-4 py-1 font-bold text-[9px] uppercase",
                             attendanceMap[student.id] === 'Presente' ? "bg-green-100 text-green-700 hover:bg-green-100 border-none" :
                             attendanceMap[student.id] === 'Retraso' ? "bg-amber-100 text-amber-700 hover:bg-amber-100 border-none" :
+                            attendanceMap[student.id] === 'Justificada' ? "bg-blue-100 text-blue-700 hover:bg-blue-100 border-none" :
                             "bg-red-100 text-red-700 hover:bg-red-100 border-none"
                           )}
                         >
@@ -364,6 +365,17 @@ export default function TomaAsistenciaPage() {
                           )}
                         >
                           Retraso
+                        </Button>
+                        <Button 
+                          size="sm" 
+                          variant="outline" 
+                          onClick={() => handleMarkAttendance(student.id, 'Justificada')}
+                          className={cn(
+                            "rounded-full h-9 px-4 font-bold text-[9px] uppercase border-2",
+                            attendanceMap[student.id] === 'Justificada' && "border-blue-600 bg-blue-50 text-blue-600"
+                          )}
+                        >
+                          Justificada
                         </Button>
                         <Button 
                           size="sm" 
