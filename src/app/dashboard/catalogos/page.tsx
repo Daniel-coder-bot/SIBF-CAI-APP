@@ -33,7 +33,8 @@ import {
   Save,
   Grid,
   UserCheck,
-  Filter
+  Filter,
+  Key
 } from 'lucide-react';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -117,6 +118,7 @@ export default function CatalogosPage() {
   const [newMateria, setNewMateria] = useState({ nombre: '', codigo: '', carreraId: '', cuatrimestre: '' });
   const [newGrupo, setNewGrupo] = useState({ nombre: '', carreraId: '', cuatrimestre: '' });
   const [editingGrupo, setEditingGrupo] = useState<any>(null);
+  const [editingAlumno, setEditingAlumno] = useState<any>(null);
   const [newUser, setNewUser] = useState({ 
     firstName: '', 
     lastName: '', 
@@ -263,6 +265,27 @@ export default function CatalogosPage() {
     toast({ title: "Grupo actualizado" });
   };
 
+  const handleUpdateAlumno = () => {
+    if (!editingAlumno) return;
+    const userDocRef = doc(db, 'users', editingAlumno.id);
+    const selectedCarrera = carreras?.find(c => c.id === editingAlumno.carreraId);
+    
+    updateDocumentNonBlocking(userDocRef, {
+      firstName: editingAlumno.firstName,
+      lastName: editingAlumno.lastName,
+      email: editingAlumno.email,
+      password: editingAlumno.password,
+      matricula: editingAlumno.matricula,
+      carreraId: editingAlumno.carreraId,
+      grupoId: editingAlumno.grupoId,
+      sedeId: selectedCarrera?.sedeId || '',
+      updatedAt: serverTimestamp()
+    });
+    setOpenDialog(null);
+    setEditingAlumno(null);
+    toast({ title: "Perfil de Alumno actualizado" });
+  };
+
   const handleDelete = (collectionName: string, id: string) => {
     deleteDocumentNonBlocking(doc(db, collectionName, id));
     toast({ variant: "destructive", title: "Eliminado" });
@@ -297,6 +320,7 @@ export default function CatalogosPage() {
           const userData = {
             ...row,
             role,
+            password: row.password || '1234', // Contraseña por defecto si no existe
             createdAt: serverTimestamp(),
             updatedAt: serverTimestamp()
           };
@@ -466,17 +490,19 @@ export default function CatalogosPage() {
             <div className="flex gap-2">
               <input type="file" ref={fileInputRef} className="hidden" onChange={(e) => handleImportExcel(e, 'Alumno')} accept=".xlsx, .xls" />
               <Button variant="outline" onClick={() => fileInputRef.current?.click()} className="rounded-xl font-medium"><Upload className="w-4 h-4 mr-2" /> Importar</Button>
-              <Button variant="secondary" onClick={() => { setFaceMode('recognize'); setOpenDialog('face'); }} className="rounded-xl font-medium"><UserCheck className="w-4 h-4 mr-2" /> Verificar</Button>
               <Button onClick={() => setOpenDialog('alumno')} className="bg-primary rounded-xl font-medium"><Plus className="w-4 h-4 mr-2" /> Nuevo Alumno</Button>
             </div>
           </div>
           <div className="bg-white border rounded-3xl overflow-hidden shadow-sm">
             <Table><TableHeader className="bg-slate-50"><TableRow><TableHead className="px-6 font-bold py-4">Matrícula</TableHead><TableHead className="font-bold">Nombre</TableHead><TableHead className="font-bold">Carrera</TableHead><TableHead className="font-bold">Grupo</TableHead><TableHead className="text-right pr-6 font-bold">Acciones</TableHead></TableRow></TableHeader>
               <TableBody>{filteredAlumnos.map(a => (<TableRow key={a.id} className="hover:bg-slate-50/50"><TableCell className="px-6 font-bold text-primary">{a.matricula}</TableCell><TableCell className="font-medium">{a.firstName} {a.lastName}</TableCell><TableCell className="font-medium text-muted-foreground">{carreras?.find(c => c.id === a.carreraId)?.nombre}</TableCell><TableCell className="font-medium">{grupos?.find(g => g.id === a.grupoId)?.nombre}</TableCell><TableCell className="text-right pr-6 flex justify-end gap-1">
-                <Button variant="outline" size="icon" className="rounded-full" title="Registro Facial" onClick={() => {setFaceTargetUser(a); setFaceMode('enroll'); setOpenDialog('face');}}>
+                <Button variant="outline" size="icon" className="rounded-full" title="Biometría" onClick={() => {setFaceTargetUser(a); setFaceMode('enroll'); setOpenDialog('face');}}>
                   <ScanFace className={cn("w-4 h-4", a.faceDescriptor && Array.isArray(a.faceDescriptor) ? "text-green-600" : "text-primary")} />
                 </Button>
-                <Button variant="ghost" size="icon" className="rounded-full" onClick={() => handleDelete('users', a.id)}><Trash2 className="w-4 h-4 text-primary" /></Button>
+                <Button variant="ghost" size="icon" className="rounded-full" title="Editar Perfil" onClick={() => {setEditingAlumno(a); setOpenDialog('edit_alumno');}}>
+                  <Edit2 className="w-4 h-4 text-slate-600" />
+                </Button>
+                <Button variant="ghost" size="icon" className="rounded-full" title="Eliminar" onClick={() => handleDelete('users', a.id)}><Trash2 className="w-4 h-4 text-primary" /></Button>
               </TableCell></TableRow>))}</TableBody>
             </Table>
           </div>
@@ -500,8 +526,40 @@ export default function CatalogosPage() {
                     <SelectContent>{grupos?.filter(g => g.carreraId === newUser.carreraId).map(g => <SelectItem key={g.id} value={g.id}>{g.nombre}</SelectItem>)}</SelectContent>
                   </Select>
                 </div>
+                <div className="col-span-2 space-y-2"><Label className="font-bold text-xs uppercase text-muted-foreground">Establecer Contraseña Inicial</Label><Input type="password" value={newUser.password} onChange={e => setNewUser({...newUser, password: e.target.value})} className="rounded-xl font-medium" /></div>
               </div>
-              <DialogFooter><Button onClick={() => handleAdd(usersRef, {...newUser, role: 'Alumno', password: '123'}, setNewUser, {firstName: '', lastName: '', email: '', password: '', role: 'Alumno', carreraId: '', sedeId: '', matricula: '', grupoId: '', grupoIds: []}, "Alumno")} className="w-full bg-primary font-bold rounded-xl h-12">Confirmar Inscripción</Button></DialogFooter>
+              <DialogFooter><Button onClick={() => handleAdd(usersRef, {...newUser, role: 'Alumno'}, setNewUser, {firstName: '', lastName: '', email: '', password: '', role: 'Alumno', carreraId: '', sedeId: '', matricula: '', grupoId: '', grupoIds: []}, "Alumno")} className="w-full bg-primary font-bold rounded-xl h-12">Confirmar Inscripción</Button></DialogFooter>
+            </DialogContent>
+          </Dialog>
+
+          <Dialog open={openDialog === 'edit_alumno'} onOpenChange={(o) => setOpenDialog(o ? 'edit_alumno' : null)}>
+            <DialogContent className="rounded-3xl max-w-xl">
+              <DialogHeader><DialogTitle className="font-bold text-xl flex items-center gap-2"><Edit2 className="w-5 h-5 text-primary" /> Editar Perfil del Alumno</DialogTitle></DialogHeader>
+              {editingAlumno && (
+                <div className="grid grid-cols-2 gap-4 py-4">
+                  <div className="space-y-2"><Label className="font-bold text-xs uppercase text-muted-foreground">Matrícula</Label><Input value={editingAlumno.matricula} onChange={e => setEditingAlumno({...editingAlumno, matricula: e.target.value})} className="rounded-xl font-medium" /></div>
+                  <div className="space-y-2"><Label className="font-bold text-xs uppercase text-muted-foreground">Carrera</Label>
+                    <Select value={editingAlumno.carreraId} onValueChange={v => setEditingAlumno({...editingAlumno, carreraId: v, grupoId: ''})}>
+                      <SelectTrigger className="rounded-xl"><SelectValue placeholder="Carrera..." /></SelectTrigger>
+                      <SelectContent>{carreras?.map(c => <SelectItem key={c.id} value={c.id}>{c.nombre}</SelectItem>)}</SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-2"><Label className="font-bold text-xs uppercase text-muted-foreground">Nombre(s)</Label><Input value={editingAlumno.firstName} onChange={e => setEditingAlumno({...editingAlumno, firstName: e.target.value})} className="rounded-xl font-medium" /></div>
+                  <div className="space-y-2"><Label className="font-bold text-xs uppercase text-muted-foreground">Apellido(s)</Label><Input value={editingAlumno.lastName} onChange={e => setEditingAlumno({...editingAlumno, lastName: e.target.value})} className="rounded-xl font-medium" /></div>
+                  <div className="space-y-2"><Label className="font-bold text-xs uppercase text-muted-foreground">Correo</Label><Input value={editingAlumno.email} onChange={e => setEditingAlumno({...editingAlumno, email: e.target.value})} className="rounded-xl font-medium" /></div>
+                  <div className="space-y-2"><Label className="font-bold text-xs uppercase text-muted-foreground">Grupo</Label>
+                    <Select value={editingAlumno.grupoId} onValueChange={v => setEditingAlumno({...editingAlumno, grupoId: v})}>
+                      <SelectTrigger className="rounded-xl"><SelectValue placeholder="Grupo..." /></SelectTrigger>
+                      <SelectContent>{grupos?.filter(g => g.carreraId === editingAlumno.carreraId).map(g => <SelectItem key={g.id} value={g.id}>{g.nombre}</SelectItem>)}</SelectContent>
+                    </Select>
+                  </div>
+                  <div className="col-span-2 space-y-2">
+                    <Label className="font-bold text-xs uppercase text-primary flex items-center gap-1"><Key className="w-3 h-3" /> Cambiar Contraseña</Label>
+                    <Input type="text" value={editingAlumno.password} onChange={e => setEditingAlumno({...editingAlumno, password: e.target.value})} className="rounded-xl font-medium border-primary/20" placeholder="Nueva contraseña..." />
+                  </div>
+                </div>
+              )}
+              <DialogFooter><Button onClick={handleUpdateAlumno} className="w-full bg-primary font-bold rounded-xl h-12">Actualizar Información</Button></DialogFooter>
             </DialogContent>
           </Dialog>
         </TabsContent>
