@@ -18,7 +18,9 @@ import {
   Search,
   BookOpen,
   Briefcase,
-  Download
+  Download,
+  Zap,
+  ZapOff
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { 
@@ -54,6 +56,7 @@ import { Badge } from "@/components/ui/badge";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import * as XLSX from 'xlsx';
+import { cn } from "@/lib/utils";
 
 const COLORS = ['#FF4C5E', '#1E293B', '#334155', '#475569', '#64748B', '#0F172A'];
 
@@ -65,6 +68,10 @@ export default function DashboardPage() {
 
   const [activeMatricula, setActiveMatricula] = useState<string | null>(null);
   const [demoRole, setDemoRole] = useState<string | null>(null);
+
+  // Estados de simulación
+  const [isSimulating, setIsSimulating] = useState(false);
+  const [simulatedData, setSimulatedData] = useState<any[]>([]);
 
   // Filtros de estado
   const [filterSede, setFilterSede] = useState<string>("all");
@@ -81,7 +88,7 @@ export default function DashboardPage() {
     }
   }, []);
 
-  // Colecciones
+  // Colecciones reales
   const usersRef = useMemoFirebase(() => collection(db, 'users'), [db]);
   const sedesRef = useMemoFirebase(() => collection(db, 'sedes'), [db]);
   const asistenciasRef = useMemoFirebase(() => collection(db, 'asistencias'), [db]);
@@ -98,12 +105,62 @@ export default function DashboardPage() {
 
   const docentes = useMemo(() => allUsers?.filter(u => u.role === 'Docente') || [], [allUsers]);
 
-  // Aplicación de Filtros a los Datos de Asistencia
+  // Generador de datos de simulación
+  const handleToggleSimulation = () => {
+    if (isSimulating) {
+      setIsSimulating(false);
+      setSimulatedData([]);
+      toast({ title: "Modo Real", description: "Mostrando datos reales de la base de datos." });
+      return;
+    }
+
+    if (!allSedes?.length || !allCarreras?.length || !allMaterias?.length || !allGrupos?.length) {
+      toast({ variant: "destructive", title: "Error", description: "Debes tener sedes, carreras y grupos creados para simular datos." });
+      return;
+    }
+
+    const mockRecords = [];
+    const states: ('Presente' | 'Retraso' | 'Falta')[] = ['Presente', 'Presente', 'Presente', 'Retraso', 'Falta'];
+    const months = ['2025-01', '2025-02', '2025-03', '2025-04'];
+    
+    // Generamos 400 registros aleatorios
+    for (let i = 0; i < 400; i++) {
+      const randomMateria = allMaterias[Math.floor(Math.random() * allMaterias.length)];
+      const randomGrupo = allGrupos[Math.floor(Math.random() * allGrupos.length)];
+      const randomDocente = docentes[Math.floor(Math.random() * docentes.length)]?.id || 'docente-sim';
+      const randomState = states[Math.floor(Math.random() * states.length)];
+      const randomMonth = months[Math.floor(Math.random() * months.length)];
+      const randomDay = Math.floor(Math.random() * 28) + 1;
+      const dateStr = `${randomMonth}-${randomDay.toString().padStart(2, '0')}`;
+
+      mockRecords.push({
+        id: `sim-${i}`,
+        materiaId: randomMateria.id,
+        grupoId: randomGrupo.id,
+        docenteId: randomDocente,
+        alumnoId: `alumno-sim-${Math.floor(Math.random() * 50)}`,
+        fecha: dateStr,
+        estado: randomState,
+        createdAt: { toDate: () => new Date(dateStr) }
+      });
+    }
+
+    setSimulatedData(mockRecords);
+    setIsSimulating(true);
+    toast({ title: "Modo Simulación Activo", description: "Se han generado 400 registros para pruebas de analítica." });
+  };
+
+  // Base de datos de trabajo (Simulada o Real)
+  const currentDataPool = isSimulating ? simulatedData : (allAsistencias || []);
+
+  // Aplicación de Filtros a los Datos
   const filteredAsistencias = useMemo(() => {
-    if (!allAsistencias) return [];
-    return allAsistencias.filter(a => {
-      const matchesSede = filterSede === "all" || allCarreras?.find(c => c.id === a.materiaId)?.sedeId === filterSede;
-      const matchesCarrera = filterCarrera === "all" || allMaterias?.find(m => m.id === a.materiaId)?.carreraId === filterCarrera;
+    return currentDataPool.filter(a => {
+      const materia = allMaterias?.find(m => m.id === a.materiaId);
+      const carrera = allCarreras?.find(c => c.id === materia?.carreraId);
+      
+      const matchesSede = filterSede === "all" || carrera?.sedeId === filterSede;
+      const matchesCarrera = filterCarrera === "all" || materia?.carreraId === filterCarrera;
       const matchesMateria = filterMateria === "all" || a.materiaId === filterMateria;
       const matchesGrupo = filterGrupo === "all" || a.grupoId === filterGrupo;
       const matchesDocente = filterDocente === "all" || a.docenteId === filterDocente;
@@ -111,7 +168,7 @@ export default function DashboardPage() {
       
       return matchesSede && matchesCarrera && matchesMateria && matchesGrupo && matchesDocente && matchesMes;
     });
-  }, [allAsistencias, filterSede, filterCarrera, filterMateria, filterGrupo, filterDocente, filterMes, allCarreras, allMaterias]);
+  }, [currentDataPool, filterSede, filterCarrera, filterMateria, filterGrupo, filterDocente, filterMes, allCarreras, allMaterias]);
 
   // Estadísticas Calculadas
   const stats = useMemo(() => {
@@ -128,7 +185,7 @@ export default function DashboardPage() {
     };
   }, [filteredAsistencias]);
 
-  // Datos para Gráfico de Sedes (Dinámico)
+  // Datos para Gráfico de Sedes
   const dataSedes = useMemo(() => {
     if (!allSedes || !filteredAsistencias) return [];
     return allSedes.map(s => {
@@ -141,14 +198,16 @@ export default function DashboardPage() {
     }).filter(d => d.value > 0);
   }, [allSedes, filteredAsistencias, allMaterias, allCarreras]);
 
-  // Datos para Tendencia (Días de la semana)
+  // Datos para Tendencia
   const dataSemana = useMemo(() => {
     const dias = ['Dom', 'Lun', 'Mar', 'Mie', 'Jue', 'Vie', 'Sab'];
     const counts = dias.map(d => ({ day: d, asistencia: 0 }));
     
     filteredAsistencias.forEach(a => {
       const date = new Date(a.fecha);
-      counts[date.getDay()].asistencia++;
+      if (!isNaN(date.getTime())) {
+        counts[date.getDay()].asistencia++;
+      }
     });
 
     return counts.filter(c => c.day !== 'Dom' && c.day !== 'Sab');
@@ -167,21 +226,21 @@ export default function DashboardPage() {
       
       return {
         Fecha: a.fecha,
-        Alumno: alumno ? `${alumno.firstName} ${alumno.lastName}` : 'Desconocido',
-        Matricula: alumno?.matricula || 'N/A',
+        Alumno: alumno ? `${alumno.firstName} ${alumno.lastName}` : (isSimulating ? 'Alumno Simulado' : 'Desconocido'),
+        Matricula: alumno?.matricula || (isSimulating ? 'SIM-000' : 'N/A'),
         Materia: materia?.nombre || 'N/A',
         Grupo: grupo?.nombre || 'N/A',
         Estado: a.estado,
-        Hora_Registro: a.createdAt?.toDate ? a.createdAt.toDate().toLocaleTimeString() : 'N/A'
+        Tipo: isSimulating ? 'SIMULADO' : 'REAL'
       };
     });
 
     const worksheet = XLSX.utils.json_to_sheet(exportData);
     const workbook = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(workbook, worksheet, "Dashboard_Filtrado");
-    XLSX.writeFile(workbook, `SIBF_CAI_Analytics_${new Date().toISOString().split('T')[0]}.xlsx`);
+    XLSX.utils.book_append_sheet(workbook, worksheet, "Analitica");
+    XLSX.writeFile(workbook, `SIBF_CAI_${isSimulating ? 'Simulation' : 'Real'}_${new Date().toISOString().split('T')[0]}.xlsx`);
     
-    toast({ title: "Excel Generado", description: "Se han exportado los datos actuales del dashboard." });
+    toast({ title: "Excel Generado", description: "Exportación completa realizada con éxito." });
   };
 
   useEffect(() => {
@@ -207,19 +266,30 @@ export default function DashboardPage() {
         <div>
           <div className="flex items-center gap-3 mb-2">
             <div className="w-1.5 h-8 bg-primary rounded-full" />
-            <h1 className="text-3xl font-bold tracking-tight text-slate-900 uppercase">Inteligencia de Datos</h1>
+            <h1 className="text-3xl font-bold tracking-tight text-slate-900 uppercase flex items-center gap-2">
+              Inteligencia de Datos
+              {isSimulating && <Badge className="bg-amber-500 animate-pulse text-white border-none ml-2">Simulación Activa</Badge>}
+            </h1>
           </div>
           <p className="text-muted-foreground font-medium text-sm">
             Análisis transversal de asistencia <span className="text-primary font-bold">SIBF - CAI</span>
           </p>
         </div>
-        <div className="flex gap-2">
+        <div className="flex flex-wrap gap-2">
+          <Button 
+            onClick={handleToggleSimulation}
+            variant={isSimulating ? "destructive" : "secondary"}
+            className="h-10 rounded-xl px-6 text-[10px] font-bold uppercase tracking-widest shadow-sm"
+          >
+            {isSimulating ? <ZapOff className="w-4 h-4 mr-2" /> : <Zap className="w-4 h-4 mr-2" />}
+            {isSimulating ? "Detener Simulación" : "Modo Simulación (Prueba)"}
+          </Button>
           <Button 
             onClick={handleExportFilteredData}
             variant="outline" 
             className="h-10 rounded-xl px-6 border-slate-200 bg-white text-[10px] font-bold uppercase tracking-widest text-slate-600 hover:bg-slate-50"
           >
-            <Download className="w-4 h-4 mr-2 text-primary" /> Exportar Vista Actual
+            <Download className="w-4 h-4 mr-2 text-primary" /> Exportar Vista
           </Button>
           <Badge variant="outline" className="h-10 flex items-center rounded-xl px-4 border-slate-300 bg-slate-50 text-[10px] font-bold uppercase tracking-widest text-slate-600">
             {filteredAsistencias.length} Registros
@@ -300,7 +370,6 @@ export default function DashboardPage() {
         </div>
       </Card>
 
-      {/* ESTADÍSTICAS RÁPIDAS FILTRADAS */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
         <Card className="rounded-3xl border-none bg-slate-900 text-white shadow-lg">
           <CardContent className="p-6">
@@ -389,9 +458,9 @@ export default function DashboardPage() {
         <Card className="rounded-[2.5rem] border-slate-100 shadow-sm overflow-hidden bg-white">
           <CardHeader className="p-8 border-b border-slate-50">
             <CardTitle className="text-xl font-bold flex items-center gap-2">
-              <TrendingUp className="w-5 h-5 text-primary" /> Tendencia por Día
+              <TrendingUp className="w-5 h-5 text-primary" /> Tendencia Temporal
             </CardTitle>
-            <CardDescription className="text-xs font-medium">Frecuencia de inasistencias por día laboral.</CardDescription>
+            <CardDescription className="text-xs font-medium">Análisis de actividad laboral por día de la semana.</CardDescription>
           </CardHeader>
           <CardContent className="p-8 h-[350px]">
             {filteredAsistencias.length > 0 ? (
@@ -437,6 +506,7 @@ export default function DashboardPage() {
             <h3 className="text-xl font-bold text-slate-900 uppercase">Alertas Tempranas</h3>
             <p className="text-sm text-muted-foreground font-medium">
               El análisis dinámico permite identificar patrones de inasistencia críticos por materia o docente. Utiliza los filtros para refinar tu búsqueda y exportar reportes focalizados.
+              {isSimulating && <span className="block mt-2 text-amber-600 font-bold">Estás viendo una vista previa simulada. Estos registros no existen en la base de datos real.</span>}
             </p>
           </div>
         </CardContent>
