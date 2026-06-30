@@ -3,7 +3,7 @@
 
 import React, { useEffect, useRef, useState } from 'react';
 import * as faceapi from 'face-api.js';
-import { Loader2, Camera, CheckCircle2, AlertCircle, UserCheck, RefreshCw } from 'lucide-react';
+import { Loader2, Camera, CheckCircle2, AlertCircle, UserCheck, RefreshCw, Cpu } from 'lucide-react';
 import { Button } from "@/components/ui/button";
 import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert";
 import { cn } from "@/lib/utils";
@@ -22,6 +22,7 @@ export function FacialRecognitionComponent({ mode, onCapture, onRecognized, labe
   const { toast } = useToast();
   
   const [isLoaded, setIsLoaded] = useState(false);
+  const [isInitializing, setIsInitializing] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [detection, setDetection] = useState<any>(null);
   const [capturedDescriptor, setCapturedDescriptor] = useState<number[] | null>(null);
@@ -36,17 +37,21 @@ export function FacialRecognitionComponent({ mode, onCapture, onRecognized, labe
 
   useEffect(() => {
     const loadModels = async () => {
+      setIsInitializing(true);
       try {
         const MODEL_URL = '/models'; 
+        // Carga paralela de modelos para máxima velocidad
         await Promise.all([
           faceapi.nets.tinyFaceDetector.loadFromUri(MODEL_URL),
           faceapi.nets.faceLandmark68Net.loadFromUri(MODEL_URL),
           faceapi.nets.faceRecognitionNet.loadFromUri(MODEL_URL)
         ]);
         setIsLoaded(true);
+        setIsInitializing(false);
       } catch (err) {
         console.error("Error loading models:", err);
-        setError("No se pudieron cargar los modelos de IA. Asegúrate de que estén en /public/models");
+        setError("Error al cargar motor de IA. Verifique su conexión.");
+        setIsInitializing(false);
       }
     };
 
@@ -78,7 +83,8 @@ export function FacialRecognitionComponent({ mode, onCapture, onRecognized, labe
       video: { 
         facingMode: facingMode,
         width: { ideal: 1280 },
-        height: { ideal: 720 }
+        height: { ideal: 720 },
+        frameRate: { ideal: 30 }
       } 
     })
       .then(stream => {
@@ -118,11 +124,15 @@ export function FacialRecognitionComponent({ mode, onCapture, onRecognized, labe
     };
     faceapi.matchDimensions(canvasRef.current, displaySize);
 
+    // Intervalo optimizado a 100ms para una respuesta visual instantánea
     const interval = setInterval(async () => {
       if (!videoRef.current || !canvasRef.current) return;
 
       const results = await faceapi
-        .detectAllFaces(videoRef.current, new faceapi.TinyFaceDetectorOptions())
+        .detectAllFaces(videoRef.current, new faceapi.TinyFaceDetectorOptions({
+          inputSize: 160, // Tamaño optimizado para velocidad
+          scoreThreshold: 0.5
+        }))
         .withFaceLandmarks()
         .withFaceDescriptors();
 
@@ -178,11 +188,11 @@ export function FacialRecognitionComponent({ mode, onCapture, onRecognized, labe
               drawBox.draw(canvas);
             }
           } else {
-            // Modo captura
+            // Modo captura: Recuadro rojo institucional
             const drawBox = new faceapi.draw.DrawBox(detection.box, { 
-              label: mode === 'enroll' ? 'Posiciona tu rostro' : 'Detectando...',
+              label: mode === 'enroll' ? 'LISTO PARA CAPTURAR' : 'DETECCIÓN ACTIVA',
               boxColor: 'rgba(255, 31, 45, 1)', 
-              lineWidth: 2
+              lineWidth: 3
             });
             drawBox.draw(canvas);
           }
@@ -190,7 +200,7 @@ export function FacialRecognitionComponent({ mode, onCapture, onRecognized, labe
       } else {
         setDetection(null);
       }
-    }, 150);
+    }, 100);
 
     return () => clearInterval(interval);
   };
@@ -205,22 +215,31 @@ export function FacialRecognitionComponent({ mode, onCapture, onRecognized, labe
 
   return (
     <div className="flex flex-col items-center gap-4">
-      {!isLoaded && (
-        <div className="flex flex-col items-center py-10 gap-2">
-          <Loader2 className="w-10 h-10 animate-spin text-primary" />
-          <p className="font-bold text-sm text-muted-foreground">Iniciando Biometría AI...</p>
+      {isInitializing && (
+        <div className="flex flex-col items-center py-12 gap-4 animate-in fade-in duration-500">
+          <div className="relative">
+            <Loader2 className="w-16 h-16 animate-spin text-primary" />
+            <Cpu className="w-6 h-6 text-primary absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 opacity-50" />
+          </div>
+          <div className="text-center">
+            <p className="font-black text-slate-900 uppercase tracking-tight text-lg">Iniciando Biometría AI</p>
+            <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Calibrando sensores de reconocimiento facial...</p>
+          </div>
         </div>
       )}
 
       {error && (
-        <Alert variant="destructive" className="rounded-2xl">
+        <Alert variant="destructive" className="rounded-2xl border-2">
           <AlertCircle className="h-4 w-4" />
-          <AlertTitle>Error de Cámara</AlertTitle>
-          <AlertDescription>{error}</AlertDescription>
+          <AlertTitle className="font-bold">Error de Sistema</AlertTitle>
+          <AlertDescription className="font-medium text-xs">{error}</AlertDescription>
         </Alert>
       )}
 
-      <div className={cn("relative rounded-3xl overflow-hidden border-4 border-slate-900 shadow-2xl bg-black aspect-video w-full", !isLoaded && "hidden")}>
+      <div className={cn(
+        "relative rounded-[2rem] overflow-hidden border-4 border-slate-900 shadow-2xl bg-black aspect-video w-full transition-all duration-700", 
+        (isInitializing || !isLoaded) ? "opacity-0 scale-95" : "opacity-100 scale-100"
+      )}>
         <video 
           ref={videoRef} 
           autoPlay 
@@ -252,26 +271,28 @@ export function FacialRecognitionComponent({ mode, onCapture, onRecognized, labe
         )}
 
         {/* Botón de cambio de cámara */}
-        <div className="absolute top-4 right-4 z-30">
-          <Button 
-            variant="secondary" 
-            size="icon" 
-            onClick={toggleCamera}
-            className="rounded-full bg-white/20 backdrop-blur-md hover:bg-white/40 border border-white/20 text-white w-12 h-12"
-            title="Cambiar Cámara"
-          >
-            <RefreshCw className="w-6 h-6" />
-          </Button>
-        </div>
+        {!isInitializing && (
+          <div className="absolute top-4 right-4 z-30">
+            <Button 
+              variant="secondary" 
+              size="icon" 
+              onClick={toggleCamera}
+              className="rounded-full bg-white/20 backdrop-blur-md hover:bg-white/40 border border-white/20 text-white w-12 h-12 shadow-lg"
+              title="Cambiar Cámara"
+            >
+              <RefreshCw className="w-6 h-6" />
+            </Button>
+          </div>
+        )}
 
         {mode === 'enroll' && detection && !capturedDescriptor && (
           <div className="absolute bottom-6 left-1/2 -translate-x-1/2">
             <Button 
               onClick={captureEnrollment}
-              className="bg-primary hover:bg-accent text-white rounded-full px-8 py-6 font-bold shadow-xl animate-bounce"
+              className="bg-primary hover:bg-accent text-white rounded-full px-10 py-7 font-black shadow-2xl animate-bounce uppercase tracking-widest text-[10px]"
             >
-              <Camera className="w-5 h-5 mr-2" />
-              Capturar Rostro
+              <Camera className="w-6 h-6 mr-3" />
+              Capturar Perfil Biométrico
             </Button>
           </div>
         )}
@@ -288,14 +309,17 @@ export function FacialRecognitionComponent({ mode, onCapture, onRecognized, labe
         )}
       </div>
 
-      <div className="w-full bg-slate-50 p-4 rounded-2xl border border-dashed text-center flex flex-col items-center gap-1">
-        <p className="text-[10px] uppercase font-black text-muted-foreground tracking-widest">
-          {mode === 'enroll' ? 'Modo: Enrolamiento de Alumno' : 'Modo: Identificación en tiempo real'}
-        </p>
-        <p className="text-[9px] font-bold text-slate-400 uppercase">
-          Cámara actual: {facingMode === 'user' ? 'Frontal (Selfie)' : 'Trasera (Principal)'}
-        </p>
-      </div>
+      {!isInitializing && (
+        <div className="w-full bg-slate-50 p-4 rounded-2xl border border-dashed text-center flex flex-col items-center gap-1 shadow-inner">
+          <p className="text-[10px] uppercase font-black text-muted-foreground tracking-widest flex items-center gap-2">
+            <div className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse" />
+            {mode === 'enroll' ? 'MODO: ALTA DE NUEVO ALUMNO' : 'MODO: IDENTIFICACIÓN INSTITUCIONAL'}
+          </p>
+          <p className="text-[9px] font-bold text-slate-400 uppercase tracking-tight">
+            Lente: {facingMode === 'user' ? 'Frontal / Selfie' : 'Trasera / Principal'} • Motor AI Activo
+          </p>
+        </div>
+      )}
     </div>
   );
 }
