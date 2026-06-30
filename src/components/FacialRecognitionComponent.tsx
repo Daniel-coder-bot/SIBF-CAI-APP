@@ -3,7 +3,7 @@
 
 import React, { useEffect, useRef, useState } from 'react';
 import * as faceapi from 'face-api.js';
-import { Loader2, Camera, CheckCircle2, AlertCircle, UserCheck } from 'lucide-react';
+import { Loader2, Camera, CheckCircle2, AlertCircle, UserCheck, RefreshCw } from 'lucide-react';
 import { Button } from "@/components/ui/button";
 import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert";
 import { cn } from "@/lib/utils";
@@ -30,6 +30,9 @@ export function FacialRecognitionComponent({ mode, onCapture, onRecognized, labe
   const [showSuccessFlash, setShowSuccessFlash] = useState(false);
   const [lastRecognizedId, setLastRecognizedId] = useState<string | null>(null);
   const cooldownRef = useRef<NodeJS.Timeout | null>(null);
+  
+  // Estado para controlar la cámara activa (frontal o trasera)
+  const [facingMode, setFacingMode] = useState<'user' | 'environment'>('user');
 
   useEffect(() => {
     const loadModels = async () => {
@@ -41,36 +44,57 @@ export function FacialRecognitionComponent({ mode, onCapture, onRecognized, labe
           faceapi.nets.faceRecognitionNet.loadFromUri(MODEL_URL)
         ]);
         setIsLoaded(true);
-        startVideo();
       } catch (err) {
         console.error("Error loading models:", err);
         setError("No se pudieron cargar los modelos de IA. Asegúrate de que estén en /public/models");
       }
     };
 
-    const startVideo = () => {
-      navigator.mediaDevices.getUserMedia({ video: {} })
-        .then(stream => {
-          if (videoRef.current) {
-            videoRef.current.srcObject = stream;
-          }
-        })
-        .catch(err => {
-          console.error("Camera error:", err);
-          setError("No se pudo acceder a la cámara.");
-        });
-    };
-
     loadModels();
 
     return () => {
-      if (videoRef.current && videoRef.current.srcObject) {
-        const stream = videoRef.current.srcObject as MediaStream;
-        stream.getTracks().forEach(track => track.stop());
-      }
+      stopVideo();
       if (cooldownRef.current) clearTimeout(cooldownRef.current);
     };
   }, []);
+
+  // Efecto para iniciar o cambiar la cámara
+  useEffect(() => {
+    if (isLoaded) {
+      startVideo();
+    }
+  }, [facingMode, isLoaded]);
+
+  const stopVideo = () => {
+    if (videoRef.current && videoRef.current.srcObject) {
+      const stream = videoRef.current.srcObject as MediaStream;
+      stream.getTracks().forEach(track => track.stop());
+    }
+  };
+
+  const startVideo = () => {
+    stopVideo();
+    navigator.mediaDevices.getUserMedia({ 
+      video: { 
+        facingMode: facingMode,
+        width: { ideal: 1280 },
+        height: { ideal: 720 }
+      } 
+    })
+      .then(stream => {
+        if (videoRef.current) {
+          videoRef.current.srcObject = stream;
+        }
+      })
+      .catch(err => {
+        console.error("Camera error:", err);
+        setError("No se pudo acceder a la cámara. Verifique los permisos.");
+      });
+  };
+
+  const toggleCamera = () => {
+    setFacingMode(prev => prev === 'user' ? 'environment' : 'user');
+  };
 
   useEffect(() => {
     if (mode === 'recognize' && labeledDescriptors && labeledDescriptors.length > 0) {
@@ -94,7 +118,7 @@ export function FacialRecognitionComponent({ mode, onCapture, onRecognized, labe
     faceapi.matchDimensions(canvasRef.current, displaySize);
 
     const interval = setInterval(async () => {
-      if (!videoRef.current) return;
+      if (!videoRef.current || !canvasRef.current) return;
 
       const results = await faceapi
         .detectAllFaces(videoRef.current, new faceapi.TinyFaceDetectorOptions())
@@ -140,15 +164,16 @@ export function FacialRecognitionComponent({ mode, onCapture, onRecognized, labe
                 }, 5000);
               }
               
+              // Dibujar cuadro con el nombre del alumno
               const drawBox = new faceapi.draw.DrawBox(detection.box, { 
-                label: '', 
+                label: bestMatch.label, 
                 boxColor: 'rgba(34, 197, 94, 1)', 
                 lineWidth: 4 
               });
               drawBox.draw(canvas);
             } else {
               const drawBox = new faceapi.draw.DrawBox(detection.box, { 
-                label: '', 
+                label: 'Desconocido', 
                 boxColor: 'rgba(239, 68, 68, 0.5)', 
                 lineWidth: 2 
               });
@@ -156,7 +181,7 @@ export function FacialRecognitionComponent({ mode, onCapture, onRecognized, labe
             }
           } else {
             const drawBox = new faceapi.draw.DrawBox(detection.box, { 
-              label: mode === 'enroll' ? 'Posiciona tu rostro' : '',
+              label: mode === 'enroll' ? 'Posiciona tu rostro' : 'Detectando...',
               boxColor: 'rgba(255, 31, 45, 1)', 
               lineWidth: 2
             });
@@ -191,7 +216,7 @@ export function FacialRecognitionComponent({ mode, onCapture, onRecognized, labe
       {error && (
         <Alert variant="destructive" className="rounded-2xl">
           <AlertCircle className="h-4 w-4" />
-          <AlertTitle>Error</AlertTitle>
+          <AlertTitle>Error de Cámara</AlertTitle>
           <AlertDescription>{error}</AlertDescription>
         </Alert>
       )}
@@ -202,6 +227,7 @@ export function FacialRecognitionComponent({ mode, onCapture, onRecognized, labe
           autoPlay 
           muted 
           onPlay={handleVideoPlay}
+          playsInline
           className="w-full h-full object-cover"
         />
         <canvas 
@@ -209,14 +235,28 @@ export function FacialRecognitionComponent({ mode, onCapture, onRecognized, labe
           className="absolute top-0 left-0 w-full h-full pointer-events-none" 
         />
         
+        {/* Flash de éxito */}
         {showSuccessFlash && (
           <div className="absolute inset-0 bg-white animate-in fade-in duration-300 z-20 flex items-center justify-center">
              <div className="text-primary flex flex-col items-center scale-110">
                <UserCheck className="w-24 h-24 mb-4" />
-               <h2 className="text-4xl font-black uppercase tracking-tighter">Acceso Concedido</h2>
+               <h2 className="text-4xl font-black uppercase tracking-tighter text-center">Acceso Concedido<br/><span className="text-2xl text-slate-900">{lastRecognizedId}</span></h2>
              </div>
           </div>
         )}
+
+        {/* Botón de cambio de cámara */}
+        <div className="absolute top-4 right-4 z-30">
+          <Button 
+            variant="secondary" 
+            size="icon" 
+            onClick={toggleCamera}
+            className="rounded-full bg-white/20 backdrop-blur-md hover:bg-white/40 border border-white/20 text-white w-12 h-12"
+            title="Cambiar Cámara"
+          >
+            <RefreshCw className="w-6 h-6" />
+          </Button>
+        </div>
 
         {mode === 'enroll' && detection && !capturedDescriptor && (
           <div className="absolute bottom-6 left-1/2 -translate-x-1/2">
@@ -241,9 +281,12 @@ export function FacialRecognitionComponent({ mode, onCapture, onRecognized, labe
         )}
       </div>
 
-      <div className="w-full bg-slate-50 p-4 rounded-2xl border border-dashed text-center">
+      <div className="w-full bg-slate-50 p-4 rounded-2xl border border-dashed text-center flex flex-col items-center gap-1">
         <p className="text-[10px] uppercase font-black text-muted-foreground tracking-widest">
           {mode === 'enroll' ? 'Modo: Enrolamiento de Alumno' : 'Modo: Identificación en tiempo real'}
+        </p>
+        <p className="text-[9px] font-bold text-slate-400 uppercase">
+          Cámara actual: {facingMode === 'user' ? 'Frontal (Selfie)' : 'Trasera (Principal)'}
         </p>
       </div>
     </div>
