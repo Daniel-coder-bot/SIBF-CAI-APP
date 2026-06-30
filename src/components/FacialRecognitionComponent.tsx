@@ -104,7 +104,8 @@ export function FacialRecognitionComponent({ mode, onCapture, onRecognized, labe
           [new Float32Array(ld.descriptor)]
         );
       });
-      setMatcher(new faceapi.FaceMatcher(labeledFaceDescriptors, 0.6));
+      // Umbral de 0.45 para mayor precisión (menor es más estricto)
+      setMatcher(new faceapi.FaceMatcher(labeledFaceDescriptors, 0.45));
     }
   }, [mode, labeledDescriptors]);
 
@@ -149,37 +150,35 @@ export function FacialRecognitionComponent({ mode, onCapture, onRecognized, labe
                 
                 if (onRecognized) {
                   onRecognized(bestMatch.label);
-                } else {
-                  toast({
-                    title: "Alumno Identificado",
-                    description: `${bestMatch.label} está en el sistema.`,
-                  });
                 }
 
-                setTimeout(() => setShowSuccessFlash(false), 500);
+                // Mantener el overlay visual por 2 segundos
+                setTimeout(() => setShowSuccessFlash(false), 2000);
                 
                 if (cooldownRef.current) clearTimeout(cooldownRef.current);
                 cooldownRef.current = setTimeout(() => {
                   setLastRecognizedId(null);
-                }, 5000);
+                }, 4000);
               }
               
-              // Dibujar cuadro con el nombre del alumno
+              // Dibujar cuadro de seguimiento (verde sólido para éxito)
               const drawBox = new faceapi.draw.DrawBox(detection.box, { 
-                label: bestMatch.label, 
+                label: 'Identificado', 
                 boxColor: 'rgba(34, 197, 94, 1)', 
                 lineWidth: 4 
               });
               drawBox.draw(canvas);
             } else {
+              // Dibujar cuadro de seguimiento (rojo tenue para desconocido)
               const drawBox = new faceapi.draw.DrawBox(detection.box, { 
-                label: 'Desconocido', 
+                label: 'Analizando...', 
                 boxColor: 'rgba(239, 68, 68, 0.5)', 
                 lineWidth: 2 
               });
               drawBox.draw(canvas);
             }
           } else {
+            // Modo captura
             const drawBox = new faceapi.draw.DrawBox(detection.box, { 
               label: mode === 'enroll' ? 'Posiciona tu rostro' : 'Detectando...',
               boxColor: 'rgba(255, 31, 45, 1)', 
@@ -235,12 +234,19 @@ export function FacialRecognitionComponent({ mode, onCapture, onRecognized, labe
           className="absolute top-0 left-0 w-full h-full pointer-events-none" 
         />
         
-        {/* Flash de éxito */}
-        {showSuccessFlash && (
-          <div className="absolute inset-0 bg-white animate-in fade-in duration-300 z-20 flex items-center justify-center">
-             <div className="text-primary flex flex-col items-center scale-110">
-               <UserCheck className="w-24 h-24 mb-4" />
-               <h2 className="text-4xl font-black uppercase tracking-tighter text-center">Acceso Concedido<br/><span className="text-2xl text-slate-900">{lastRecognizedId}</span></h2>
+        {/* Rectángulo característico de éxito en Reconocimiento */}
+        {mode === 'recognize' && showSuccessFlash && (
+          <div className="absolute inset-0 bg-green-600/40 backdrop-blur-md flex items-center justify-center animate-in fade-in zoom-in duration-300 z-50">
+             <div className="text-white text-center p-8 rounded-[2.5rem] bg-black/20 border border-white/20 shadow-2xl scale-110">
+               <UserCheck className="w-24 h-24 mx-auto mb-4 text-white drop-shadow-lg" />
+               <p className="text-sm font-black uppercase tracking-[0.2em] opacity-80 mb-1">Asistencia Registrada</p>
+               <h2 className="text-4xl font-black uppercase tracking-tighter text-white drop-shadow-md">
+                 {lastRecognizedId}
+               </h2>
+               <div className="mt-4 bg-white/20 px-6 py-2 rounded-full inline-flex items-center gap-2">
+                  <CheckCircle2 className="w-4 h-4" />
+                  <span className="text-[10px] font-bold uppercase tracking-widest">Identidad Validada</span>
+               </div>
              </div>
           </div>
         )}
@@ -270,12 +276,13 @@ export function FacialRecognitionComponent({ mode, onCapture, onRecognized, labe
           </div>
         )}
 
-        {capturedDescriptor && (
-          <div className="absolute inset-0 bg-green-600/40 backdrop-blur-sm flex items-center justify-center animate-in fade-in zoom-in duration-300">
-             <div className="text-white text-center">
-               <CheckCircle2 className="w-20 h-20 mx-auto mb-2" />
-               <p className="text-2xl font-black uppercase tracking-tighter">¡Capturado!</p>
-               <p className="text-xs font-bold opacity-80">Procesando descriptor facial...</p>
+        {/* Rectángulo característico de éxito en Captura/Registro */}
+        {mode === 'enroll' && capturedDescriptor && (
+          <div className="absolute inset-0 bg-green-600/40 backdrop-blur-sm flex items-center justify-center animate-in fade-in zoom-in duration-300 z-50">
+             <div className="text-white text-center p-8 rounded-[2.5rem] bg-black/20 border border-white/20 shadow-2xl">
+               <CheckCircle2 className="w-20 h-20 mx-auto mb-4" />
+               <p className="text-3xl font-black uppercase tracking-tighter">¡Capturado!</p>
+               <p className="text-xs font-bold opacity-80 uppercase tracking-widest">Biometría guardada correctamente</p>
              </div>
           </div>
         )}
